@@ -1,0 +1,176 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Book an Appointment{% if practice %} — {{ practice.practice_name }}{% endif %}{% endblock %}
+
+{% block page_content %}
+<div class="medic-booking-container" style="max-width:680px;margin:40px auto;padding:0 16px;">
+
+	{% if not practice %}
+	<div class="alert alert-danger">Practice not found.</div>
+	{% else %}
+
+	<div class="practice-header" style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">
+		{% if practice.logo %}
+		<img src="{{ practice.logo }}" alt="{{ practice.practice_name }}" style="height:64px;border-radius:8px;">
+		{% endif %}
+		<div>
+			<h1 style="margin:0;font-size:1.6rem;">{{ practice.practice_name }}</h1>
+			{% if practice.address %}<p style="margin:4px 0 0;color:#666;">{{ practice.address }}</p>{% endif %}
+		</div>
+	</div>
+
+	<form id="booking-form">
+		<input type="hidden" name="practice_slug" value="{{ slug }}">
+
+		<div class="form-section">
+			<h4>Your Details</h4>
+			<div class="row">
+				<div class="col-sm-6">
+					<div class="form-group">
+						<label>First Name *</label>
+						<input class="form-control" name="patient_first_name" required>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<div class="form-group">
+						<label>Last Name *</label>
+						<input class="form-control" name="patient_last_name" required>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-6">
+					<div class="form-group">
+						<label>Email *</label>
+						<input class="form-control" type="email" name="patient_email" required>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<div class="form-group">
+						<label>Phone *</label>
+						<input class="form-control" name="patient_phone" required>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="form-section" style="margin-top:24px;">
+			<h4>Appointment</h4>
+			<div class="row">
+				<div class="col-sm-6">
+					<div class="form-group">
+						<label>Doctor *</label>
+						<select class="form-control" name="practitioner" id="practitioner-select" required>
+							<option value="">Select doctor...</option>
+							{% for p in practitioners %}
+							<option value="{{ p.name }}">{{ p.practitioner_name }}{% if p.department %} — {{ p.department }}{% endif %}</option>
+							{% endfor %}
+						</select>
+					</div>
+				</div>
+				<div class="col-sm-6">
+					<div class="form-group">
+						<label>Date *</label>
+						<input class="form-control" type="date" name="appointment_date" id="date-input" required
+							min="{{ frappe.utils.today() }}">
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label>Available Time *</label>
+				<div id="time-slots" style="display:flex;flex-wrap:wrap;gap:8px;min-height:40px;">
+					<span class="text-muted">Select a doctor and date first.</span>
+				</div>
+				<input type="hidden" name="appointment_time" id="appointment_time" required>
+			</div>
+		</div>
+
+		<div id="booking-message" style="display:none;" class="alert"></div>
+
+		<button type="submit" class="btn btn-primary btn-lg" style="margin-top:16px;width:100%;">
+			Book Appointment
+		</button>
+	</form>
+
+	{% endif %}
+</div>
+
+<script>
+(function() {
+	var practiceSlug = "{{ slug }}";
+	var form = document.getElementById("booking-form");
+	var practitionerSelect = document.getElementById("practitioner-select");
+	var dateInput = document.getElementById("date-input");
+	var timeSlotsDiv = document.getElementById("time-slots");
+	var appointmentTimeInput = document.getElementById("appointment_time");
+	var msgDiv = document.getElementById("booking-message");
+
+	function loadSlots() {
+		var practitioner = practitionerSelect.value;
+		var date = dateInput.value;
+		if (!practitioner || !date) return;
+
+		timeSlotsDiv.innerHTML = "<span class='text-muted'>Loading...</span>";
+		frappe.call({
+			method: "medic_plus.api.booking.get_availability",
+			args: { practice_slug: practiceSlug, practitioner: practitioner, date: date },
+			callback: function(r) {
+				timeSlotsDiv.innerHTML = "";
+				appointmentTimeInput.value = "";
+				if (!r.message || r.message.length === 0) {
+					timeSlotsDiv.innerHTML = "<span class='text-muted'>No slots available.</span>";
+					return;
+				}
+				r.message.forEach(function(slot) {
+					var btn = document.createElement("button");
+					btn.type = "button";
+					btn.className = "btn btn-outline-secondary btn-sm";
+					btn.textContent = slot.substring(0, 5);
+					btn.onclick = function() {
+						document.querySelectorAll("#time-slots .btn").forEach(function(b) {
+							b.classList.remove("btn-primary");
+							b.classList.add("btn-outline-secondary");
+						});
+						btn.classList.remove("btn-outline-secondary");
+						btn.classList.add("btn-primary");
+						appointmentTimeInput.value = slot;
+					};
+					timeSlotsDiv.appendChild(btn);
+				});
+			}
+		});
+	}
+
+	practitionerSelect.addEventListener("change", loadSlots);
+	dateInput.addEventListener("change", loadSlots);
+
+	form.addEventListener("submit", function(e) {
+		e.preventDefault();
+		var data = {};
+		new FormData(form).forEach(function(v, k) { data[k] = v; });
+		if (!data.appointment_time) {
+			alert("Please select a time slot.");
+			return;
+		}
+		frappe.call({
+			method: "medic_plus.api.booking.create_appointment",
+			args: data,
+			callback: function(r) {
+				if (r.message) {
+					msgDiv.className = "alert alert-success";
+					msgDiv.textContent = r.message.message;
+					msgDiv.style.display = "block";
+					form.reset();
+					timeSlotsDiv.innerHTML = "<span class='text-muted'>Select a doctor and date first.</span>";
+				}
+			},
+			error: function(r) {
+				msgDiv.className = "alert alert-danger";
+				msgDiv.textContent = r.exc || "Booking failed. Please try again.";
+				msgDiv.style.display = "block";
+			}
+		});
+	});
+})();
+</script>
+{% endblock %}

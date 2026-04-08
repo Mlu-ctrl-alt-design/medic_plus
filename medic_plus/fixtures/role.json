@@ -1,0 +1,23 @@
+[
+ {
+  "doctype": "Role",
+  "name": "Practice Admin",
+  "role_name": "Practice Admin",
+  "desk_access": 1,
+  "is_custom": 1
+ },
+ {
+  "doctype": "Role",
+  "name": "Practice Doctor",
+  "role_name": "Practice Doctor",
+  "desk_access": 1,
+  "is_custom": 1
+ },
+ {
+  "doctype": "Role",
+  "name": "Practice Receptionist",
+  "role_name": "Practice Receptionist",
+  "desk_access": 1,
+  "is_custom": 1
+ }
+]

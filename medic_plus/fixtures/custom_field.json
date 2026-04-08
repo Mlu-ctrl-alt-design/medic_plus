@@ -1,0 +1,55 @@
+[
+ {
+  "doctype": "Custom Field",
+  "name": "Patient-custom_practice",
+  "dt": "Patient",
+  "fieldname": "custom_practice",
+  "fieldtype": "Link",
+  "insert_after": "status",
+  "label": "Practice",
+  "options": "Practice",
+  "in_list_view": 0,
+  "read_only": 0,
+  "search_index": 1,
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Patient Appointment-custom_practice",
+  "dt": "Patient Appointment",
+  "fieldname": "custom_practice",
+  "fieldtype": "Link",
+  "insert_after": "status",
+  "label": "Practice",
+  "options": "Practice",
+  "in_list_view": 1,
+  "search_index": 1,
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Patient Encounter-custom_practice",
+  "dt": "Patient Encounter",
+  "fieldname": "custom_practice",
+  "fieldtype": "Link",
+  "insert_after": "status",
+  "label": "Practice",
+  "options": "Practice",
+  "in_list_view": 1,
+  "search_index": 1,
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Inpatient Record-custom_practice",
+  "dt": "Inpatient Record",
+  "fieldname": "custom_practice",
+  "fieldtype": "Link",
+  "insert_after": "status",
+  "label": "Practice",
+  "options": "Practice",
+  "in_list_view": 1,
+  "search_index": 1,
+  "module": "Medic Plus"
+ }
+]

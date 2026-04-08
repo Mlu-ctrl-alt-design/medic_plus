@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "autoname": "UUID",
+ "creation": "2026-04-08 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "practice",
+  "user",
+  "column_break_1",
+  "role",
+  "practitioner"
+ ],
+ "fields": [
+  {
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practice",
+   "options": "Practice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Role",
+   "options": "Admin\nDoctor\nReceptionist",
+   "reqd": 1
+  },
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner",
+   "description": "Required when Role is Doctor"
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-08 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Practice Member",
+ "naming_rule": "UUID",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Practice Admin",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Practice Doctor"
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "title_field": "user",
+ "track_changes": 1
+}
