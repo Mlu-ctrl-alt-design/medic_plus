@@ -1,14 +1,25 @@
+import random
 import frappe
-from frappe.utils import getdate, nowdate, get_time
+from frappe.utils import getdate, nowdate
 
 
-@frappe.whitelist(allow_guest=True)
-def get_practice_info(practice_slug: str) -> dict:
-	"""Return public practice info for the booking page."""
+# ---------------------------------------------------------------------------
+# OTP helpers
+# ---------------------------------------------------------------------------
+
+def _otp_cache_key(practice_slug: str, email: str) -> str:
+	return f"medic_plus_otp|{practice_slug}|{email.lower().strip()}"
+
+
+def _attempt_cache_key(practice_slug: str, email: str) -> str:
+	return f"medic_plus_otp_attempts|{practice_slug}|{email.lower().strip()}"
+
+
+def _get_practice_or_throw(practice_slug: str) -> dict:
 	practice = frappe.db.get_value(
 		"Practice",
 		{"slug": practice_slug, "is_active": 1},
-		["name", "practice_name", "logo", "color", "phone", "email", "address"],
+		["name", "practice_name", "logo", "color", "email"],
 		as_dict=True,
 	)
 	if not practice:
@@ -16,89 +27,67 @@ def get_practice_info(practice_slug: str) -> dict:
 	return practice
 
 
-@frappe.whitelist(allow_guest=True)
-def get_practice_practitioners(practice_slug: str) -> list:
-	"""Return active doctors for a practice."""
-	practice = frappe.db.get_value("Practice", {"slug": practice_slug, "is_active": 1}, "name")
-	if not practice:
-		frappe.throw(frappe._("Practice not found."), frappe.DoesNotExistError)
-
-	members = frappe.get_all(
-		"Practice Member",
-		filters={"practice": practice, "role": "Doctor"},
-		fields=["practitioner"],
-	)
-	practitioner_names = [m.practitioner for m in members if m.practitioner]
-	if not practitioner_names:
-		return []
-
-	practitioners = frappe.get_all(
-		"Healthcare Practitioner",
-		filters={"name": ("in", practitioner_names), "status": "Active"},
-		fields=["name", "practitioner_name", "department", "image"],
-	)
-	return practitioners
-
+# ---------------------------------------------------------------------------
+# OTP: request
+# ---------------------------------------------------------------------------
 
 @frappe.whitelist(allow_guest=True)
-def get_availability(practice_slug: str, practitioner: str, date: str) -> list:
-	"""Return available time slots for a practitioner on a given date."""
-	practice = frappe.db.get_value("Practice", {"slug": practice_slug, "is_active": 1}, "name")
-	if not practice:
-		frappe.throw(frappe._("Practice not found."), frappe.DoesNotExistError)
+def request_booking_otp(practice_slug: str, email: str) -> dict:
+	"""Generate a 6-digit OTP, store server-side in Redis, and email it to the patient."""
+	practice = _get_practice_or_throw(practice_slug)
+	email = email.lower().strip()
 
-	# Verify practitioner belongs to this practice
-	is_member = frappe.db.exists(
-		"Practice Member",
-		{"practice": practice, "practitioner": practitioner, "role": "Doctor"},
+	# Rate limit: max 3 requests per 10 min per email/practice
+	attempt_key = _attempt_cache_key(practice_slug, email)
+	attempts = frappe.cache.get_value(attempt_key) or 0
+	if attempts >= 3:
+		frappe.throw(
+			frappe._("Too many OTP requests. Please wait 10 minutes before trying again."),
+			title=frappe._("Rate Limited"),
+		)
+
+	otp = str(random.randint(100000, 999999))
+	cache_key = _otp_cache_key(practice_slug, email)
+
+	# Store OTP server-side — 10 minute TTL
+	frappe.cache.set_value(cache_key, otp, expires_in_sec=600)
+	frappe.cache.set_value(attempt_key, attempts + 1, expires_in_sec=600)
+
+	# Send email
+	_send_otp_email(email=email, otp=otp, practice=practice)
+
+	return {"sent": True, "message": frappe._("OTP sent to {0}").format(email)}
+
+
+def _send_otp_email(email: str, otp: str, practice: dict):
+	subject = frappe._("Your booking verification code — {0}").format(practice.practice_name)
+	message = f"""
+	<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e5e7eb;border-radius:8px;">
+		{"<img src='" + practice.logo + "' style='height:48px;margin-bottom:24px;display:block;' alt='" + practice.practice_name + "'>" if practice.logo else ""}
+		<h2 style="margin:0 0 8px;font-size:1.2rem;color:#111;">{practice.practice_name}</h2>
+		<p style="color:#555;margin:0 0 24px;">Use the code below to confirm your appointment booking. It expires in <strong>10 minutes</strong>.</p>
+		<div style="background:#f3f4f6;border-radius:8px;padding:20px;text-align:center;letter-spacing:0.3em;font-size:2rem;font-weight:700;color:#111;">
+			{otp}
+		</div>
+		<p style="color:#999;font-size:0.8rem;margin:24px 0 0;">If you did not request this code, you can safely ignore this email.</p>
+	</div>
+	"""
+	frappe.sendmail(
+		recipients=[email],
+		subject=subject,
+		message=message,
+		now=True,
 	)
-	if not is_member:
-		frappe.throw(frappe._("Practitioner not found in this practice."), frappe.DoesNotExistError)
 
-	# Fetch existing appointments for that day
-	booked_times = frappe.get_all(
-		"Patient Appointment",
-		filters={
-			"practitioner": practitioner,
-			"appointment_date": date,
-			"status": ("not in", ["Cancelled"]),
-		},
-		pluck="appointment_time",
-	)
 
-	# Get practitioner schedule
-	schedule_name = frappe.db.get_value(
-		"Healthcare Practitioner", practitioner, "practitioner_schedules"
-	)
-	if not schedule_name:
-		return []
-
-	day_of_week = getdate(date).strftime("%A")
-	time_slots = frappe.get_all(
-		"Practitioner Schedule",
-		filters={"name": schedule_name},
-		fields=["*"],
-	)
-
-	# Build available slots (simplified - 30 min intervals 08:00–17:00)
-	available = []
-	from datetime import datetime, timedelta
-
-	start = datetime.strptime("08:00:00", "%H:%M:%S")
-	end = datetime.strptime("17:00:00", "%H:%M:%S")
-	slot = start
-	while slot < end:
-		slot_str = slot.strftime("%H:%M:%S")
-		if slot_str not in [str(t) for t in booked_times]:
-			available.append(slot_str)
-		slot += timedelta(minutes=30)
-
-	return available
-
+# ---------------------------------------------------------------------------
+# OTP: verify + create appointment atomically
+# ---------------------------------------------------------------------------
 
 @frappe.whitelist(allow_guest=True)
-def create_appointment(
+def verify_and_book(
 	practice_slug: str,
+	otp: str,
 	practitioner: str,
 	appointment_date: str,
 	appointment_time: str,
@@ -108,25 +97,38 @@ def create_appointment(
 	patient_phone: str,
 	appointment_type: str = None,
 ) -> dict:
-	"""Create a patient appointment from the public booking page."""
-	practice = frappe.db.get_value(
-		"Practice",
-		{"slug": practice_slug, "is_active": 1},
-		["name", "practice_name"],
-		as_dict=True,
-	)
-	if not practice:
-		frappe.throw(frappe._("Practice not found."), frappe.DoesNotExistError)
+	"""Verify OTP then create the appointment in a single call."""
+	practice = _get_practice_or_throw(practice_slug)
+	email = patient_email.lower().strip()
 
-	# Find or create patient by email
-	patient_name = frappe.db.get_value("Patient", {"email": patient_email}, "name")
+	cache_key = _otp_cache_key(practice_slug, email)
+	stored_otp = frappe.cache.get_value(cache_key)
+
+	if not stored_otp:
+		frappe.throw(
+			frappe._("OTP has expired. Please request a new one."),
+			title=frappe._("OTP Expired"),
+		)
+
+	if otp.strip() != stored_otp:
+		frappe.throw(
+			frappe._("Invalid OTP. Please check your email and try again."),
+			title=frappe._("Invalid OTP"),
+		)
+
+	# OTP verified — consume it immediately so it can't be reused
+	frappe.cache.delete_key(cache_key)
+	frappe.cache.delete_key(_attempt_cache_key(practice_slug, email))
+
+	# Find or create patient
+	patient_name = frappe.db.get_value("Patient", {"email": email}, "name")
 	if not patient_name:
 		patient = frappe.get_doc(
 			{
 				"doctype": "Patient",
 				"first_name": patient_first_name,
 				"last_name": patient_last_name,
-				"email": patient_email,
+				"email": email,
 				"mobile": patient_phone,
 				"custom_practice": practice.name,
 				"status": "Active",
@@ -135,7 +137,6 @@ def create_appointment(
 		patient.insert(ignore_permissions=True)
 		patient_name = patient.name
 	else:
-		# Link patient to practice if not already
 		existing_practice = frappe.db.get_value("Patient", patient_name, "custom_practice")
 		if not existing_practice:
 			frappe.db.set_value("Patient", patient_name, "custom_practice", practice.name)
@@ -154,12 +155,106 @@ def create_appointment(
 		}
 	)
 	appointment.insert(ignore_permissions=True)
+
+	# Send confirmation email
+	_send_confirmation_email(
+		email=email,
+		patient_name=f"{patient_first_name} {patient_last_name}",
+		appointment=appointment,
+		practice=practice,
+	)
+
 	frappe.db.commit()
 
 	return {
 		"appointment": appointment.name,
 		"patient": patient_name,
-		"message": frappe._("Your appointment has been booked. Reference: {0}").format(
-			appointment.name
+		"message": frappe._("Appointment confirmed! Reference: {0}. A confirmation has been sent to {1}.").format(
+			appointment.name, email
 		),
 	}
+
+
+def _send_confirmation_email(email: str, patient_name: str, appointment, practice: dict):
+	subject = frappe._("Appointment Confirmed — {0}").format(practice.practice_name)
+	message = f"""
+	<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e5e7eb;border-radius:8px;">
+		{"<img src='" + practice.logo + "' style='height:48px;margin-bottom:24px;display:block;' alt='" + practice.practice_name + "'>" if practice.logo else ""}
+		<h2 style="margin:0 0 8px;font-size:1.2rem;color:#111;">Appointment Confirmed</h2>
+		<p style="color:#555;margin:0 0 24px;">Hi {patient_name}, your appointment has been booked successfully.</p>
+		<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+			<tr><td style="padding:8px 0;color:#888;width:40%;">Practice</td><td style="color:#111;font-weight:500;">{practice.practice_name}</td></tr>
+			<tr><td style="padding:8px 0;color:#888;">Date</td><td style="color:#111;font-weight:500;">{appointment.appointment_date}</td></tr>
+			<tr><td style="padding:8px 0;color:#888;">Time</td><td style="color:#111;font-weight:500;">{str(appointment.appointment_time)[:5]}</td></tr>
+			<tr><td style="padding:8px 0;color:#888;">Reference</td><td style="color:#111;font-weight:500;">{appointment.name}</td></tr>
+		</table>
+		<p style="color:#999;font-size:0.8rem;margin:24px 0 0;">Please arrive 10 minutes before your appointment time.</p>
+	</div>
+	"""
+	frappe.sendmail(recipients=[email], subject=subject, message=message, now=True)
+
+
+# ---------------------------------------------------------------------------
+# Practice info & availability (unchanged)
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist(allow_guest=True)
+def get_practice_info(practice_slug: str) -> dict:
+	"""Return public practice info for the booking page."""
+	return _get_practice_or_throw(practice_slug)
+
+
+@frappe.whitelist(allow_guest=True)
+def get_practice_practitioners(practice_slug: str) -> list:
+	"""Return active doctors for a practice."""
+	practice = _get_practice_or_throw(practice_slug)
+	members = frappe.get_all(
+		"Practice Member",
+		filters={"practice": practice.name, "role": "Doctor"},
+		pluck="practitioner",
+	)
+	practitioner_names = [m for m in members if m]
+	if not practitioner_names:
+		return []
+	return frappe.get_all(
+		"Healthcare Practitioner",
+		filters={"name": ("in", practitioner_names), "status": "Active"},
+		fields=["name", "practitioner_name", "department", "image"],
+	)
+
+
+@frappe.whitelist(allow_guest=True)
+def get_availability(practice_slug: str, practitioner: str, date: str) -> list:
+	"""Return available time slots for a practitioner on a given date."""
+	practice = _get_practice_or_throw(practice_slug)
+
+	is_member = frappe.db.exists(
+		"Practice Member",
+		{"practice": practice.name, "practitioner": practitioner, "role": "Doctor"},
+	)
+	if not is_member:
+		frappe.throw(frappe._("Practitioner not found in this practice."), frappe.DoesNotExistError)
+
+	booked_times = frappe.get_all(
+		"Patient Appointment",
+		filters={
+			"practitioner": practitioner,
+			"appointment_date": date,
+			"status": ("not in", ["Cancelled"]),
+		},
+		pluck="appointment_time",
+	)
+
+	from datetime import datetime, timedelta
+
+	available = []
+	start = datetime.strptime("08:00:00", "%H:%M:%S")
+	end = datetime.strptime("17:00:00", "%H:%M:%S")
+	slot = start
+	while slot < end:
+		slot_str = slot.strftime("%H:%M:%S")
+		if slot_str not in [str(t) for t in booked_times]:
+			available.append(slot_str)
+		slot += timedelta(minutes=30)
+
+	return available
