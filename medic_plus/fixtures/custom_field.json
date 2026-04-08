@@ -51,5 +51,105 @@
   "in_list_view": 1,
   "search_index": 1,
   "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Healthcare Practitioner-custom_section_practice_details",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "custom_section_practice_details",
+  "fieldtype": "Section Break",
+  "insert_after": "primary_address",
+  "label": "Practice Details",
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Healthcare Practitioner-custom_hpcsa_number",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "custom_hpcsa_number",
+  "fieldtype": "Data",
+  "insert_after": "custom_section_practice_details",
+  "label": "HPCSA Registration Number",
+  "reqd": 0,
+  "search_index": 1,
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Healthcare Practitioner-custom_practice_number",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "custom_practice_number",
+  "fieldtype": "Data",
+  "insert_after": "custom_hpcsa_number",
+  "label": "Practice Number",
+  "reqd": 0,
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Healthcare Practitioner-custom_is_dispensing_doctor",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "custom_is_dispensing_doctor",
+  "fieldtype": "Check",
+  "insert_after": "custom_practice_number",
+  "label": "Dispensing Doctor",
+  "description": "Enable to provision a dispensary warehouse and activate stock management for this practice.",
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Healthcare Practitioner-custom_column_break_signature",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "custom_column_break_signature",
+  "fieldtype": "Column Break",
+  "insert_after": "custom_is_dispensing_doctor",
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Healthcare Practitioner-custom_practitioner_signature",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "custom_practitioner_signature",
+  "fieldtype": "Signature",
+  "insert_after": "custom_column_break_signature",
+  "label": "Practitioner Signature",
+  "description": "Draw your signature. It will appear on all sick notes and prescriptions you issue.",
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-custom_schedule",
+  "dt": "Item",
+  "fieldname": "custom_schedule",
+  "fieldtype": "Select",
+  "insert_after": "item_group",
+  "label": "Schedule (SA)",
+  "options": "\nS0\nS1\nS2\nS3\nS4\nS5\nS6\nS7\nS8",
+  "description": "SA medicines scheduling classification (Medicines Act 101 of 1965)",
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-custom_nappi_code",
+  "dt": "Item",
+  "fieldname": "custom_nappi_code",
+  "fieldtype": "Data",
+  "insert_after": "custom_schedule",
+  "label": "NAPPI Code",
+  "description": "National Pharmaceutical Product Interface code",
+  "search_index": 1,
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Warehouse-custom_practice",
+  "dt": "Warehouse",
+  "fieldname": "custom_practice",
+  "fieldtype": "Link",
+  "insert_after": "warehouse_name",
+  "label": "Practice",
+  "options": "Practice",
+  "search_index": 1,
+  "module": "Medic Plus"
  }
 ]

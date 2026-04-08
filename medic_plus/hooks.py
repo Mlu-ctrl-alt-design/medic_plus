@@ -13,10 +13,23 @@ fixtures = [
 	{
 		"dt": "Custom Field",
 		"filters": [["name", "in", [
+			# Patient scoping
 			"Patient-custom_practice",
 			"Patient Appointment-custom_practice",
 			"Patient Encounter-custom_practice",
 			"Inpatient Record-custom_practice",
+			# Healthcare Practitioner — SA compliance + signature + dispensing
+			"Healthcare Practitioner-custom_section_practice_details",
+			"Healthcare Practitioner-custom_hpcsa_number",
+			"Healthcare Practitioner-custom_practice_number",
+			"Healthcare Practitioner-custom_is_dispensing_doctor",
+			"Healthcare Practitioner-custom_column_break_signature",
+			"Healthcare Practitioner-custom_practitioner_signature",
+			# Item — SA medicine fields
+			"Item-custom_schedule",
+			"Item-custom_nappi_code",
+			# Warehouse — practice scoping for dispensary
+			"Warehouse-custom_practice",
 		]]],
 	},
 	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
@@ -34,10 +47,13 @@ permission_query_conditions = {
 	"Inpatient Record": "medic_plus.api.permissions.get_inpatient_record_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
+	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
+	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
 }
 
-# Auto-set practice on all healthcare document creates
+# Document event hooks
 doc_events = {
+	# Auto-set practice on all healthcare document creates
 	"Patient": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
 	},
@@ -49,6 +65,10 @@ doc_events = {
 	},
 	"Inpatient Record": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
+	},
+	# Provisioning hooks
+	"Healthcare Practitioner": {
+		"on_update": "medic_plus.api.doc_events.provision_dispensary_on_update",
 	},
 }
 
