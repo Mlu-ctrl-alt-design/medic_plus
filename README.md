@@ -80,7 +80,8 @@ URL: `/book?practice=<slug>`
 | `medic_plus.api.booking.get_practice_info` | Practice name, logo, contact |
 | `medic_plus.api.booking.get_practice_practitioners` | Active doctors for a practice |
 | `medic_plus.api.booking.get_availability` | Open time slots for a practitioner on a date |
-| `medic_plus.api.booking.create_appointment` | Book an appointment (creates patient if new) |
+| `medic_plus.api.booking.request_booking_otp` | Send email OTP to patient (rate-limited, server-side) |
+| `medic_plus.api.booking.verify_and_book` | Verify OTP then create appointment atomically |
 
 ## Requirements
 
@@ -127,3 +128,24 @@ pre-commit install
 ## License
 
 MIT
+
+---
+
+## Changelog
+
+### 2026-04-08 — Phase 2: Email OTP Booking Verification
+- Added `request_booking_otp` and `verify_and_book` APIs
+- OTP generated and stored server-side in Redis (10 min TTL, single-use, rate-limited)
+- Branded HTML OTP email + appointment confirmation email via `frappe.sendmail()`
+- Booking portal rebuilt as 3-step flow: Details → OTP → Success
+- Outbound email configured: `liz@thedaystar.co.za` via `mail.thedaystar.co.za:587`
+
+### 2026-04-08 — Phase 1: Multi-Tenant Core
+- New app `medic_plus` scaffolded and installed on `medic-demo-staging.thedaystar.co.za`
+- DocTypes: `Practice`, `Practice Member`, `Sick Note`
+- Roles: `Practice Admin`, `Practice Doctor`, `Practice Receptionist`
+- Custom fields: `custom_practice` on Patient, Patient Appointment, Patient Encounter, Inpatient Record
+- 8 Permission Query Conditions for full data isolation per practice
+- `before_insert` doc_events auto-stamp `custom_practice` on all scoped records
+- v16 `extend_doctype_class` mixin on Patient Appointment validates practitioner scope
+- Public booking portal at `/book?practice=<slug>`
