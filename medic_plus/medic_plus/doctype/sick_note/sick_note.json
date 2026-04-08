@@ -12,6 +12,11 @@
   "column_break_1",
   "practitioner",
   "encounter",
+  "section_break_practitioner_details",
+  "hpcsa_number",
+  "practice_number",
+  "column_break_sig",
+  "practitioner_signature",
   "section_break_dates",
   "date_issued",
   "fit_for_work_date",
@@ -57,6 +62,37 @@
    "fieldtype": "Link",
    "label": "Patient Encounter",
    "options": "Patient Encounter"
+  },
+  {
+   "fieldname": "section_break_practitioner_details",
+   "fieldtype": "Section Break",
+   "label": "Practitioner Details",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "hpcsa_number",
+   "fieldtype": "Data",
+   "label": "HPCSA Registration Number",
+   "read_only": 1,
+   "fetch_from": "practitioner.custom_hpcsa_number"
+  },
+  {
+   "fieldname": "practice_number",
+   "fieldtype": "Data",
+   "label": "Practice Number",
+   "read_only": 1,
+   "fetch_from": "practitioner.custom_practice_number"
+  },
+  {
+   "fieldname": "column_break_sig",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "practitioner_signature",
+   "fieldtype": "Signature",
+   "label": "Practitioner Signature",
+   "read_only": 1,
+   "description": "Fetched from Practitioner profile on create"
   },
   {
    "fieldname": "section_break_dates",

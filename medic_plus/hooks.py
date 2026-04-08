@@ -32,6 +32,7 @@ fixtures = [
 			"Warehouse-custom_practice",
 		]]],
 	},
+	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Workspace",       "filters": [["name", "=", "Medic Plus Platform"]]},
