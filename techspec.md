@@ -4,6 +4,44 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-08 — Phase 3: Platform Owner Workspace
+
+### Requirement
+Administrator/Healthcare Administrator needs a single workspace to monitor all practices — metrics, charts, quick links, recent activity.
+
+### Workspace: "Medic Plus Platform"
+- **Module:** Medic Plus
+- **Role restriction:** Administrator + Healthcare Administrator only
+- **Sections:** Key Metrics → Analytics → Quick Access → Recent Activity
+
+### Number Cards (6)
+| Card | DocType | Filter |
+|------|---------|--------|
+| Total Practices | Practice | none |
+| Active Practices | Practice | is_active=1 |
+| Total Patients | Patient | none |
+| Today's Appointments | Patient Appointment | appointment_date=Today |
+| This Month's Appointments | Patient Appointment | appointment_date this month |
+| Sick Notes Issued | Sick Note | docstatus=1 |
+
+### Dashboard Charts (3)
+| Chart | Type | DocType | Grouped by |
+|-------|------|---------|------------|
+| Appointments Over Time | Line | Patient Appointment | appointment_date (daily, last month) |
+| Practices by Subscription Plan | Donut | Practice | subscription_plan |
+| Patients per Practice | Bar | Patient | custom_practice |
+
+### Shortcuts (6)
+New Practice, Practice Members, All Patients, All Appointments, All Sick Notes, Email Account
+
+### Quick Lists (3)
+Recent Practices, Recent Appointments, Recent Sick Notes
+
+### Fixtures
+Number Card, Dashboard Chart, and Workspace all exported to `fixtures/` and wired into `hooks.py`.
+
+---
+
 ## 2026-04-08 — Phase 1: Multi-Tenant Core + Booking Portal
 
 ### Requirement

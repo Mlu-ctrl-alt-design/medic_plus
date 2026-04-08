@@ -19,6 +19,9 @@ fixtures = [
 			"Inpatient Record-custom_practice",
 		]]],
 	},
+	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
+	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
+	{"dt": "Workspace",       "filters": [["name", "=", "Medic Plus Platform"]]},
 ]
 
 # Permission Query Conditions (data isolation per practice)

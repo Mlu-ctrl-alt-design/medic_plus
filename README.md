@@ -133,6 +133,13 @@ MIT
 
 ## Changelog
 
+### 2026-04-08 — Phase 3: Platform Owner Workspace
+- Custom Workspace "Medic Plus Platform" — Administrator/Healthcare Administrator only
+- 6 Number Cards: Total/Active Practices, Total Patients, Today's/This Month's Appointments, Sick Notes Issued
+- 3 Dashboard Charts: Appointments Over Time (line), Practices by Plan (donut), Patients per Practice (bar)
+- 6 Quick Access shortcuts + 3 Recent Activity quick lists
+- All exported as fixtures (Number Card, Dashboard Chart, Workspace) via hooks.py
+
 ### 2026-04-08 — Phase 2: Email OTP Booking Verification
 - Added `request_booking_otp` and `verify_and_book` APIs
 - OTP generated and stored server-side in Redis (10 min TTL, single-use, rate-limited)
