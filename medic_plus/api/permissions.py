@@ -71,16 +71,7 @@ def get_stock_entry_permission_query(user: str = None) -> str:
 	practice = _get_user_practice(user)
 	if not practice:
 		return "1=0"
-	# Only show stock entries for the user's practice warehouse(s)
-	warehouses = frappe.get_all(
-		"Warehouse",
-		filters={"custom_practice": practice},
-		pluck="name",
-	)
-	if not warehouses:
-		return "1=0"
-	escaped = ", ".join(frappe.db.escape(w) for w in warehouses)
-	return f"`tabStock Entry`.`from_warehouse` IN ({escaped}) OR `tabStock Entry`.`to_warehouse` IN ({escaped})"
+	return f"`tabStock Entry`.`custom_practice` = {frappe.db.escape(practice)}"
 
 
 def get_warehouse_permission_query(user: str = None) -> str:

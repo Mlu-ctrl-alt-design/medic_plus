@@ -28,8 +28,9 @@ fixtures = [
 			# Item — SA medicine fields
 			"Item-custom_schedule",
 			"Item-custom_nappi_code",
-			# Warehouse — practice scoping for dispensary
+			# Warehouse + Stock Entry — practice scoping for dispensary
 			"Warehouse-custom_practice",
+			"Stock Entry-custom_practice",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},

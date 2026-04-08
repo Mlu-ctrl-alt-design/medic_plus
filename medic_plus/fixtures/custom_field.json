@@ -142,6 +142,19 @@
  },
  {
   "doctype": "Custom Field",
+  "name": "Stock Entry-custom_practice",
+  "dt": "Stock Entry",
+  "fieldname": "custom_practice",
+  "fieldtype": "Link",
+  "insert_after": "stock_entry_type",
+  "label": "Practice",
+  "options": "Practice",
+  "read_only": 1,
+  "search_index": 1,
+  "module": "Medic Plus"
+ },
+ {
+  "doctype": "Custom Field",
   "name": "Warehouse-custom_practice",
   "dt": "Warehouse",
   "fieldname": "custom_practice",
