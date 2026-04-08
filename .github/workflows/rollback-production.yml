@@ -1,0 +1,126 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_ref:
+        description: 'Tag or commit to roll back to (e.g. v1.0.0 or abc1234)'
+        required: true
+      site_name:
+        description: 'Site to roll back (leave blank to target all sites)'
+        required: false
+        default: ''
+      restore_db:
+        description: 'Restore DB from backup taken before the bad deploy?'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  rollback:
+    name: Rollback medic_plus on production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Setup SSH
+        run: |
+          echo "${{ secrets.PROD_SSH_KEY }}" > /tmp/prod_key
+          chmod 600 /tmp/prod_key
+
+      - name: Backup current state before rollback
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}
+            SITE="${{ inputs.site_name }}"
+            if [ -z "$SITE" ]; then
+              SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || echo "medic.thedaystar.co.za")
+            else
+              SITES="$SITE"
+            fi
+            for site in $SITES; do
+              echo "Pre-rollback backup of $site..."
+              bench --site "$site" backup --with-files
+            done
+          ENDSSH
+
+      - name: Checkout rollback ref
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << ENDSSH
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}/apps/medic_plus
+            git fetch origin
+            git checkout ${{ inputs.rollback_ref }}
+            echo "Rolled back to: $(git rev-parse --short HEAD) (${{ inputs.rollback_ref }})"
+          ENDSSH
+
+      - name: Restore DB backup (if requested)
+        if: ${{ inputs.restore_db == 'true' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}
+            SITE="${{ inputs.site_name }}"
+            if [ -z "$SITE" ]; then
+              SITE=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' | head -1 || echo "medic.thedaystar.co.za")
+            fi
+            BACKUP_DIR="sites/$SITE/private/backups"
+            # Get second-most-recent DB backup (most recent is the pre-rollback one we just made)
+            BACKUP=$(ls -t "$BACKUP_DIR"/*-database.sql.gz 2>/dev/null | sed -n '2p')
+            if [ -z "$BACKUP" ]; then
+              echo "ERROR: No second backup found in $BACKUP_DIR"
+              exit 1
+            fi
+            echo "Restoring DB from: $BACKUP"
+            bench --site "$SITE" restore "$BACKUP"
+          ENDSSH
+
+      - name: Migrate
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}
+            SITE="${{ inputs.site_name }}"
+            if [ -z "$SITE" ]; then
+              SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || echo "medic.thedaystar.co.za")
+            else
+              SITES="$SITE"
+            fi
+            for site in $SITES; do
+              bench --site "$site" migrate --skip-failing
+            done
+          ENDSSH
+
+      - name: Build, restart, clear cache
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}
+            bench build --app medic_plus
+            bench restart
+            SITE="${{ inputs.site_name }}"
+            if [ -z "$SITE" ]; then
+              SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || echo "medic.thedaystar.co.za")
+            else
+              SITES="$SITE"
+            fi
+            for site in $SITES; do
+              bench --site "$site" clear-cache
+              bench --site "$site" clear-website-cache
+            done
+          ENDSSH
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f /tmp/prod_key

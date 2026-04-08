@@ -1,0 +1,149 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag or commit ref to deploy (e.g. v1.0.0)'
+        required: true
+        default: 'main'
+
+jobs:
+  deploy:
+    name: Deploy medic_plus to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Pre-flight — verify SSH connectivity
+        run: |
+          echo "${{ secrets.PROD_SSH_KEY }}" > /tmp/prod_key
+          chmod 600 /tmp/prod_key
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} \
+              "echo 'SSH OK'"
+
+      - name: Resolve deploy ref
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "deploy_ref=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_ref=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Backup all sites running medic_plus
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}
+            # Discover all sites that have medic_plus installed
+            SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || true)
+            if [ -z "$SITES" ]; then
+              # Fallback: check common site name
+              SITES="medic.thedaystar.co.za"
+            fi
+            for site in $SITES; do
+              echo "Backing up $site..."
+              bench --site "$site" backup --with-files || echo "WARNING: backup failed for $site"
+            done
+          ENDSSH
+
+      - name: Pull code
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << ENDSSH
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}/apps/medic_plus
+            git fetch origin
+            git checkout ${{ steps.ref.outputs.deploy_ref }}
+            echo "Deployed ref: $(git rev-parse --short HEAD) (${{ steps.ref.outputs.deploy_ref }})"
+          ENDSSH
+
+      - name: Migrate all sites
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}
+            SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || true)
+            if [ -z "$SITES" ]; then
+              SITES="medic.thedaystar.co.za"
+            fi
+            for site in $SITES; do
+              echo "Migrating $site..."
+              bench --site "$site" migrate --skip-failing
+            done
+          ENDSSH
+
+      - name: Build assets
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} \
+              "cd ${{ secrets.PROD_BENCH_PATH }} && bench build --app medic_plus"
+
+      - name: Restart bench
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} \
+              "cd ${{ secrets.PROD_BENCH_PATH }} && bench restart"
+
+      - name: Clear cache
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i /tmp/prod_key \
+              ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ secrets.PROD_BENCH_PATH }}
+            SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || true)
+            if [ -z "$SITES" ]; then
+              SITES="medic.thedaystar.co.za"
+            fi
+            for site in $SITES; do
+              bench --site "$site" clear-cache
+              bench --site "$site" clear-website-cache
+            done
+          ENDSSH
+
+      - name: Health check
+        run: |
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Host: medic.thedaystar.co.za" \
+            http://${{ secrets.PROD_HOST }} || echo "000")
+          echo "Health check HTTP status: $STATUS"
+          if [[ "$STATUS" != "2"* && "$STATUS" != "3"* ]]; then
+            echo "HEALTH CHECK FAILED — status $STATUS"
+            exit 1
+          fi
+          echo "Health check passed."
+
+      - name: Notify Slack (optional)
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "No Slack webhook configured — skipping notification."
+            exit 0
+          fi
+          STATUS="${{ job.status }}"
+          REF="${{ steps.ref.outputs.deploy_ref }}"
+          COLOR=$([[ "$STATUS" == "success" ]] && echo "good" || echo "danger")
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"attachments\":[{\"color\":\"$COLOR\",\"text\":\"medic_plus deploy *$REF* — $STATUS\"}]}"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f /tmp/prod_key
