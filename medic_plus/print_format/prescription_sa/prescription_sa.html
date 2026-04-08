@@ -1,0 +1,152 @@
+{% set practice = frappe.get_doc("Practice", doc.custom_practice) if doc.custom_practice else None %}
+{% set practitioner_doc = frappe.get_doc("Healthcare Practitioner", doc.practitioner) if doc.practitioner else None %}
+{% set patient_name = frappe.db.get_value("Patient", doc.patient, "patient_name") if doc.patient else "" %}
+{% set patient_dob = frappe.db.get_value("Patient", doc.patient, "dob") if doc.patient else "" %}
+
+<style>
+  body { font-family: Arial, sans-serif; font-size: 10.5pt; color: #1a1a1a; }
+  .rx-page { max-width: 700px; margin: 0 auto; padding: 24px; }
+
+  /* Header */
+  .rx-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a5276; padding-bottom: 12px; margin-bottom: 20px; }
+  .rx-practice-name { font-size: 17pt; font-weight: bold; color: #1a5276; }
+  .rx-practice-meta { font-size: 9pt; color: #555; margin-top: 4px; }
+  .rx-logo { max-height: 70px; }
+
+  /* Rx symbol */
+  .rx-title { display: flex; align-items: center; margin-bottom: 16px; }
+  .rx-symbol { font-size: 28pt; font-weight: bold; color: #1a5276; margin-right: 12px; line-height: 1; }
+  .rx-title-text { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; color: #1a5276; }
+
+  /* Patient info */
+  .rx-patient-bar { background: #eaf4fb; border: 1px solid #aed6f1; border-radius: 4px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 30px; }
+  .rx-patient-item { font-size: 10pt; }
+  .rx-patient-label { font-weight: bold; color: #555; }
+
+  /* Drug table */
+  .rx-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .rx-table th { background: #1a5276; color: #fff; font-size: 9.5pt; padding: 7px 10px; text-align: left; }
+  .rx-table td { padding: 8px 10px; border-bottom: 1px solid #e0e0e0; font-size: 10pt; vertical-align: top; }
+  .rx-table tr:nth-child(even) td { background: #f8f9fa; }
+  .rx-drug-name { font-weight: bold; }
+  .rx-nappi { font-size: 8.5pt; color: #777; }
+  .rx-schedule { display: inline-block; background: #1a5276; color: #fff; border-radius: 3px; padding: 1px 5px; font-size: 8pt; margin-left: 4px; }
+
+  /* No drugs message */
+  .rx-empty { text-align: center; color: #999; padding: 20px; font-style: italic; }
+
+  /* Footer / Signature */
+  .rx-footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #ccc; padding-top: 16px; margin-top: 8px; }
+  .rx-sig-block { text-align: center; }
+  .rx-sig-img { max-height: 70px; max-width: 200px; display: block; margin-bottom: 4px; }
+  .rx-sig-line { border-top: 1px solid #555; width: 200px; margin-bottom: 4px; }
+  .rx-sig-label { font-size: 9pt; color: #444; }
+  .rx-footer-right { font-size: 9pt; color: #555; text-align: right; }
+
+  .rx-disclaimer { font-size: 8pt; color: #aaa; text-align: center; margin-top: 14px; }
+</style>
+
+<div class="rx-page">
+
+  <!-- Letterhead -->
+  <div class="rx-header">
+    <div>
+      <div class="rx-practice-name">{{ practice.practice_name if practice else "" }}</div>
+      <div class="rx-practice-meta">
+        {% if practice and practice.phone %}Tel: {{ practice.phone }}&nbsp;&nbsp;{% endif %}
+        {% if practice and practice.email %}Email: {{ practice.email }}{% endif %}
+      </div>
+      {% if practitioner_doc %}
+      <div class="rx-practice-meta">
+        {% if practitioner_doc.custom_hpcsa_number %}HPCSA: <strong>{{ practitioner_doc.custom_hpcsa_number }}</strong>&nbsp;&nbsp;{% endif %}
+        {% if practitioner_doc.custom_practice_number %}Practice No: <strong>{{ practitioner_doc.custom_practice_number }}</strong>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if practice and practice.logo %}
+    <img src="{{ practice.logo }}" class="rx-logo" alt="Logo">
+    {% endif %}
+  </div>
+
+  <!-- Rx Title -->
+  <div class="rx-title">
+    <div class="rx-symbol">℞</div>
+    <div class="rx-title-text">Prescription</div>
+  </div>
+
+  <!-- Patient Bar -->
+  <div class="rx-patient-bar">
+    <div class="rx-patient-item"><span class="rx-patient-label">Patient: </span>{{ patient_name }}</div>
+    {% if patient_dob %}
+    <div class="rx-patient-item"><span class="rx-patient-label">DOB: </span>{{ frappe.utils.formatdate(patient_dob) }}</div>
+    {% endif %}
+    <div class="rx-patient-item"><span class="rx-patient-label">Date: </span>{{ frappe.utils.formatdate(doc.encounter_date) }}</div>
+    <div class="rx-patient-item"><span class="rx-patient-label">Ref: </span>{{ doc.name }}</div>
+  </div>
+
+  <!-- Drug Prescription Table -->
+  {% set drugs = doc.drug_prescription if doc.drug_prescription else [] %}
+  {% if drugs %}
+  <table class="rx-table">
+    <thead>
+      <tr>
+        <th style="width:35%;">Medicine</th>
+        <th style="width:20%;">Dosage</th>
+        <th style="width:20%;">Duration</th>
+        <th style="width:25%;">Instructions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in drugs %}
+      {% set item_data = frappe.db.get_value("Item", row.drug_code, ["custom_schedule", "custom_nappi_code"], as_dict=True) if row.drug_code else {} %}
+      <tr>
+        <td>
+          <div class="rx-drug-name">
+            {{ row.drug_name or row.drug_code }}
+            {% if item_data and item_data.custom_schedule %}
+            <span class="rx-schedule">{{ item_data.custom_schedule }}</span>
+            {% endif %}
+          </div>
+          {% if item_data and item_data.custom_nappi_code %}
+          <div class="rx-nappi">NAPPI: {{ item_data.custom_nappi_code }}</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.dosage %}{{ row.dosage }}{% endif %}
+          {% if row.dosage_form %}<br><em>{{ row.dosage_form }}</em>{% endif %}
+        </td>
+        <td>{{ row.period or "" }}</td>
+        <td>{{ row.comment or "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="rx-empty">No medications prescribed in this encounter.</div>
+  {% endif %}
+
+  <!-- Footer / Signature -->
+  <div class="rx-footer">
+    <div class="rx-sig-block">
+      {% if practitioner_doc and practitioner_doc.custom_practitioner_signature %}
+      <img src="{{ practitioner_doc.custom_practitioner_signature }}" class="rx-sig-img" alt="Signature">
+      {% else %}
+      <div style="height:70px;"></div>
+      {% endif %}
+      <div class="rx-sig-line"></div>
+      <div class="rx-sig-label">
+        <strong>{{ practitioner_doc.practitioner_name if practitioner_doc else "" }}</strong><br>
+        {% if practitioner_doc and practitioner_doc.custom_hpcsa_number %}HPCSA: {{ practitioner_doc.custom_hpcsa_number }}<br>{% endif %}
+        Date: {{ frappe.utils.formatdate(doc.encounter_date) }}
+      </div>
+    </div>
+    <div class="rx-footer-right">
+      <div>Encounter: {{ doc.name }}</div>
+    </div>
+  </div>
+
+  <div class="rx-disclaimer">
+    This prescription is valid for the patient named above only. Schedule 5 and above require a prescription book entry.
+  </div>
+
+</div>
