@@ -46,6 +46,7 @@ fixtures = [
 permission_query_conditions = {
 	"Practice": "medic_plus.api.permissions.get_practice_permission_query",
 	"Practice Member": "medic_plus.api.permissions.get_practice_permission_query",
+	"Practice Setup Checklist": "medic_plus.api.permissions.get_practice_setup_checklist_permission_query",
 	"Patient": "medic_plus.api.permissions.get_patient_permission_query",
 	"Patient Appointment": "medic_plus.api.permissions.get_patient_appointment_permission_query",
 	"Patient Encounter": "medic_plus.api.permissions.get_patient_encounter_permission_query",
@@ -79,7 +80,18 @@ doc_events = {
 	},
 	# Provisioning hooks
 	"Healthcare Practitioner": {
-		"on_update": "medic_plus.api.doc_events.provision_dispensary_on_update",
+		"on_update": [
+			"medic_plus.api.doc_events.provision_dispensary_on_update",
+			"medic_plus.api.doc_events.update_checklist_on_signature",
+		],
+	},
+	# Practice Setup Checklist updates
+	"Practice": {
+		"on_update": "medic_plus.api.doc_events.update_checklist_on_practice_save",
+	},
+	"Practice Member": {
+		"after_insert": "medic_plus.api.doc_events.update_checklist_on_member_status",
+		"on_update": "medic_plus.api.doc_events.update_checklist_on_member_status",
 	},
 	# Self-registration: provision doctor/patient after email verification
 	"User": {

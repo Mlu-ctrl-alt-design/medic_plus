@@ -134,6 +134,12 @@ def provision_doctor(
 	# Link the practice to its ERPNext company
 	frappe.db.set_value("Practice", practice.name, "company", company_name)
 
+	# Create the onboarding checklist for this practice
+	frappe.get_doc({
+		"doctype": "Practice Setup Checklist",
+		"practice": practice.name,
+	}).insert(ignore_permissions=True)
+
 	practitioner = create_practitioner(full_name, email, hpcsa_number, practice_number)
 	create_practice_member(practice.name, email, practitioner.name)
 

@@ -11,12 +11,13 @@ def _get_practice_company(practice: str) -> str | None:
 	return frappe.db.get_value("Practice", practice, "company")
 
 
-def _is_platform_admin() -> bool:
-	return "Healthcare Administrator" in frappe.get_roles()
+def _is_platform_admin(user: str = None) -> bool:
+	"""Returns True if the given user (or current session user) has Healthcare Administrator role."""
+	return "Healthcare Administrator" in frappe.get_roles(user or frappe.session.user)
 
 
 def get_practice_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -25,7 +26,7 @@ def get_practice_permission_query(user: str = None) -> str:
 
 
 def get_patient_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -34,7 +35,7 @@ def get_patient_permission_query(user: str = None) -> str:
 
 
 def get_patient_appointment_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -43,7 +44,7 @@ def get_patient_appointment_permission_query(user: str = None) -> str:
 
 
 def get_patient_encounter_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -52,7 +53,7 @@ def get_patient_encounter_permission_query(user: str = None) -> str:
 
 
 def get_inpatient_record_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -61,7 +62,7 @@ def get_inpatient_record_permission_query(user: str = None) -> str:
 
 
 def get_sick_note_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -70,7 +71,7 @@ def get_sick_note_permission_query(user: str = None) -> str:
 
 
 def get_stock_entry_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -79,7 +80,7 @@ def get_stock_entry_permission_query(user: str = None) -> str:
 
 
 def get_warehouse_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -88,7 +89,7 @@ def get_warehouse_permission_query(user: str = None) -> str:
 
 
 def get_healthcare_practitioner_permission_query(user: str = None) -> str:
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -108,7 +109,7 @@ def get_healthcare_practitioner_permission_query(user: str = None) -> str:
 
 def _get_company_filter(user: str, table: str, field: str = "company") -> str:
 	"""Return a WHERE clause scoping a financial doctype to the user's practice company."""
-	if _is_platform_admin():
+	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
 	if not practice:
@@ -117,6 +118,15 @@ def _get_company_filter(user: str, table: str, field: str = "company") -> str:
 	if not company:
 		return "1=0"
 	return f"`tab{table}`.`{field}` = {frappe.db.escape(company)}"
+
+
+def get_practice_setup_checklist_permission_query(user: str = None) -> str:
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabPractice Setup Checklist`.`practice` = {frappe.db.escape(practice)}"
 
 
 def get_sales_invoice_permission_query(user: str = None) -> str:
