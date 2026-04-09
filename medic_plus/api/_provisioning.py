@@ -114,6 +114,73 @@ def create_practice_member(
 	return member
 
 
+def create_pos_profile(practice_name: str, company: str) -> str | None:
+	"""Create a POS Profile for the practice. Returns profile name, or None on failure."""
+	abbr = frappe.db.get_value("Company", company, "abbr")
+	if not abbr:
+		return None
+
+	write_off_account = frappe.db.get_value(
+		"Account", {"company": company, "account_name": "Write Off"}, "name"
+	)
+	write_off_cost_center = frappe.db.get_value(
+		"Cost Center", {"company": company, "cost_center_name": "Main"}, "name"
+	)
+	if not write_off_account or not write_off_cost_center:
+		frappe.log_error(
+			f"Cannot create POS Profile for {company}: write-off account or cost center not found.",
+			"POS Profile Provisioning",
+		)
+		return None
+
+	# Default payment method — Cash
+	cash_account = frappe.db.get_value(
+		"Account", {"company": company, "account_name": "Cash"}, "name"
+	)
+
+	profile = frappe.get_doc({
+		"doctype": "POS Profile",
+		"pos_profile_name": f"{practice_name} - POS",
+		"company": company,
+		"currency": "ZAR",
+		"write_off_account": write_off_account,
+		"write_off_cost_center": write_off_cost_center,
+		"write_off_limit": 0,
+		"payments": [
+			{
+				"mode_of_payment": "Cash",
+				"account": cash_account or "",
+				"default": 1,
+			}
+		] if cash_account else [],
+	})
+	profile.insert(ignore_permissions=True)
+	return profile.name
+
+
+def create_practice_folder(practice_name: str) -> str:
+	"""Create a Home/Practices/{practice_name} document folder. Returns the folder path."""
+	# Ensure the parent Practices folder exists
+	if not frappe.db.exists("File", {"file_name": "Practices", "is_folder": 1, "folder": "Home"}):
+		frappe.get_doc({
+			"doctype": "File",
+			"file_name": "Practices",
+			"is_folder": 1,
+			"folder": "Home",
+		}).insert(ignore_permissions=True)
+
+	folder_name = practice_name[:140]  # File.file_name is varchar(150)
+	if not frappe.db.exists("File", {"file_name": folder_name, "is_folder": 1, "folder": "Home/Practices"}):
+		frappe.get_doc({
+			"doctype": "File",
+			"file_name": folder_name,
+			"is_folder": 1,
+			"folder": "Home/Practices",
+		}).insert(ignore_permissions=True)
+
+	return f"Home/Practices/{folder_name}"
+
+
 def create_dispensary_warehouse(practice_name: str, practice: str, company: str) -> str:
 	"""Create a dispensary warehouse linked to the practice's own company."""
 	warehouse = frappe.get_doc({
@@ -153,7 +220,10 @@ def provision_doctor(
 	}).insert(ignore_permissions=True)
 
 	practitioner = create_practitioner(full_name, email, hpcsa_number, practice_number)
-	create_practice_member(practice.name, email, practitioner.name)
+	create_practice_member(practice.name, email, practitioner.name, full_name=full_name, email=email)
+
+	pos_profile = create_pos_profile(practice_name, company_name)
+	folder = create_practice_folder(practice_name)
 
 	warehouse_name = None
 	if is_dispensing_doctor:
@@ -163,6 +233,8 @@ def provision_doctor(
 		"practice": practice.name,
 		"company": company_name,
 		"practitioner": practitioner.name,
+		"pos_profile": pos_profile,
+		"folder": folder,
 		"warehouse": warehouse_name,
 	}
 

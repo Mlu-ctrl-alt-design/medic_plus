@@ -39,7 +39,13 @@ fixtures = [
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
-	{"dt": "Workspace",       "filters": [["name", "=", "Medic Plus Platform"]]},
+	{"dt": "Workspace",       "filters": [["name", "in", ["Medic Plus Platform", "Medic Plus Practice"]]]},
+	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency"]]]},
+	{"dt": "Notification",    "filters": [["name", "in", [
+		"Payment Reminder - 7 Days Overdue",
+		"Payment Reminder - 30 Days Overdue",
+		"Payment Reminder - 60 Days Overdue",
+	]]]},
 ]
 
 # Permission Query Conditions (data isolation per practice)

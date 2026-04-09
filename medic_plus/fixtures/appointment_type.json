@@ -1,0 +1,34 @@
+[
+ {
+  "appointment_type": "Consultation",
+  "allow_booking_for": "Practitioner",
+  "default_duration": 30,
+  "color": "#2563eb",
+  "doctype": "Appointment Type",
+  "name": "Consultation"
+ },
+ {
+  "appointment_type": "Follow-up",
+  "allow_booking_for": "Practitioner",
+  "default_duration": 15,
+  "color": "#16a34a",
+  "doctype": "Appointment Type",
+  "name": "Follow-up"
+ },
+ {
+  "appointment_type": "Procedure",
+  "allow_booking_for": "Practitioner",
+  "default_duration": 60,
+  "color": "#9333ea",
+  "doctype": "Appointment Type",
+  "name": "Procedure"
+ },
+ {
+  "appointment_type": "Emergency",
+  "allow_booking_for": "Practitioner",
+  "default_duration": 15,
+  "color": "#dc2626",
+  "doctype": "Appointment Type",
+  "name": "Emergency"
+ }
+]

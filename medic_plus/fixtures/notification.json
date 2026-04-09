@@ -1,0 +1,65 @@
+[
+ {
+  "name": "Payment Reminder - 7 Days Overdue",
+  "doctype": "Notification",
+  "document_type": "Sales Invoice",
+  "event": "Days After",
+  "date_changed": "due_date",
+  "days_after_or_before": 7,
+  "condition": "doc.outstanding_amount > 0 and doc.docstatus == 1",
+  "subject": "Payment overdue – Invoice {{ doc.name }} ({{ doc.patient_name }})",
+  "channel": "Email",
+  "is_standard": 0,
+  "enabled": 1,
+  "send_to_all_assignees": 0,
+  "message": "<p>Dear {{ doc.customer }},</p>\n<p>This is a friendly reminder that invoice <strong>{{ doc.name }}</strong> for amount <strong>{{ doc.currency }} {{ doc.outstanding_amount }}</strong> was due on <strong>{{ doc.due_date }}</strong> and remains unpaid.</p>\n<p>Please make payment at your earliest convenience.</p>\n<p>If you have already paid, please disregard this notice.</p>",
+  "recipients": [
+   {
+    "receiver_by_document_field": "contact_email",
+    "receiver_by_role": null
+   }
+  ]
+ },
+ {
+  "name": "Payment Reminder - 30 Days Overdue",
+  "doctype": "Notification",
+  "document_type": "Sales Invoice",
+  "event": "Days After",
+  "date_changed": "due_date",
+  "days_after_or_before": 30,
+  "condition": "doc.outstanding_amount > 0 and doc.docstatus == 1",
+  "subject": "Second notice: Invoice {{ doc.name }} ({{ doc.patient_name }}) is 30 days overdue",
+  "channel": "Email",
+  "is_standard": 0,
+  "enabled": 1,
+  "send_to_all_assignees": 0,
+  "message": "<p>Dear {{ doc.customer }},</p>\n<p>Invoice <strong>{{ doc.name }}</strong> for amount <strong>{{ doc.currency }} {{ doc.outstanding_amount }}</strong> is now <strong>30 days overdue</strong> (original due date: {{ doc.due_date }}).</p>\n<p>Please settle this account immediately or contact us to arrange a payment plan.</p>",
+  "recipients": [
+   {
+    "receiver_by_document_field": "contact_email",
+    "receiver_by_role": null
+   }
+  ]
+ },
+ {
+  "name": "Payment Reminder - 60 Days Overdue",
+  "doctype": "Notification",
+  "document_type": "Sales Invoice",
+  "event": "Days After",
+  "date_changed": "due_date",
+  "days_after_or_before": 60,
+  "condition": "doc.outstanding_amount > 0 and doc.docstatus == 1",
+  "subject": "Final notice: Invoice {{ doc.name }} ({{ doc.patient_name }}) is 60 days overdue",
+  "channel": "Email",
+  "is_standard": 0,
+  "enabled": 1,
+  "send_to_all_assignees": 0,
+  "message": "<p>Dear {{ doc.customer }},</p>\n<p>This is a <strong>final notice</strong>. Invoice <strong>{{ doc.name }}</strong> for amount <strong>{{ doc.currency }} {{ doc.outstanding_amount }}</strong> is now <strong>60 days overdue</strong>.</p>\n<p>Failure to settle this account may result in referral to a collections agency.</p>\n<p>Please contact us immediately to resolve this matter.</p>",
+  "recipients": [
+   {
+    "receiver_by_document_field": "contact_email",
+    "receiver_by_role": null
+   }
+  ]
+ }
+]
