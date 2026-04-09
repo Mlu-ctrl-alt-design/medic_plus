@@ -4,3 +4,4 @@
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
+medic_plus.patches.v1_0.set_daystar_medical_branding

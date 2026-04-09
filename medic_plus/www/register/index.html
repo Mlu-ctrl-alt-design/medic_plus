@@ -1,0 +1,49 @@
+{% extends "templates/web.html" %}
+{% block title %}Register — Medic Plus{% endblock %}
+{% block page_content %}
+<style>
+.mp-reg { max-width:520px; margin:64px auto; padding:0 16px; text-align:center; }
+.mp-reg h1 { font-size:1.9rem; margin-bottom:8px; }
+.mp-reg .sub { color:#6b7280; margin-bottom:40px; font-size:1rem; }
+.mp-cards { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.mp-card {
+  display:block; padding:36px 20px; border:2px solid #e5e7eb;
+  border-radius:14px; text-decoration:none; color:inherit;
+  transition:border-color .2s, box-shadow .2s, transform .15s;
+}
+.mp-card:hover {
+  border-color:var(--primary,#2563eb);
+  box-shadow:0 6px 20px rgba(37,99,235,.12);
+  transform:translateY(-2px);
+}
+.mp-card .icon { font-size:2.8rem; margin-bottom:14px; display:block; }
+.mp-card h3 { margin:0 0 6px; font-size:1.1rem; color:#111827; }
+.mp-card p { margin:0; font-size:.875rem; color:#6b7280; line-height:1.45; }
+.mp-footer { margin-top:32px; font-size:.9rem; color:#9ca3af; }
+.mp-footer a { color:var(--primary,#2563eb); text-decoration:none; font-weight:500; }
+@media(max-width:480px){
+  .mp-cards { grid-template-columns:1fr; }
+  .mp-reg { margin-top:36px; }
+}
+</style>
+
+<div class="mp-reg">
+  <h1>Join Medic Plus</h1>
+  <p class="sub">Choose your account type to get started.</p>
+
+  <div class="mp-cards">
+    <a class="mp-card" href="/register/doctor">
+      <span class="icon">🩺</span>
+      <h3>I'm a Doctor</h3>
+      <p>Set up your practice, manage patients, and issue clinical documents</p>
+    </a>
+    <a class="mp-card" href="/register/patient">
+      <span class="icon">🧑‍⚕️</span>
+      <h3>I'm a Patient</h3>
+      <p>Book appointments and access your health records online</p>
+    </a>
+  </div>
+
+  <p class="mp-footer">Already have an account? <a href="/login">Sign in</a></p>
+</div>
+{% endblock %}

@@ -1,34 +1,54 @@
 [
  {
+  "allow_booking_for": "Practitioner",
   "appointment_type": "Consultation",
-  "allow_booking_for": "Practitioner",
-  "default_duration": 30,
+  "codification_table": [],
   "color": "#2563eb",
+  "default_duration": 30,
+  "docstatus": 0,
   "doctype": "Appointment Type",
-  "name": "Consultation"
+  "items": [],
+  "modified": "2026-04-09 16:29:48.885430",
+  "name": "Consultation",
+  "price_list": null
  },
  {
+  "allow_booking_for": "Practitioner",
   "appointment_type": "Follow-up",
-  "allow_booking_for": "Practitioner",
-  "default_duration": 15,
+  "codification_table": [],
   "color": "#16a34a",
-  "doctype": "Appointment Type",
-  "name": "Follow-up"
- },
- {
-  "appointment_type": "Procedure",
-  "allow_booking_for": "Practitioner",
-  "default_duration": 60,
-  "color": "#9333ea",
-  "doctype": "Appointment Type",
-  "name": "Procedure"
- },
- {
-  "appointment_type": "Emergency",
-  "allow_booking_for": "Practitioner",
   "default_duration": 15,
-  "color": "#dc2626",
+  "docstatus": 0,
   "doctype": "Appointment Type",
-  "name": "Emergency"
+  "items": [],
+  "modified": "2026-04-09 16:29:48.897985",
+  "name": "Follow-up",
+  "price_list": null
+ },
+ {
+  "allow_booking_for": "Practitioner",
+  "appointment_type": "Procedure",
+  "codification_table": [],
+  "color": "#9333ea",
+  "default_duration": 60,
+  "docstatus": 0,
+  "doctype": "Appointment Type",
+  "items": [],
+  "modified": "2026-04-09 16:29:48.908942",
+  "name": "Procedure",
+  "price_list": null
+ },
+ {
+  "allow_booking_for": "Practitioner",
+  "appointment_type": "Emergency",
+  "codification_table": [],
+  "color": "#dc2626",
+  "default_duration": 15,
+  "docstatus": 0,
+  "doctype": "Appointment Type",
+  "items": [],
+  "modified": "2026-04-09 16:29:48.919244",
+  "name": "Emergency",
+  "price_list": null
  }
 ]
