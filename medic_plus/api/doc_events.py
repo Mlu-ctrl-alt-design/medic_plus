@@ -35,11 +35,11 @@ def provision_dispensary_on_update(doc, method=None):
 	if frappe.db.exists("Warehouse", {"warehouse_name": warehouse_name}):
 		return
 
-	# Warehouses require a Company — use the default company or the first available
-	default_company = frappe.defaults.get_global_default("company")
-	if not default_company:
+	# Warehouses require the practice's own ERPNext Company
+	company = practice_doc.get("company")
+	if not company:
 		frappe.log_error(
-			f"Cannot provision dispensary for {doc.name}: no default company configured.",
+			f"Cannot provision dispensary for {doc.name}: practice '{practice}' has no linked company.",
 			"Dispensary Provisioning"
 		)
 		return
@@ -47,6 +47,6 @@ def provision_dispensary_on_update(doc, method=None):
 	frappe.get_doc({
 		"doctype": "Warehouse",
 		"warehouse_name": warehouse_name,
-		"company": default_company,
+		"company": company,
 		"custom_practice": practice,
 	}).insert(ignore_permissions=True)

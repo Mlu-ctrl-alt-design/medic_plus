@@ -7,9 +7,12 @@ app_license = "mit"
 
 required_apps = ["frappe/healthcare"]
 
+# Website assets — included on all public website pages
+web_include_js = ["/assets/medic_plus/js/register_links.js"]
+
 # Fixtures — synced on bench migrate
 fixtures = [
-	{"dt": "Role", "filters": [["role_name", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist"]]]},
+	{"dt": "Role", "filters": [["role_name", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist", "Patient"]]]},
 	{
 		"dt": "Custom Field",
 		"filters": [["name", "in", [
@@ -51,6 +54,12 @@ permission_query_conditions = {
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
 	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
+	# Financial doctypes — scoped via practice's ERPNext Company
+	"Sales Invoice": "medic_plus.api.permissions.get_sales_invoice_permission_query",
+	"POS Profile": "medic_plus.api.permissions.get_pos_profile_permission_query",
+	"Payment Entry": "medic_plus.api.permissions.get_payment_entry_permission_query",
+	"Purchase Invoice": "medic_plus.api.permissions.get_purchase_invoice_permission_query",
+	"Journal Entry": "medic_plus.api.permissions.get_journal_entry_permission_query",
 }
 
 # Document event hooks
@@ -71,6 +80,10 @@ doc_events = {
 	# Provisioning hooks
 	"Healthcare Practitioner": {
 		"on_update": "medic_plus.api.doc_events.provision_dispensary_on_update",
+	},
+	# Self-registration: provision doctor/patient after email verification
+	"User": {
+		"on_update": "medic_plus.api.registration.on_user_verified",
 	},
 }
 

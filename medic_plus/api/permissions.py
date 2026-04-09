@@ -7,6 +7,10 @@ def _get_user_practice(user: str = None) -> str | None:
 	)
 
 
+def _get_practice_company(practice: str) -> str | None:
+	return frappe.db.get_value("Practice", practice, "company")
+
+
 def _is_platform_admin() -> bool:
 	return "Healthcare Administrator" in frappe.get_roles()
 
@@ -100,3 +104,36 @@ def get_healthcare_practitioner_permission_query(user: str = None) -> str:
 		return "1=0"
 	escaped = ", ".join(frappe.db.escape(p) for p in member_practitioners)
 	return f"`tabHealthcare Practitioner`.`name` IN ({escaped})"
+
+
+def _get_company_filter(user: str, table: str, field: str = "company") -> str:
+	"""Return a WHERE clause scoping a financial doctype to the user's practice company."""
+	if _is_platform_admin():
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	company = _get_practice_company(practice)
+	if not company:
+		return "1=0"
+	return f"`tab{table}`.`{field}` = {frappe.db.escape(company)}"
+
+
+def get_sales_invoice_permission_query(user: str = None) -> str:
+	return _get_company_filter(user, "Sales Invoice")
+
+
+def get_pos_profile_permission_query(user: str = None) -> str:
+	return _get_company_filter(user, "POS Profile")
+
+
+def get_payment_entry_permission_query(user: str = None) -> str:
+	return _get_company_filter(user, "Payment Entry")
+
+
+def get_purchase_invoice_permission_query(user: str = None) -> str:
+	return _get_company_filter(user, "Purchase Invoice")
+
+
+def get_journal_entry_permission_query(user: str = None) -> str:
+	return _get_company_filter(user, "Journal Entry")

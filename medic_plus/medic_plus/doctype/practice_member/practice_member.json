@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "UUID",
+ "autoname": "PM-.#####",
  "creation": "2026-04-08 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,6 +9,7 @@
   "user",
   "column_break_1",
   "role",
+  "status",
   "practitioner"
  ],
  "fields": [
@@ -37,7 +38,16 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Role",
-   "options": "Admin\nDoctor\nReceptionist",
+   "options": "Admin\nDoctor\nReceptionist\nPatient",
+   "reqd": 1
+  },
+  {
+   "default": "Accepted",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nSent\nAccepted\nRejected",
    "reqd": 1
   },
   {
@@ -53,7 +63,7 @@
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Practice Member",
- "naming_rule": "UUID",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

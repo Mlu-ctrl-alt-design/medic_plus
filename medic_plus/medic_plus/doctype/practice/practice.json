@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "UUID",
+ "autoname": "PRAC-.#####",
  "creation": "2026-04-08 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -11,6 +11,7 @@
   "column_break_1",
   "is_active",
   "subscription_plan",
+  "company",
   "section_break_contact",
   "phone",
   "email",
@@ -54,6 +55,14 @@
    "fieldtype": "Select",
    "label": "Subscription Plan",
    "options": "\nFree\nBasic\nPro"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "ERPNext Company",
+   "options": "Company",
+   "read_only": 1,
+   "description": "Auto-created during practice provisioning. Used for financial documents."
   },
   {
    "fieldname": "section_break_contact",
@@ -111,7 +120,7 @@
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Practice",
- "naming_rule": "UUID",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
