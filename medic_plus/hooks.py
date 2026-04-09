@@ -45,7 +45,7 @@ fixtures = [
 # Permission Query Conditions (data isolation per practice)
 permission_query_conditions = {
 	"Practice": "medic_plus.api.permissions.get_practice_permission_query",
-	"Practice Member": "medic_plus.api.permissions.get_practice_permission_query",
+	"Practice Member": "medic_plus.api.permissions.get_practice_member_permission_query",
 	"Practice Setup Checklist": "medic_plus.api.permissions.get_practice_setup_checklist_permission_query",
 	"Patient": "medic_plus.api.permissions.get_patient_permission_query",
 	"Patient Appointment": "medic_plus.api.permissions.get_patient_appointment_permission_query",

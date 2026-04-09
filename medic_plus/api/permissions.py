@@ -25,6 +25,15 @@ def get_practice_permission_query(user: str = None) -> str:
 	return f"`tabPractice`.`name` = {frappe.db.escape(practice)}"
 
 
+def get_practice_member_permission_query(user: str = None) -> str:
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabPractice Member`.`practice` = {frappe.db.escape(practice)}"
+
+
 def get_patient_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""

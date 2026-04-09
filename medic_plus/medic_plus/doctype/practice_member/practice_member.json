@@ -6,11 +6,19 @@
  "engine": "InnoDB",
  "field_order": [
   "practice",
-  "user",
+  "full_name",
+  "email",
+  "mobile_number",
   "column_break_1",
   "role",
   "status",
-  "practitioner"
+  "practitioner",
+  "section_break_system",
+  "user",
+  "patient_record",
+  "column_break_system",
+  "invitation_sent_on",
+  "accepted_on"
  ],
  "fields": [
   {
@@ -22,12 +30,23 @@
    "reqd": 1
   },
   {
-   "fieldname": "user",
-   "fieldtype": "Link",
+   "fieldname": "full_name",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "User",
-   "options": "User",
+   "label": "Full Name",
    "reqd": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email Address",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mobile_number",
+   "fieldtype": "Phone",
+   "label": "Mobile Number"
   },
   {
    "fieldname": "column_break_1",
@@ -42,12 +61,13 @@
    "reqd": 1
   },
   {
-   "default": "Accepted",
+   "default": "Pending",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
    "options": "Pending\nSent\nAccepted\nRejected",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -56,10 +76,46 @@
    "label": "Healthcare Practitioner",
    "options": "Healthcare Practitioner",
    "description": "Required when Role is Doctor"
+  },
+  {
+   "fieldname": "section_break_system",
+   "fieldtype": "Section Break",
+   "label": "System Fields",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "patient_record",
+   "fieldtype": "Link",
+   "label": "Patient Record",
+   "options": "Patient",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_system",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "invitation_sent_on",
+   "fieldtype": "Datetime",
+   "label": "Invitation Sent On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accepted_on",
+   "fieldtype": "Datetime",
+   "label": "Accepted On",
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2026-04-08 00:00:00.000000",
+ "modified": "2026-04-09 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Practice Member",
@@ -83,10 +139,16 @@
   {
    "read": 1,
    "role": "Practice Doctor"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Practice Receptionist",
+   "write": 1
   }
  ],
  "sort_field": "creation",
  "sort_order": "DESC",
- "title_field": "user",
+ "title_field": "full_name",
  "track_changes": 1
 }

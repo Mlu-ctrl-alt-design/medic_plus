@@ -89,10 +89,22 @@ def create_practice_member(
 	practitioner: str,
 	role: str = "Doctor",
 	status: str = "Accepted",
+	full_name: str = "",
+	email: str = "",
 ):
+	# Derive full_name and email from the User record if not provided
+	if not full_name or not email:
+		user_doc = frappe.get_doc("User", user)
+		if not full_name:
+			full_name = user_doc.full_name or user
+		if not email:
+			email = user_doc.email or user
+
 	member = frappe.get_doc({
 		"doctype": "Practice Member",
 		"practice": practice,
+		"full_name": full_name,
+		"email": email,
 		"user": user,
 		"role": role,
 		"status": status,
