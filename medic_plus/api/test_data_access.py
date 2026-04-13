@@ -8,10 +8,49 @@ No documents are created in the database.
 import unittest
 from unittest.mock import MagicMock, patch
 
+import frappe
+
 from medic_plus.api.data_access import (
     _hash_otp,
     _mask,
 )
+
+
+def setUpModule():
+    """
+    Bind frappe's LocalProxy objects so mock patching works correctly.
+
+    frappe.session, frappe.conf, frappe.db, frappe.lang, and frappe.cache are all
+    LocalProxy objects backed by a ContextVar.  In Python 3.14, mock.__enter__
+    calls hasattr(original, '__func__') on the original object before creating the
+    replacement mock.  If the ContextVar is unset, LocalProxy.__getattr__ raises
+    RuntimeError (not AttributeError), which propagates out of hasattr and crashes
+    the patch context manager.
+
+    Initializing these attributes here binds the ContextVar so the proxies resolve
+    to real objects, making hasattr work as expected.
+
+    Additionally, frappe.throw() → frappe._() → frappe.translate.get_all_translations()
+    requires frappe.cache.hget() and a site log directory.  We stub frappe.cache with
+    a MagicMock that returns an empty translations dict (pass-through, no translations),
+    and set frappe.local.lang = "en" to short-circuit the language detection path.
+    """
+    frappe.local.session = frappe._dict(user="test@example.test")
+    frappe.local.conf = frappe._dict(developer_mode=0)
+    frappe.local.flags = frappe._dict()
+    frappe.local.lang = "en"
+    # frappe.throw() → frappe.msgprint() appends to message_log, error_log, debug_log
+    frappe.local.message_log = []
+    frappe.local.error_log = []
+    frappe.local.debug_log = []
+    frappe.local.response = frappe._dict()
+
+    # frappe.cache is a plain module attribute (not a LocalProxy), default None.
+    # get_all_translations() calls frappe.cache.hget() — stub it so _("...") passes
+    # strings through unchanged without hitting Redis or the log filesystem.
+    cache_mock = MagicMock()
+    cache_mock.hget.return_value = {}
+    frappe.cache = cache_mock
 
 
 class TestMaskHelpers(unittest.TestCase):

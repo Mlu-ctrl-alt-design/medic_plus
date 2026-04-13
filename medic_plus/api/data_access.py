@@ -36,7 +36,9 @@ the OTPs in plaintext in the response *only when frappe.conf.developer_mode is
 truthy*, so QA can test the flow without an SMS gateway.
 """
 
+import datetime as _dt
 import hashlib
+import hmac
 import random
 import string
 
@@ -108,11 +110,13 @@ def _send_otp(recipient_email: str | None, recipient_mobile: str | None, otp: st
     ).format(otp, OTP_EXPIRY_MINUTES)
 
     if recipient_email:
+        # E3 fix: do NOT use now=True — synchronous SMTP blocks the request
+        # and causes the whole flow to fail if the mail server is slow/down.
+        # Frappe queues and delivers asynchronously via the email queue worker.
         frappe.sendmail(
             recipients=[recipient_email],
             subject=subject,
             message=message,
-            now=True,
         )
 
 
@@ -283,18 +287,21 @@ def verify_unmask(request_name: str, requester_otp: str, patient_otp: str) -> di
     if req.status != "Pending":
         frappe.throw(_("This request is no longer active (status: {0}).").format(req.status))
 
-    # Use stdlib fromisoformat so tests don't need a live Redis/System Settings
-    import datetime as _dt
+    # Use stdlib fromisoformat — avoids frappe.utils.get_datetime which requires
+    # a live Redis/System Settings lookup (breaks unit tests without a real site).
     expires = _dt.datetime.fromisoformat(str(req.expires_at))
     if now_datetime() > expires:
         frappe.db.set_value("Data Unmask Request", request_name, "status", "Expired")
         frappe.db.commit()
         frappe.throw(_("This unmask request has expired. Please start a new request."))
 
-    if _hash_otp(requester_otp) != req.requester_otp_hash:
+    # E2 fix: use hmac.compare_digest for timing-safe comparison.
+    # Plain == / != on strings leaks timing information that could allow
+    # an attacker to brute-force OTP hashes character by character.
+    if not hmac.compare_digest(_hash_otp(requester_otp), req.requester_otp_hash):
         frappe.throw(_("Your verification code is incorrect."))
 
-    if _hash_otp(patient_otp) != req.patient_otp_hash:
+    if not hmac.compare_digest(_hash_otp(patient_otp), req.patient_otp_hash):
         frappe.throw(_("Patient verification code is incorrect."))
 
     # Both OTPs valid — fetch plaintext value
@@ -329,8 +336,24 @@ def deny_unmask(request_name: str) -> dict:
     """
     Allow the patient (or admin) to explicitly deny a pending unmask request.
     Called from the patient portal or by the patient directly.
+
+    C3 fix: the Patient role has no read permission on Data Unmask Request, so
+    a normal frappe.get_doc() would raise PermissionError before the auth check
+    runs, making it impossible for patients to deny requests.  We fetch with
+    ignore_permissions and perform an explicit identity check immediately after.
     """
-    req = frappe.get_doc("Data Unmask Request", request_name)
+    # C3 fix: Patient role has no read permission on Data Unmask Request, so a
+    # plain frappe.get_doc() raises PermissionError before our auth check runs.
+    # Use frappe.db.get_value (no ORM permission layer) then enforce identity.
+    req = frappe.db.get_value(
+        "Data Unmask Request",
+        request_name,
+        ["patient", "practice", "status", "target_doctype", "target_docname", "target_field"],
+        as_dict=True,
+    )
+    if not req:
+        frappe.throw(_("Unmask request not found."), frappe.DoesNotExistError)
+
     user = frappe.session.user
 
     # Only the patient or an admin can deny
@@ -348,7 +371,7 @@ def deny_unmask(request_name: str) -> dict:
 
     _log_access(
         accessed_by=user,
-        practice=req.practice,
+        practice=req.practice or "",
         access_type="View",
         target_doctype=req.target_doctype,
         target_docname=req.target_docname,

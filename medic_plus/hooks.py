@@ -43,7 +43,7 @@ fixtures = [
 # Permission Query Conditions (data isolation per practice)
 permission_query_conditions = {
 	"Practice": "medic_plus.api.permissions.get_practice_permission_query",
-	"Practice Member": "medic_plus.api.permissions.get_practice_permission_query",
+	"Practice Member": "medic_plus.api.permissions.get_practice_member_permission_query",
 	"Patient": "medic_plus.api.permissions.get_patient_permission_query",
 	"Patient Appointment": "medic_plus.api.permissions.get_patient_appointment_permission_query",
 	"Patient Encounter": "medic_plus.api.permissions.get_patient_encounter_permission_query",
@@ -53,8 +53,8 @@ permission_query_conditions = {
 	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
 	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
 	# Data masking / consent
-	"Data Unmask Request": "medic_plus.api.permissions.get_practice_permission_query",
-	"Clinical Access Log": "medic_plus.api.permissions.get_practice_permission_query",
+	"Data Unmask Request": "medic_plus.api.permissions.get_data_unmask_request_permission_query",
+	"Clinical Access Log": "medic_plus.api.permissions.get_clinical_access_log_permission_query",
 }
 
 # Document event hooks
