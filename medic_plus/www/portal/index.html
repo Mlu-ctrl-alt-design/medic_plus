@@ -1,0 +1,159 @@
+{% extends "templates/web.html" %}
+{% block title %}My Health Portal — Medic Plus{% endblock %}
+{% block page_content %}
+<style>
+.mp-portal { max-width: 800px; margin: 48px auto; padding: 0 16px; }
+.mp-portal-header { margin-bottom: 32px; }
+.mp-portal-header h1 { font-size: 1.8rem; margin-bottom: 4px; }
+.mp-portal-header .sub { color: #6b7280; font-size: .95rem; }
+.mp-portal-header .book-btn {
+  display: inline-block; margin-top: 12px; padding: 8px 18px;
+  background: var(--primary, #2563eb); color: #fff; border-radius: 8px;
+  text-decoration: none; font-size: .9rem; font-weight: 500;
+}
+.mp-portal-header .book-btn:hover { opacity: .9; }
+.mp-section { margin-bottom: 40px; }
+.mp-section h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+.mp-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.mp-table th { text-align: left; padding: 8px 10px; background: #f9fafb; color: #374151; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+.mp-table td { padding: 9px 10px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+.mp-table tr:last-child td { border-bottom: none; }
+.mp-empty { color: #9ca3af; font-size: .875rem; padding: 16px 0; }
+.mp-status { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: .75rem; font-weight: 500; }
+.mp-status.open { background: #dbeafe; color: #1e40af; }
+.mp-status.completed { background: #d1fae5; color: #065f46; }
+.mp-status.cancelled { background: #fee2e2; color: #991b1b; }
+.mp-status.no-show { background: #fef3c7; color: #92400e; }
+.mp-pdf-link { color: var(--primary, #2563eb); text-decoration: none; font-weight: 500; }
+.mp-pdf-link:hover { text-decoration: underline; }
+@media(max-width: 600px) {
+  .mp-table th, .mp-table td { padding: 7px 6px; font-size: .8rem; }
+  .mp-portal { margin-top: 24px; }
+}
+</style>
+
+<div class="mp-portal">
+
+  {%- if patient %}
+  <div class="mp-portal-header">
+    <h1>Hello, {{ patient.patient_name }}</h1>
+    <p class="sub">
+      {%- if practice_name %}Your practice: <strong>{{ practice_name }}</strong>{% endif %}
+    </p>
+    {%- if patient.custom_practice %}
+    <a class="book-btn" href="/book?practice={{ patient.custom_practice }}">Book an appointment</a>
+    {%- endif %}
+  </div>
+
+  <!-- Upcoming Appointments -->
+  <div class="mp-section">
+    <h2>Upcoming Appointments</h2>
+    {%- if upcoming %}
+    <table class="mp-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Doctor</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for appt in upcoming %}
+        <tr>
+          <td>{{ frappe.format(appt.appointment_date, {"fieldtype": "Date"}) }}</td>
+          <td>{{ appt.appointment_time or "—" }}</td>
+          <td>{{ appt.practitioner_name or "—" }}</td>
+          <td>
+            <span class="mp-status {{ appt.status | lower | replace(' ', '-') }}">
+              {{ appt.status }}
+            </span>
+          </td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </table>
+    {%- else %}
+    <p class="mp-empty">No upcoming appointments.</p>
+    {%- endif %}
+  </div>
+
+  <!-- Past Appointments -->
+  <div class="mp-section">
+    <h2>Past Appointments</h2>
+    {%- if past %}
+    <table class="mp-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Doctor</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for appt in past %}
+        <tr>
+          <td>{{ frappe.format(appt.appointment_date, {"fieldtype": "Date"}) }}</td>
+          <td>{{ appt.appointment_time or "—" }}</td>
+          <td>{{ appt.practitioner_name or "—" }}</td>
+          <td>
+            <span class="mp-status {{ appt.status | lower | replace(' ', '-') }}">
+              {{ appt.status }}
+            </span>
+          </td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </table>
+    {%- else %}
+    <p class="mp-empty">No past appointments on record.</p>
+    {%- endif %}
+  </div>
+
+  <!-- Sick Notes -->
+  <div class="mp-section">
+    <h2>Sick Notes</h2>
+    {%- if sick_notes %}
+    <table class="mp-table">
+      <thead>
+        <tr>
+          <th>Date Issued</th>
+          <th>Diagnosis</th>
+          <th>Days Off</th>
+          <th>Fit for Work</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for sn in sick_notes %}
+        <tr>
+          <td>{{ frappe.format(sn.date_issued, {"fieldtype": "Date"}) }}</td>
+          <td>{{ sn.diagnosis or "—" }}</td>
+          <td>{{ sn.days_off or "—" }}</td>
+          <td>{{ frappe.format(sn.fit_for_work_date, {"fieldtype": "Date"}) if sn.fit_for_work_date else "—" }}</td>
+          <td>
+            <a class="mp-pdf-link"
+               href="/api/method/frappe.utils.print_format.download_pdf?doctype=Sick+Note&name={{ sn.name }}&format=Sick+Note+SA"
+               target="_blank">
+              Download PDF
+            </a>
+          </td>
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </table>
+    {%- else %}
+    <p class="mp-empty">No sick notes on record.</p>
+    {%- endif %}
+  </div>
+
+  {%- else %}
+  <div class="mp-portal-header">
+    <h1>Patient Portal</h1>
+    <p class="sub">No patient record found for your account. Please contact your practice.</p>
+  </div>
+  {%- endif %}
+
+</div>
+{% endblock %}

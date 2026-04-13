@@ -1,0 +1,156 @@
+{
+ "actions": [],
+ "autoname": "PSC-.#####",
+ "creation": "2026-04-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "practice",
+  "column_break_1",
+  "current_step",
+  "completion_pct",
+  "section_break_steps",
+  "step_practice_profile",
+  "step_signature",
+  "column_break_steps",
+  "step_staff_invited",
+  "step_patients_invited",
+  "section_break_config",
+  "step_appointments",
+  "step_billing",
+  "column_break_config",
+  "step_clinical_templates",
+  "step_medical_aid"
+ ],
+ "fields": [
+  {
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practice",
+   "options": "Practice",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "current_step",
+   "fieldtype": "Int",
+   "label": "Current Step",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completion_pct",
+   "fieldtype": "Percent",
+   "label": "Completion",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_steps",
+   "fieldtype": "Section Break",
+   "label": "Setup Steps"
+  },
+  {
+   "default": "0",
+   "fieldname": "step_practice_profile",
+   "fieldtype": "Check",
+   "label": "1. Practice Profile Set Up",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "step_signature",
+   "fieldtype": "Check",
+   "label": "2. Signature Drawn",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_steps",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "step_staff_invited",
+   "fieldtype": "Check",
+   "label": "3. Staff Invited",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "step_patients_invited",
+   "fieldtype": "Check",
+   "label": "4. Patients Invited",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_config",
+   "fieldtype": "Section Break",
+   "label": "Configuration"
+  },
+  {
+   "default": "0",
+   "fieldname": "step_appointments",
+   "fieldtype": "Check",
+   "label": "5. Appointment Slots Configured",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "step_billing",
+   "fieldtype": "Check",
+   "label": "6. Billing Configured",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_config",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "step_clinical_templates",
+   "fieldtype": "Check",
+   "label": "7. Clinical Templates Set Up",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "step_medical_aid",
+   "fieldtype": "Check",
+   "label": "8. Medical Aid Connected",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Practice Setup Checklist",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Practice Admin",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Practice Doctor"
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "title_field": "practice",
+ "track_changes": 0
+}

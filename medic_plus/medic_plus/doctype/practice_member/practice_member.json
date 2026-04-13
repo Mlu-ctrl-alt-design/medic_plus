@@ -1,6 +1,7 @@
 {
  "actions": [],
- "autoname": "UUID",
+ "autoname": "PM-.#####",
+ "naming_rule": "Expression (old style)",
  "creation": "2026-04-08 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -53,7 +54,7 @@
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Practice Member",
- "naming_rule": "UUID",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
