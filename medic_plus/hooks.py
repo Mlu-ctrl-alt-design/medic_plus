@@ -109,10 +109,7 @@ doc_events = {
 	"Sales Invoice": {
 		"after_insert": "medic_plus.api.doc_events.update_checklist_on_first_invoice",
 	},
-	# Self-registration: provision doctor/patient after email verification
-	"User": {
-		"on_update": "medic_plus.api.registration.on_user_verified",
-	},
+
 }
 
 # Scheduler — expire stale unmask requests every 15 minutes
