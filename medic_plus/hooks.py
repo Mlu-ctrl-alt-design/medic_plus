@@ -39,7 +39,8 @@ fixtures = [
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
-	{"dt": "Workspace",       "filters": [["name", "in", ["Medic Plus Platform", "Medic Plus Practice"]]]},
+	{"dt": "Workspace",       "filters": [["module", "=", "Medic Plus"]]},
+	{"dt": "Client Script",   "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency"]]]},
 	{"dt": "Notification",    "filters": [["name", "in", [
 		"Payment Reminder - 7 Days Overdue",
@@ -61,6 +62,9 @@ permission_query_conditions = {
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
 	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
+	# Data masking / consent
+	"Data Unmask Request": "medic_plus.api.permissions.get_data_unmask_request_permission_query",
+	"Clinical Access Log": "medic_plus.api.permissions.get_clinical_access_log_permission_query",
 	# Financial doctypes — scoped via practice's ERPNext Company
 	"Sales Invoice": "medic_plus.api.permissions.get_sales_invoice_permission_query",
 	"POS Profile": "medic_plus.api.permissions.get_pos_profile_permission_query",
@@ -108,6 +112,15 @@ doc_events = {
 	# Self-registration: provision doctor/patient after email verification
 	"User": {
 		"on_update": "medic_plus.api.registration.on_user_verified",
+	},
+}
+
+# Scheduler — expire stale unmask requests every 15 minutes
+scheduler_events = {
+	"cron": {
+		"*/15 * * * *": [
+			"medic_plus.api.data_access.expire_stale_requests",
+		],
 	},
 }
 
