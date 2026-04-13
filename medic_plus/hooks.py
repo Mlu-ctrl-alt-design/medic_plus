@@ -37,6 +37,7 @@ fixtures = [
 	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Workspace",       "filters": [["name", "=", "Medic Plus Platform"]]},
+	{"dt": "Client Script",   "filters": [["module", "=", "Medic Plus"]]},
 ]
 
 # Permission Query Conditions (data isolation per practice)
@@ -51,6 +52,9 @@ permission_query_conditions = {
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
 	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
+	# Data masking / consent
+	"Data Unmask Request": "medic_plus.api.permissions.get_practice_permission_query",
+	"Clinical Access Log": "medic_plus.api.permissions.get_practice_permission_query",
 }
 
 # Document event hooks
@@ -71,6 +75,15 @@ doc_events = {
 	# Provisioning hooks
 	"Healthcare Practitioner": {
 		"on_update": "medic_plus.api.doc_events.provision_dispensary_on_update",
+	},
+}
+
+# Scheduler — expire stale unmask requests every 15 minutes
+scheduler_events = {
+	"cron": {
+		"*/15 * * * *": [
+			"medic_plus.api.data_access.expire_stale_requests",
+		],
 	},
 }
 
