@@ -7,9 +7,12 @@ app_license = "mit"
 
 required_apps = ["frappe/healthcare"]
 
+# Website assets — included on all public website pages
+web_include_js = ["/assets/medic_plus/js/register_links.js"]
+
 # Fixtures — synced on bench migrate
 fixtures = [
-	{"dt": "Role", "filters": [["role_name", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist"]]]},
+	{"dt": "Role", "filters": [["role_name", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist", "Patient"]]]},
 	{
 		"dt": "Custom Field",
 		"filters": [["name", "in", [
@@ -36,13 +39,20 @@ fixtures = [
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
-	{"dt": "Workspace",       "filters": [["name", "=", "Medic Plus Platform"]]},
+	{"dt": "Workspace",       "filters": [["name", "in", ["Medic Plus Platform", "Medic Plus Practice"]]]},
+	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency"]]]},
+	{"dt": "Notification",    "filters": [["name", "in", [
+		"Payment Reminder - 7 Days Overdue",
+		"Payment Reminder - 30 Days Overdue",
+		"Payment Reminder - 60 Days Overdue",
+	]]]},
 ]
 
 # Permission Query Conditions (data isolation per practice)
 permission_query_conditions = {
 	"Practice": "medic_plus.api.permissions.get_practice_permission_query",
-	"Practice Member": "medic_plus.api.permissions.get_practice_permission_query",
+	"Practice Member": "medic_plus.api.permissions.get_practice_member_permission_query",
+	"Practice Setup Checklist": "medic_plus.api.permissions.get_practice_setup_checklist_permission_query",
 	"Patient": "medic_plus.api.permissions.get_patient_permission_query",
 	"Patient Appointment": "medic_plus.api.permissions.get_patient_appointment_permission_query",
 	"Patient Encounter": "medic_plus.api.permissions.get_patient_encounter_permission_query",
@@ -51,6 +61,12 @@ permission_query_conditions = {
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
 	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
+	# Financial doctypes — scoped via practice's ERPNext Company
+	"Sales Invoice": "medic_plus.api.permissions.get_sales_invoice_permission_query",
+	"POS Profile": "medic_plus.api.permissions.get_pos_profile_permission_query",
+	"Payment Entry": "medic_plus.api.permissions.get_payment_entry_permission_query",
+	"Purchase Invoice": "medic_plus.api.permissions.get_purchase_invoice_permission_query",
+	"Journal Entry": "medic_plus.api.permissions.get_journal_entry_permission_query",
 }
 
 # Document event hooks
@@ -70,7 +86,28 @@ doc_events = {
 	},
 	# Provisioning hooks
 	"Healthcare Practitioner": {
-		"on_update": "medic_plus.api.doc_events.provision_dispensary_on_update",
+		"on_update": [
+			"medic_plus.api.doc_events.provision_dispensary_on_update",
+			"medic_plus.api.doc_events.update_checklist_on_signature",
+		],
+	},
+	# Practice Setup Checklist — steps 1–6
+	"Practice": {
+		"on_update": "medic_plus.api.doc_events.update_checklist_on_practice_save",
+	},
+	"Practice Member": {
+		"after_insert": "medic_plus.api.doc_events.update_checklist_on_member_status",
+		"on_update": "medic_plus.api.doc_events.update_checklist_on_member_status",
+	},
+	"Practitioner Schedule": {
+		"after_insert": "medic_plus.api.doc_events.update_checklist_on_schedule_created",
+	},
+	"Sales Invoice": {
+		"after_insert": "medic_plus.api.doc_events.update_checklist_on_first_invoice",
+	},
+	# Self-registration: provision doctor/patient after email verification
+	"User": {
+		"on_update": "medic_plus.api.registration.on_user_verified",
 	},
 }
 
