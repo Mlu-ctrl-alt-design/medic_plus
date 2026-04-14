@@ -56,7 +56,6 @@ def _make_user(suffix: str, practice: str) -> str:
 		"practice": practice,
 		"user": email,
 		"role": "Receptionist",
-		"status": "Accepted",
 	}).insert(ignore_permissions=True)
 
 	return email
