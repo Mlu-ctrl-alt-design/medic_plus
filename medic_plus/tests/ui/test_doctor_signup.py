@@ -108,9 +108,14 @@ class TestDoctorSignupAndPracticeCreation:
         page.goto(f"{BASE_URL}/app/user/{DR_EMAIL}")
         page.wait_for_load_state("load")
 
-        # Roles section lists Practice Doctor
+        # The Roles child table sits below the fold in the Frappe v16 User form.
+        # Scroll it into view before asserting so the visibility check works even
+        # when the section hasn't been rendered into the viewport yet.
+        roles_section = page.locator("[data-fieldname='roles']")
+        roles_section.scroll_into_view_if_needed()
+
         expect(
-            page.get_by_text("Practice Doctor", exact=False)
+            roles_section.get_by_text("Practice Doctor", exact=False)
         ).to_be_visible(timeout=10_000)
 
     def test_practice_member_links_doctor_to_practice(self, page: Page):
