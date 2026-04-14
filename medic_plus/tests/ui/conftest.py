@@ -18,7 +18,7 @@ from playwright.sync_api import Page, expect
 
 # ── Site configuration ────────────────────────────────────────────────────────
 
-BASE_URL = "http://medic-demo-staging.thedaystar.co.za"
+BASE_URL = "https://medic-demo-staging.thedaystar.co.za"
 ADMIN_USER = "Administrator"
 ADMIN_PASS = "admin"
 
@@ -30,8 +30,8 @@ RUN_TAG = str(int(time.time()))[-6:]
 
 @pytest.fixture(scope="session")
 def browser_context_args():
-    """Extra context args: generous timeouts for slow Frappe Desk page loads."""
-    return {}
+    """Extra context args: ignore self-signed cert on staging, generous timeouts."""
+    return {"ignore_https_errors": True}
 
 
 @pytest.fixture(autouse=True)
@@ -47,10 +47,16 @@ def admin_api_session(playwright):
     Reusable requests session authenticated as Administrator.
     Returned as a dict with `cookies` and a helper `call(method, **params)`.
     """
-    import urllib.request, urllib.parse, json, http.cookiejar
+    import urllib.request, urllib.parse, json, http.cookiejar, ssl
 
     jar = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(jar),
+        urllib.request.HTTPSHandler(context=ssl_ctx),
+    )
 
     def post(url, data: dict):
         body = urllib.parse.urlencode(data).encode()

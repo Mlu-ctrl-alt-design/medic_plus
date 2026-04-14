@@ -131,9 +131,30 @@ test: add cross-tenant isolation tests for Patient
 - Use `frappe.get_doc()` sparingly in templates — prefer `frappe.db.get_value()` for single fields
 
 ### Tests
+
+#### Unit / integration tests (Python)
 - Use `frappe.tests.utils.FrappeTestCase`
 - Every feature must have a cross-tenant isolation test: create 2 Practices, assert Doctor A cannot read Doctor B's records
 - Run: `bench --site medic-demo-staging.thedaystar.co.za run-tests --app medic_plus`
+
+#### UI tests (Playwright)
+- **Every new feature must ship with Playwright UI tests** alongside the feature code — not as a follow-up.
+- Test files live in `medic_plus/tests/ui/` and follow the naming convention `test_<feature>.py`.
+- Each test file must cover, at minimum:
+  - Page load / navigation (admin can reach the page)
+  - Key UI elements render (cards, buttons, tables)
+  - Empty-state / loading placeholder behaviour
+  - Relevant API endpoints return the expected shape
+  - Feature-gate / permission checks (Free-plan user blocked where applicable)
+- Use the shared `conftest.py` fixtures (`logged_in_admin_page`, `_frappe_login`, `BASE_URL`, `RUN_TAG`) — do not duplicate login logic.
+- Scope locators tightly (e.g. `.stat-card .stat-label`) to avoid Playwright strict-mode violations when similar text appears elsewhere on the page.
+- For feature-gate tests that require a second user session, use Python `urllib` + `CookieJar` rather than a second Playwright page to avoid execution-context destruction caused by Frappe's 403 redirect handler.
+- Run the full UI suite before committing:
+  ```bash
+  cd /home/fruppa/frappe-bench
+  env/bin/python -m pytest apps/medic_plus/medic_plus/tests/ui/ -v
+  ```
+- All tests must pass (skips are acceptable when staging has no data; failures are not).
 
 ### Never
 - Modify ERPNext, Healthcare, or any other app's source files
