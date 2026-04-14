@@ -40,6 +40,7 @@ fixtures = [
 	{"dt": "Number Card",     "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Workspace",       "filters": [["module", "=", "Medic Plus"]]},
+	{"dt": "Page",            "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Client Script",   "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency"]]]},
 	{"dt": "Notification",    "filters": [["name", "in", [
@@ -97,6 +98,7 @@ doc_events = {
 	},
 	# Practice Setup Checklist — steps 1–6
 	"Practice": {
+		"after_insert": "medic_plus.api.billing.start_trial_for_practice",
 		"on_update": "medic_plus.api.doc_events.update_checklist_on_practice_save",
 	},
 	"Practice Member": {

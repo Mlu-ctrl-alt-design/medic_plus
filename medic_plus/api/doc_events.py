@@ -80,14 +80,22 @@ def update_checklist_on_signature(doc, method=None):
 
 
 def update_checklist_on_member_status(doc, method=None):
-	"""Steps 3 & 4 — update checklist when a Practice Member changes status."""
+	"""Steps 3 & 4 — update checklist when a Practice Member is added.
+
+	Practice Member has no 'status' field.  We tick the checklist step
+	immediately on insert/update based solely on role:
+	  - Doctor / Admin / Receptionist → staff has been added (step 3)
+	  - Patient                        → a patient has been invited (step 4)
+	"""
 	practice = doc.practice
 	role = doc.role
-	status = doc.status
 
-	if role in ("Admin", "Doctor", "Receptionist") and status == "Accepted":
+	if not practice or not role:
+		return
+
+	if role in ("Admin", "Doctor", "Receptionist"):
 		on_staff_accepted(practice)
-	elif role == "Patient" and status == "Sent":
+	elif role == "Patient":
 		on_patient_invited(practice)
 
 

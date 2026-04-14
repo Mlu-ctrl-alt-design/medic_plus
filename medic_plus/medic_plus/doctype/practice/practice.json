@@ -11,6 +11,10 @@
   "column_break_1",
   "is_active",
   "subscription_plan",
+  "subscription_status",
+  "trial_ends_on",
+  "current_period_end",
+  "subscription_reference",
   "section_break_contact",
   "phone",
   "email",
@@ -53,7 +57,35 @@
    "fieldname": "subscription_plan",
    "fieldtype": "Select",
    "label": "Subscription Plan",
-   "options": "\nFree\nBasic\nPro"
+   "options": "\nFree\nBasic\nPro",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subscription_status",
+   "fieldtype": "Select",
+   "label": "Subscription Status",
+   "options": "\nTrialing\nActive\nPast Due\nCancelled\nExpired",
+   "default": "Trialing",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "trial_ends_on",
+   "fieldtype": "Date",
+   "label": "Trial Ends On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_period_end",
+   "fieldtype": "Date",
+   "label": "Current Period End",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subscription_reference",
+   "fieldtype": "Data",
+   "label": "Last Payment Reference",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_contact",

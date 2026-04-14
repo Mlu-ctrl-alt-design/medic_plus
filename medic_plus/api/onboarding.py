@@ -1,14 +1,14 @@
 """
 Doctor onboarding API.
 
-Single whitelisted call that provisions an entire doctor tenant:
-  Practice → User → Practice Member → (Warehouse if dispensing)
+Two entry points:
+  1. submit_registration_request — public, creates a pending request for admin review
+  2. onboard_doctor              — internal/admin, provisions the full tenant
 
-Restricted to System Manager role.
+Provisioning path: Practice → User → Practice Member → (Warehouse if dispensing)
 Wrapped in a transaction — any failure rolls back all inserts.
 """
 
-import re
 import frappe
 from frappe import _
 
@@ -71,6 +71,102 @@ def onboard_doctor(
 		"warehouse": warehouse_name,
 		"message": _("Doctor {0} onboarded successfully.").format(full_name),
 	}
+
+
+# ---------------------------------------------------------------------------
+# Public self-registration
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist(allow_guest=True)
+def submit_registration_request(
+	practice_name: str,
+	full_name: str,
+	email: str,
+	mobile: str,
+	hpcsa_number: str,
+	practice_number: str = "",
+	is_dispensing_doctor: bool = False,
+) -> dict:
+	"""Submit a practice registration request for admin review.
+
+	Guest-accessible. Does NOT provision anything — a Healthcare Administrator
+	must approve the request before the practice is created.
+
+	Returns:
+		dict with the request name and a confirmation message.
+
+	Raises:
+		frappe.ValidationError: If a pending/approved request or user already exists.
+	"""
+	email = email.strip().lower()
+
+	if frappe.db.exists("User", email):
+		frappe.throw(_("An account with this email already exists."), frappe.ValidationError)
+
+	duplicate = frappe.db.exists(
+		"Practice Registration Request",
+		{"email": email, "status": ["in", ["Pending", "Approved"]]},
+	)
+	if duplicate:
+		frappe.throw(
+			_("A registration request for {0} is already pending or approved.").format(email),
+			frappe.ValidationError,
+		)
+
+	doc = frappe.get_doc({
+		"doctype": "Practice Registration Request",
+		"practice_name": practice_name.strip(),
+		"full_name": full_name.strip(),
+		"email": email,
+		"mobile": mobile.strip(),
+		"hpcsa_number": hpcsa_number.strip(),
+		"practice_number": (practice_number or "").strip(),
+		"is_dispensing_doctor": frappe.utils.cint(is_dispensing_doctor),
+		"status": "Pending",
+	})
+	doc.insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	_notify_admins_of_new_request(doc)
+
+	return {
+		"name": doc.name,
+		"message": _("Registration submitted. You will receive login details once approved."),
+	}
+
+
+def _notify_admins_of_new_request(doc) -> None:
+	"""Email Healthcare Administrators about a new registration request."""
+	admin_users = frappe.get_all(
+		"Has Role",
+		filters={"role": "Healthcare Administrator", "parenttype": "User"},
+		pluck="parent",
+	)
+	recipients = [u for u in admin_users if frappe.db.get_value("User", u, "enabled")]
+	if not recipients:
+		return
+
+	frappe.sendmail(
+		recipients=recipients,
+		subject=f"[Medic Plus] New Registration: {doc.practice_name}",
+		message=f"""
+		<p>A new practice registration request has been submitted and is awaiting your review.</p>
+		<table style="border-collapse:collapse;font-size:14px;">
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Practice</td><td><strong>{doc.practice_name}</strong></td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Doctor</td><td>{doc.full_name}</td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Email</td><td>{doc.email}</td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">HPCSA</td><td>{doc.hpcsa_number}</td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Dispensing</td><td>{"Yes" if doc.is_dispensing_doctor else "No"}</td></tr>
+		</table>
+		<p style="margin-top:16px;">
+		  <a href="/app/practice-registration-request/{doc.name}"
+		     style="background:#2563eb;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;">
+		    Review Request
+		  </a>
+		</p>
+		""",
+		now=False,
+	)
 
 
 # ---------------------------------------------------------------------------
