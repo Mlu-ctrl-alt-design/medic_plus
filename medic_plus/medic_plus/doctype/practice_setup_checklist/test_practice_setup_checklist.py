@@ -54,11 +54,8 @@ def _make_user(suffix: str, practice: str) -> str:
 	frappe.get_doc({
 		"doctype": "Practice Member",
 		"practice": practice,
-		"full_name": f"PSC{suffix}",
-		"email": email,
 		"user": email,
 		"role": "Receptionist",
-		"status": "Accepted",
 	}).insert(ignore_permissions=True)
 
 	return email

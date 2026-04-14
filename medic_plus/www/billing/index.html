@@ -1,0 +1,204 @@
+{% extends "templates/web.html" %}
+
+{% block page_content %}
+<div class="container py-5" id="billing-app">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-1">Subscription &amp; Billing</h2>
+      <p class="text-muted mb-0">Manage your practice plan and payment details.</p>
+    </div>
+    <div id="billing-status-badge"></div>
+  </div>
+
+  <!-- Current plan -->
+  <div id="current-plan-section" class="card border-0 shadow-sm mb-5">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-uppercase text-muted small fw-semibold mb-1">Current Plan</div>
+          <h3 id="plan-name" class="fw-bold mb-1">—</h3>
+          <span id="plan-price" class="text-muted"></span>
+        </div>
+        <div id="trial-info" class="text-end"></div>
+      </div>
+
+      <!-- Usage bars -->
+      <div id="usage-section" class="mt-4">
+        <div class="text-muted small mb-2">Plan Usage</div>
+        <div id="usage-bars"></div>
+      </div>
+
+      <!-- Features -->
+      <div id="features-section" class="mt-4">
+        <div class="text-muted small mb-2">Features</div>
+        <div id="features-grid" class="row g-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Available upgrades -->
+  <div id="upgrade-section" class="d-none">
+    <h5 class="fw-semibold mb-3">Upgrade Your Plan</h5>
+    <div id="plan-cards" class="row g-3"></div>
+  </div>
+
+  <!-- Messages -->
+  <div id="billing-message" class="mt-4"></div>
+</div>
+
+<style>
+  #billing-app .card { border-radius: 12px; }
+  #billing-app .plan-card { border-radius: 12px; transition: box-shadow .15s; cursor: default; }
+  #billing-app .plan-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); }
+  #billing-app .plan-card.popular { border: 2px solid #2563eb; }
+  #billing-app .feature-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; padding: 4px 10px;
+    border-radius: 20px; background: #f1f5f9;
+  }
+  #billing-app .feature-chip.off { opacity: .45; }
+  #billing-app .usage-bar-wrap { margin-bottom: 12px; }
+  #billing-app .usage-bar { height: 8px; border-radius: 4px; background: #e2e8f0; }
+  #billing-app .usage-fill { height: 100%; border-radius: 4px; background: #2563eb; transition: width .4s; }
+  #billing-app .usage-fill.warn { background: #ea580c; }
+</style>
+
+<script>
+frappe.ready(function () {
+  const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+  const $$ = (sel, ctx) => [...(ctx || document).querySelectorAll(sel)];
+  const fmt = (n) => n.toLocaleString('en-ZA', { style: 'currency', currency: 'ZAR', minimumFractionDigits: 0 });
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('success')) showMessage('success', '🎉 Payment successful! Your plan has been upgraded.');
+  if (params.get('error') === 'payment_failed') showMessage('danger', 'Payment was not completed. Please try again.');
+
+  frappe.call({
+    method: 'medic_plus.api.billing.get_billing_summary',
+    callback: function (r) {
+      if (r.exc || !r.message) {
+        showMessage('warning', 'Unable to load billing information.');
+        return;
+      }
+      renderSummary(r.message);
+    }
+  });
+
+  function renderSummary(data) {
+    // Status badge
+    const statusColors = { Active: 'success', Trialing: 'warning', 'Past Due': 'danger', Cancelled: 'secondary', Expired: 'dark' };
+    const col = statusColors[data.status] || 'secondary';
+    $('#billing-status-badge').innerHTML =
+      `<span class="badge rounded-pill text-bg-${col} fs-6 px-3 py-2">${data.status}</span>`;
+
+    // Plan name + price
+    $('#plan-name').textContent = data.plan_label;
+    $('#plan-price').textContent = data.price_label;
+
+    // Trial info
+    if (data.trial_ends_on) {
+      const days = Math.ceil((new Date(data.trial_ends_on) - new Date()) / 86400000);
+      $('#trial-info').innerHTML = `<small class="text-muted">Trial ends</small><br>
+        <strong class="${days <= 3 ? 'text-danger' : ''}">${days > 0 ? days + ' days left' : 'Expired'}</strong>`;
+    } else if (data.current_period_end) {
+      $('#trial-info').innerHTML = `<small class="text-muted">Renews</small><br>
+        <strong>${data.current_period_end}</strong>`;
+    }
+
+    // Usage bars
+    const usageHtml = Object.entries(data.usage).map(([key, u]) => {
+      const label = key === 'Patient' ? 'Patients' : key === 'users' ? 'Staff Users' : key;
+      const pct = u.limit === 0 ? 0 : Math.min(u.pct, 100);
+      const warn = u.at_limit || pct >= 80;
+      return `
+        <div class="usage-bar-wrap">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>${label}</span>
+            <span>${u.current}${u.limit ? ' / ' + u.limit : ' (unlimited)'}</span>
+          </div>
+          <div class="usage-bar">
+            <div class="usage-fill ${warn ? 'warn' : ''}" style="width:${u.limit ? pct : 0}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+    $('#usage-bars').innerHTML = usageHtml || '<span class="text-muted small">No usage limits on this plan.</span>';
+
+    // Features grid
+    const featureLabels = {
+      appointments: 'Appointments', patient_records: 'Patient Records',
+      sick_notes: 'Sick Notes', prescriptions: 'Prescriptions',
+      dispensing: 'Drug Dispensing', inpatient_module: 'Inpatient Module',
+      sms_reminders: 'SMS Reminders', medical_aid: 'Medical Aid',
+      advanced_reports: 'Advanced Reports', api_access: 'API Access',
+    };
+    const featHtml = Object.entries(data.features).map(([key, on]) =>
+      `<div class="col-6 col-md-4 col-lg-3">
+        <span class="feature-chip ${on ? '' : 'off'}">
+          ${on ? '✓' : '✗'} ${featureLabels[key] || key}
+        </span>
+      </div>`
+    ).join('');
+    $('#features-grid').innerHTML = featHtml;
+
+    // Upgrade cards
+    if (data.available_plans && data.available_plans.length) {
+      $('#upgrade-section').classList.remove('d-none');
+      const cards = data.available_plans.map(plan => `
+        <div class="col-md-6 col-lg-4">
+          <div class="card plan-card border ${plan.is_popular ? 'popular' : ''}">
+            ${plan.is_popular ? '<div class="text-center py-1 bg-primary text-white small rounded-top">Most Popular</div>' : ''}
+            <div class="card-body p-4">
+              <h5 class="fw-bold mb-1">${plan.label}</h5>
+              <div class="fs-4 fw-semibold text-primary mb-3">${plan.price_label}</div>
+              <ul class="list-unstyled small mb-4">
+                ${(plan.highlight || []).map(h => `<li class="mb-1">✓ ${h}</li>`).join('')}
+              </ul>
+              <button class="btn btn-primary w-100 upgrade-btn" data-plan="${plan.key}">
+                Upgrade to ${plan.label}
+              </button>
+            </div>
+          </div>
+        </div>`).join('');
+      $('#plan-cards').innerHTML = cards;
+
+      $$('.upgrade-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+          handleUpgrade(this.dataset.plan, this);
+        });
+      });
+    }
+  }
+
+  function handleUpgrade(planKey, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+
+    frappe.call({
+      method: 'medic_plus.api.billing.initiate_paystack_checkout',
+      args: { plan_key: planKey },
+      callback: function (r) {
+        btn.disabled = false;
+        btn.textContent = 'Upgrade';
+        if (r.exc || !r.message) {
+          showMessage('danger', 'Could not initiate checkout. Please try again.');
+          return;
+        }
+        const resp = r.message;
+        if (resp.status === 'not_configured') {
+          showMessage('warning', resp.message);
+        } else if (resp.checkout_url) {
+          window.location.href = resp.checkout_url;
+        }
+      }
+    });
+  }
+
+  function showMessage(type, text) {
+    $('#billing-message').innerHTML =
+      `<div class="alert alert-${type}">${text}</div>`;
+  }
+});
+</script>
+{% endblock %}

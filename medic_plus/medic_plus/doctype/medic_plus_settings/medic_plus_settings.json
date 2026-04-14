@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-04-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_paystack",
+  "paystack_secret_key",
+  "paystack_public_key",
+  "paystack_webhook_secret"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_paystack",
+   "fieldtype": "Section Break",
+   "label": "Paystack Configuration"
+  },
+  {
+   "fieldname": "paystack_secret_key",
+   "fieldtype": "Password",
+   "label": "Paystack Secret Key",
+   "description": "From Paystack Dashboard → Settings → API Keys & Webhooks"
+  },
+  {
+   "fieldname": "paystack_public_key",
+   "fieldtype": "Data",
+   "label": "Paystack Public Key"
+  },
+  {
+   "fieldname": "paystack_webhook_secret",
+   "fieldtype": "Password",
+   "label": "Webhook Signature Secret",
+   "description": "Used to verify webhook POST signatures from Paystack"
+  }
+ ],
+ "is_single": 1,
+ "links": [],
+ "modified": "2026-04-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Medic Plus Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "role": "Administrator",
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

@@ -5,6 +5,245 @@
    {
     "chart_name": "Appointments Over Time",
     "label": null
+   },
+   {
+    "chart_name": "Practices by Subscription Plan",
+    "label": null
+   },
+   {
+    "chart_name": "Patients per Practice",
+    "label": null
+   },
+   {
+    "chart_name": "Inpatient Admissions Over Time",
+    "label": null
+   },
+   {
+    "chart_name": "Inpatients by Department",
+    "label": null
+   }
+  ],
+  "content": "[{\"id\": \"f0854a5fbe\",\"type\": \"header\",\"data\": {\"text\": \"Key Metrics\",\"level\": 4,\"col\": 12}},{\"id\": \"9514975458\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Total Practices\",\"col\": 3}},{\"id\": \"2c696c7361\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Active Practices\",\"col\": 3}},{\"id\": \"9271f62c1a\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Total Patients\",\"col\": 3}},{\"id\": \"037d11200e\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Sick Notes Issued\",\"col\": 3}},{\"id\": \"609ca89afa\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Today's Appointments\",\"col\": 6}},{\"id\": \"9a9c59e583\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"This Month's Appointments\",\"col\": 6}},{\"id\": \"6772eeb5da\",\"type\": \"spacer\",\"data\": {\"col\": 12}},{\"id\": \"ipd_header_01\",\"type\": \"header\",\"data\": {\"text\": \"Inpatient\",\"level\": 4,\"col\": 12}},{\"id\": \"ipd_card_01\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Current Inpatients\",\"col\": 4}},{\"id\": \"ipd_card_02\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Today's Admissions\",\"col\": 4}},{\"id\": \"ipd_card_03\",\"type\": \"number_card\",\"data\": {\"number_card_name\": \"Expected Discharges Today\",\"col\": 4}},{\"id\": \"ipd_chart_01\",\"type\": \"chart\",\"data\": {\"chart_name\": \"Inpatient Admissions Over Time\",\"col\": 8}},{\"id\": \"ipd_chart_02\",\"type\": \"chart\",\"data\": {\"chart_name\": \"Inpatients by Department\",\"col\": 4}},{\"id\": \"ipd_spacer_01\",\"type\": \"spacer\",\"data\": {\"col\": 12}},{\"id\": \"a239ee3441\",\"type\": \"header\",\"data\": {\"text\": \"Analytics\",\"level\": 4,\"col\": 12}},{\"id\": \"84145b0ae3\",\"type\": \"chart\",\"data\": {\"chart_name\": \"Appointments Over Time\",\"col\": 12}},{\"id\": \"56a86aa831\",\"type\": \"chart\",\"data\": {\"chart_name\": \"Practices by Subscription Plan\",\"col\": 6}},{\"id\": \"ea4d18f61d\",\"type\": \"chart\",\"data\": {\"chart_name\": \"Patients per Practice\",\"col\": 6}},{\"id\": \"12b0664a9f\",\"type\": \"spacer\",\"data\": {\"col\": 12}},{\"id\": \"670f0ce3fd\",\"type\": \"header\",\"data\": {\"text\": \"Quick Access\",\"level\": 4,\"col\": 12}},{\"id\": \"80411907fb\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"New Practice\",\"col\": 2}},{\"id\": \"d8115cf555\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"Practice Members\",\"col\": 2}},{\"id\": \"03faacb5c5\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"All Patients\",\"col\": 2}},{\"id\": \"7a5da70bc6\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"All Appointments\",\"col\": 2}},{\"id\": \"1b62509935\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"All Sick Notes\",\"col\": 2}},{\"id\": \"ipd_shortcut_01\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"Inpatient Dashboard\",\"col\": 2}},{\"id\": \"billing_shortcut_01\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"Billing & Plans\",\"col\": 2}},{\"id\": \"2f45564165\",\"type\": \"shortcut\",\"data\": {\"shortcut_name\": \"Email Account\",\"col\": 2}},{\"id\": \"1ba52a2685\",\"type\": \"spacer\",\"data\": {\"col\": 12}},{\"id\": \"2a700c472f\",\"type\": \"header\",\"data\": {\"text\": \"Recent Activity\",\"level\": 4,\"col\": 12}},{\"id\": \"964d9019a2\",\"type\": \"quick_list\",\"data\": {\"quick_list_name\": \"Recent Practices\",\"col\": 4}},{\"id\": \"43a7f5f5d6\",\"type\": \"quick_list\",\"data\": {\"quick_list_name\": \"Recent Appointments\",\"col\": 4}},{\"id\": \"c67cb2cb9f\",\"type\": \"quick_list\",\"data\": {\"quick_list_name\": \"Recent Sick Notes\",\"col\": 4}}]",
+  "custom_blocks": [],
+  "docstatus": 0,
+  "doctype": "Workspace",
+  "external_link": null,
+  "for_user": null,
+  "hide_custom": 0,
+  "icon": "activity",
+  "indicator_color": "green",
+  "is_hidden": 0,
+  "label": "Medic Plus Platform",
+  "link_to": null,
+  "link_type": "DocType",
+  "links": [],
+  "modified": "2026-04-13 22:20:23.678182",
+  "module": "Medic Plus",
+  "name": "Medic Plus Platform",
+  "number_cards": [
+   {
+    "label": null,
+    "number_card_name": "Total Practices"
+   },
+   {
+    "label": null,
+    "number_card_name": "Active Practices"
+   },
+   {
+    "label": null,
+    "number_card_name": "Total Patients"
+   },
+   {
+    "label": null,
+    "number_card_name": "Today's Appointments"
+   },
+   {
+    "label": null,
+    "number_card_name": "This Month's Appointments"
+   },
+   {
+    "label": null,
+    "number_card_name": "Sick Notes Issued"
+   },
+   {
+    "label": null,
+    "number_card_name": "Current Inpatients"
+   },
+   {
+    "label": null,
+    "number_card_name": "Today's Admissions"
+   },
+   {
+    "label": null,
+    "number_card_name": "Expected Discharges Today"
+   }
+  ],
+  "parent_page": null,
+  "public": 0,
+  "quick_lists": [
+   {
+    "document_type": "Practice",
+    "label": "Recent Practices",
+    "quick_list_filter": null
+   },
+   {
+    "document_type": "Patient Appointment",
+    "label": "Recent Appointments",
+    "quick_list_filter": null
+   },
+   {
+    "document_type": "Sick Note",
+    "label": "Recent Sick Notes",
+    "quick_list_filter": null
+   }
+  ],
+  "restrict_to_domain": null,
+  "roles": [
+   {
+    "role": "Healthcare Administrator"
+   },
+   {
+    "role": "Administrator"
+   }
+  ],
+  "sequence_id": 1.0,
+  "shortcuts": [
+   {
+    "color": "Blue",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "New Practice",
+    "link_to": "Practice",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
+   },
+   {
+    "color": "Grey",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Practice Members",
+    "link_to": "Practice Member",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
+   },
+   {
+    "color": "Purple",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "All Patients",
+    "link_to": "Patient",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
+   },
+   {
+    "color": "Orange",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "All Appointments",
+    "link_to": "Patient Appointment",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
+   },
+   {
+    "color": "Red",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "All Sick Notes",
+    "link_to": "Sick Note",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
+   },
+   {
+    "color": "Grey",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Email Account",
+    "link_to": "Email Account",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
+   },
+   {
+    "color": null,
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "ABDM",
+    "link_to": "ABDM Request",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
+   },
+   {
+    "color": "Blue",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Inpatient Dashboard",
+    "link_to": "inpatient-dashboard",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "Page",
+    "url": null
+   },
+   {
+    "color": "Green",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Billing & Plans",
+    "link_to": "/billing",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "URL",
+    "url": "/billing"
+   }
+  ],
+  "title": "Platform Overview",
+  "type": "Workspace"
+ },
+ {
+  "app": "medic_plus",
+  "charts": [
+   {
+    "chart_name": "Appointments Over Time",
+    "label": null
    }
   ],
   "content": "[{\"id\":\"pr_h1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Quick Access</span>\",\"col\":12}},{\"id\":\"pr_s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Patient Appointment\",\"col\":2}},{\"id\":\"pr_s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Sick Note\",\"col\":2}},{\"id\":\"pr_s3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"All Patients\",\"col\":2}},{\"id\":\"pr_s4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Practice Members\",\"col\":2}},{\"id\":\"pr_sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr_h2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">My Practice</span>\",\"col\":12}},{\"id\":\"pr_nc1\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Today's Appointments\",\"col\":3}},{\"id\":\"pr_nc2\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"This Month's Appointments\",\"col\":3}},{\"id\":\"pr_nc3\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Patients\",\"col\":3}},{\"id\":\"pr_nc4\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"My Practice Members\",\"col\":3}},{\"id\":\"pr_nc5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Sick Notes Issued\",\"col\":3}},{\"id\":\"pr_nc6\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Outstanding AR\",\"col\":3}},{\"id\":\"pr_sp2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr_h3\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Appointments Trend</span>\",\"col\":12}},{\"id\":\"pr_ch1\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Appointments Over Time\",\"col\":12}},{\"id\":\"pr_sp3\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr_h4\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Modules</span>\",\"col\":12}},{\"id\":\"pr_c1\",\"type\":\"card\",\"data\":{\"card_name\":\"Patients & Appointments\",\"col\":4}},{\"id\":\"pr_c2\",\"type\":\"card\",\"data\":{\"card_name\":\"Clinical\",\"col\":4}},{\"id\":\"pr_c3\",\"type\":\"card\",\"data\":{\"card_name\":\"Dispensary\",\"col\":4}}]",

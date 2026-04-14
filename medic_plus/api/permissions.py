@@ -12,11 +12,21 @@ def _get_practice_company(practice: str) -> str | None:
 
 
 def _is_platform_admin(user: str = None) -> bool:
-	"""Returns True if the given user (or current session user) has Healthcare Administrator role."""
+	# C1 fix: always resolve roles for the *given* user, not the session user.
+	# Frappe passes an explicit user to PQC functions for background jobs and
+	# shared-document scenarios; using frappe.session.user here would silently
+	# return "" (unrestricted) for any admin running the session, even when
+	# evaluating permissions for a different target user.
 	return "Healthcare Administrator" in frappe.get_roles(user or frappe.session.user)
 
 
+def _get_patient_name_for_user(user: str = None) -> str | None:
+	"""Return the Patient record name whose email matches the given user."""
+	return frappe.db.get_value("Patient", {"email": user or frappe.session.user}, "name")
+
+
 def get_practice_permission_query(user: str = None) -> str:
+	"""PQC for the Practice doctype — filters by practice name."""
 	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
@@ -26,6 +36,8 @@ def get_practice_permission_query(user: str = None) -> str:
 
 
 def get_practice_member_permission_query(user: str = None) -> str:
+	"""PQC for Practice Member — filters by the practice field."""
+	# C2 fix: each doctype needs its own table name and field reference.
 	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
@@ -37,6 +49,10 @@ def get_practice_member_permission_query(user: str = None) -> str:
 def get_patient_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""
+	# Patients with the Patient role see only their own record
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		patient = _get_patient_name_for_user(user)
+		return f"`tabPatient`.`name` = {frappe.db.escape(patient)}" if patient else "1=0"
 	practice = _get_user_practice(user)
 	if not practice:
 		return "1=0"
@@ -46,6 +62,10 @@ def get_patient_permission_query(user: str = None) -> str:
 def get_patient_appointment_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""
+	# Patients see only their own appointments
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		patient = _get_patient_name_for_user(user)
+		return f"`tabPatient Appointment`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
 	practice = _get_user_practice(user)
 	if not practice:
 		return "1=0"
@@ -73,6 +93,10 @@ def get_inpatient_record_permission_query(user: str = None) -> str:
 def get_sick_note_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""
+	# Patients see only their own sick notes
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		patient = _get_patient_name_for_user(user)
+		return f"`tabSick Note`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
 	practice = _get_user_practice(user)
 	if not practice:
 		return "1=0"
@@ -136,6 +160,28 @@ def get_practice_setup_checklist_permission_query(user: str = None) -> str:
 	if not practice:
 		return "1=0"
 	return f"`tabPractice Setup Checklist`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_data_unmask_request_permission_query(user: str = None) -> str:
+	"""PQC for Data Unmask Request — filters by the practice field."""
+	# C2 fix: uses the correct table and field for this doctype.
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabData Unmask Request`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_clinical_access_log_permission_query(user: str = None) -> str:
+	"""PQC for Clinical Access Log — filters by the practice field."""
+	# C2 fix: uses the correct table and field for this doctype.
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabClinical Access Log`.`practice` = {frappe.db.escape(practice)}"
 
 
 def get_sales_invoice_permission_query(user: str = None) -> str:

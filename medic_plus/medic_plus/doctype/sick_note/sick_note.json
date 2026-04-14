@@ -208,6 +208,11 @@
    "print": 1,
    "read": 1,
    "role": "Practice Receptionist"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "role": "Patient"
   }
  ],
  "sort_field": "creation",

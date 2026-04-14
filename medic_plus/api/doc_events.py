@@ -4,6 +4,8 @@ from medic_plus.medic_plus.doctype.practice_setup_checklist.practice_setup_check
 	on_signature_saved,
 	on_staff_accepted,
 	on_patient_invited,
+	on_schedule_created,
+	on_billing_configured,
 )
 
 
@@ -78,12 +80,36 @@ def update_checklist_on_signature(doc, method=None):
 
 
 def update_checklist_on_member_status(doc, method=None):
-	"""Steps 3 & 4 — update checklist when a Practice Member changes status."""
+	"""Steps 3 & 4 — update checklist when a Practice Member is added.
+
+	Practice Member has no 'status' field.  We tick the checklist step
+	immediately on insert/update based solely on role:
+	  - Doctor / Admin / Receptionist → staff has been added (step 3)
+	  - Patient                        → a patient has been invited (step 4)
+	"""
 	practice = doc.practice
 	role = doc.role
-	status = doc.status
 
-	if role in ("Admin", "Doctor", "Receptionist") and status == "Accepted":
+	if not practice or not role:
+		return
+
+	if role in ("Admin", "Doctor", "Receptionist"):
 		on_staff_accepted(practice)
-	elif role == "Patient" and status == "Sent":
+	elif role == "Patient":
 		on_patient_invited(practice)
+
+
+def update_checklist_on_schedule_created(doc, method=None):
+	"""Step 5 — tick when a Practitioner Schedule is created for this practice."""
+	practice = frappe.db.get_value(
+		"Practice Member", {"practitioner": doc.practitioner, "role": "Doctor"}, "practice"
+	)
+	if practice:
+		on_schedule_created(practice)
+
+
+def update_checklist_on_first_invoice(doc, method=None):
+	"""Step 6 — tick when the practice's first Sales Invoice is created."""
+	practice = frappe.db.get_value("Practice", {"company": doc.company}, "name")
+	if practice:
+		on_billing_configured(practice)
