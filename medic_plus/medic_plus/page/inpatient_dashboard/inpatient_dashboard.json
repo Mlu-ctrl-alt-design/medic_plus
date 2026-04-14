@@ -1,0 +1,28 @@
+{
+ "content": "1",
+ "doctype": "Page",
+ "module": "Medic Plus",
+ "name": "inpatient-dashboard",
+ "page_name": "inpatient-dashboard",
+ "restrict_to_domain": null,
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Healthcare Administrator"
+  },
+  {
+   "role": "Practice Admin"
+  },
+  {
+   "role": "Practice Doctor"
+  },
+  {
+   "role": "Practice Receptionist"
+  }
+ ],
+ "standard": "Yes",
+ "system_page": 0,
+ "title": "Inpatient Dashboard"
+}
