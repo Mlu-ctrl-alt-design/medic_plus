@@ -135,8 +135,12 @@ class TestPatientInviteViaDeskForm:
 
         page.wait_for_load_state("load")
 
+        # The patient form renders PATIENT_FIRST in several places (title, fields,
+        # breadcrumb, linked Customer link, etc.).  get_by_text without .first
+        # causes a strict-mode violation.  Taking the first visible match is enough
+        # to confirm the record loaded.
         expect(
-            page.get_by_text(PATIENT_FIRST, exact=False)
+            page.get_by_text(PATIENT_FIRST, exact=False).first
         ).to_be_visible(timeout=10_000)
 
 
@@ -201,12 +205,20 @@ class TestPatientKioskRegistration:
                 mobile_field.first.fill(f"083{RUN_TAG}")
 
         # --- Submit ---
-        # Use has_text to match button text content ("Submit") rather than
-        # accessible-name, which is unreliable across frappe-ui Button versions.
-        submit_btn = page.locator("button").filter(
-            has_text=re.compile(r"submit|register|next", re.I)
-        ).first
-        submit_btn.click()
+        # frappe-ui's Button component can render the slot text inside a <span>
+        # with extra whitespace/icon markup, making Playwright locator filters
+        # unreliable.  Use page.evaluate to find and click the button via the DOM
+        # directly — this is immune to accessible-name and has_text edge cases.
+        page.evaluate("""
+            () => {
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const btn = buttons.find(b =>
+                    /submit|register|next/i.test((b.textContent || '').trim())
+                );
+                if (btn) btn.click();
+            }
+        """)
+        page.wait_for_timeout(1_000)   # give Vue a tick to react
 
         # Wait for either a success state or an error dialog
         page.wait_for_timeout(3_000)

@@ -104,19 +104,26 @@ class TestDoctorSignupAndPracticeCreation:
         """The provisioned user has exactly the 'Practice Doctor' role in the Desk."""
         _frappe_login(page, ADMIN_USER, ADMIN_PASS)
 
-        # Navigate to the User form
-        page.goto(f"{BASE_URL}/app/user/{DR_EMAIL}")
-        page.wait_for_load_state("load")
-
-        # The Roles child table sits below the fold in the Frappe v16 User form.
-        # Scroll it into view before asserting so the visibility check works even
-        # when the section hasn't been rendered into the viewport yet.
-        roles_section = page.locator("[data-fieldname='roles']")
-        roles_section.scroll_into_view_if_needed()
-
-        expect(
-            roles_section.get_by_text("Practice Doctor", exact=False)
-        ).to_be_visible(timeout=10_000)
+        # Frappe v16 User form renders roles in two elements that both carry
+        # data-fieldname="roles" (a MultiCheck widget and a hidden Table field).
+        # UI scraping is fragile here; verify via the Frappe API instead —
+        # frappe.call is available on any Frappe Desk page after login.
+        has_role = page.evaluate(
+            f"""async () => {{
+                const r = await frappe.call({{
+                    method: 'frappe.client.get_count',
+                    args: {{
+                        doctype: 'Has Role',
+                        filters: [
+                            ['parent', '=', '{DR_EMAIL}'],
+                            ['role',   '=', 'Practice Doctor']
+                        ]
+                    }}
+                }});
+                return (r.message || 0) > 0;
+            }}"""
+        )
+        assert has_role, f"User {DR_EMAIL} does not have 'Practice Doctor' role"
 
     def test_practice_member_links_doctor_to_practice(self, page: Page):
         """A Practice Member record exists linking the doctor to the new practice."""
@@ -136,9 +143,12 @@ class TestDoctorSignupAndPracticeCreation:
         page.keyboard.press("Enter")
         page.wait_for_load_state("load")
 
-        # At least one row should match
+        # At least one Practice Member row should match.
+        # Use the data-doctype link instead of bare get_by_text: after the filter
+        # is applied the autocomplete dropdown also contains the email text, which
+        # causes a strict-mode violation with a plain get_by_text call.
         expect(
-            page.get_by_text(DR_EMAIL, exact=False)
+            page.locator("a[data-doctype='Practice Member']").filter(has_text=DR_EMAIL)
         ).to_be_visible(timeout=10_000)
 
     def test_doctor_can_login_to_desk(self, page: Page):
@@ -152,30 +162,27 @@ class TestDoctorSignupAndPracticeCreation:
         # Must be on a Frappe Desk page so frappe.csrf_token is available.
         _frappe_login(page, ADMIN_USER, ADMIN_PASS)
 
-        # Reset the doctor's password via Admin API
+        # Reset the doctor's password via the REST resource endpoint.
+        # frappe.core.doctype.user.user.update_password uses a reset-key flow
+        # that does not accept a plain `user` parameter in Frappe v16 — it raises
+        # KeyError: 'user'.  The reliable admin alternative is PUT /api/resource/User
+        # with new_password, which triggers the User controller's validate() hook
+        # and calls frappe.utils.password.update_password internally.
         reset_result = page.evaluate(
-            """async ([url, payload]) => {
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded',
-                              'X-Frappe-CSRF-Token': frappe.csrf_token},
-                    body: new URLSearchParams(payload),
+            """async ([baseUrl, email]) => {
+                const resp = await fetch(`${baseUrl}/api/resource/User/${encodeURIComponent(email)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Frappe-CSRF-Token': frappe.csrf_token,
+                    },
+                    body: JSON.stringify({new_password: 'TestPass@123'}),
                 });
                 return resp.json();
             }""",
-            [
-                f"{BASE_URL}/api/method/frappe.core.doctype.user.user.update_password",
-                {
-                    "new_password": "TestPass@123",
-                    "logout_all_sessions": 0,
-                    "user": DR_EMAIL,
-                },
-            ],
+            [BASE_URL, DR_EMAIL],
         )
-        # update_password returns {"message": "Password updated"} or similar
-        assert reset_result.get("message") or "exc" not in reset_result, (
-            f"Password reset failed: {reset_result}"
-        )
+        assert "data" in reset_result, f"Password reset failed: {reset_result}"
 
         # Now log out and log in as the doctor
         page.goto(f"{BASE_URL}/api/method/logout")
