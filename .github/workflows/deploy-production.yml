@@ -47,7 +47,7 @@ jobs:
             SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || true)
             if [ -z "$SITES" ]; then
               # Fallback: check common site name
-              SITES="medic.thedaystar.co.za"
+              SITES="medic-demo.thedaystar.co.za"
             fi
             for site in $SITES; do
               echo "Backing up $site..."
@@ -76,7 +76,7 @@ jobs:
             cd ${{ secrets.PROD_BENCH_PATH }}
             SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || true)
             if [ -z "$SITES" ]; then
-              SITES="medic.thedaystar.co.za"
+              SITES="medic-demo.thedaystar.co.za"
             fi
             for site in $SITES; do
               echo "Migrating $site..."
@@ -107,7 +107,7 @@ jobs:
             cd ${{ secrets.PROD_BENCH_PATH }}
             SITES=$(bench --site all list-apps 2>/dev/null | grep -B5 "medic_plus" | grep "^Site:" | awk '{print $2}' || true)
             if [ -z "$SITES" ]; then
-              SITES="medic.thedaystar.co.za"
+              SITES="medic-demo.thedaystar.co.za"
             fi
             for site in $SITES; do
               bench --site "$site" clear-cache
@@ -119,7 +119,7 @@ jobs:
         run: |
           sleep 5
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Host: medic.thedaystar.co.za" \
+            -H "Host: medic-demo.thedaystar.co.za" \
             http://${{ secrets.PROD_HOST }} || echo "000")
           echo "Health check HTTP status: $STATUS"
           if [[ "$STATUS" != "2"* && "$STATUS" != "3"* ]]; then
