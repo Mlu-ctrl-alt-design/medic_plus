@@ -1,5 +1,7 @@
 """Integration tests for the doctor signup funnel."""
 
+import random
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -17,7 +19,6 @@ class TestAdminOnboardDoctor(FrappeTestCase):
 		# Use a unique mobile to avoid collisions with pre-existing staging data
 		# (mobile_no is a unique index on the User table). SA mobile format
 		# is 10 digits starting with 0 — e.g. 0821234567.
-		import random
 		self.mobile = "082" + "".join(str(random.randint(0, 9)) for _ in range(7))
 
 	def tearDown(self):
@@ -48,3 +49,22 @@ class TestAdminOnboardDoctor(FrappeTestCase):
 			frappe.db.exists("Practice Setup Checklist", {"practice": practice}),
 			"Practice Setup Checklist not created",
 		)
+
+
+class TestNotifyAdminsRelocated(FrappeTestCase):
+	"""notify_admins_of_new_request must be importable and callable from signup.py."""
+
+	def test_function_exists_and_accepts_prr(self):
+		from medic_plus.api.signup import notify_admins_of_new_request
+		# Build a minimal PRR-shaped object; we only verify the import + no-throw.
+		# frappe.get_all returns [] in test because no Healthcare Administrator roles typically assigned.
+		doc = frappe._dict({
+			"name": "PRR-TEST-00000",
+			"practice_name": "X",
+			"full_name": "Y",
+			"email": "z@example.com",
+			"hpcsa_number": "MP1",
+			"is_dispensing_doctor": 0,
+		})
+		# Should not raise even if no recipients exist.
+		notify_admins_of_new_request(doc)

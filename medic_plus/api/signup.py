@@ -180,11 +180,44 @@ def verify_signup_otp(email: str, otp: str) -> dict:
 	doc.insert(ignore_permissions=True)
 	frappe.db.commit()
 
-	from medic_plus.api.onboarding import _notify_admins_of_new_request
-	_notify_admins_of_new_request(doc)
+	notify_admins_of_new_request(doc)
 
 	return {
 		"status": "submitted",
 		"request": doc.name,
 		"message": _("Signup submitted. You'll receive login details once approved."),
 	}
+
+
+def notify_admins_of_new_request(doc) -> None:
+	"""Email Healthcare Administrators about a new registration request."""
+	admin_users = frappe.get_all(
+		"Has Role",
+		filters={"role": "Healthcare Administrator", "parenttype": "User"},
+		pluck="parent",
+	)
+	recipients = [u for u in admin_users if frappe.db.get_value("User", u, "enabled")]
+	if not recipients:
+		return
+
+	frappe.sendmail(
+		recipients=recipients,
+		subject=f"[Medic Plus] New Registration: {doc.practice_name}",
+		message=f"""
+		<p>A new practice registration request has been submitted and is awaiting your review.</p>
+		<table style="border-collapse:collapse;font-size:14px;">
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Practice</td><td><strong>{doc.practice_name}</strong></td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Doctor</td><td>{doc.full_name}</td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Email</td><td>{doc.email}</td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">HPCSA</td><td>{doc.hpcsa_number}</td></tr>
+		  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Dispensing</td><td>{"Yes" if doc.is_dispensing_doctor else "No"}</td></tr>
+		</table>
+		<p style="margin-top:16px;">
+		  <a href="/app/practice-registration-request/{doc.name}"
+		     style="background:#2563eb;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;">
+		    Review Request
+		  </a>
+		</p>
+		""",
+		now=False,
+	)

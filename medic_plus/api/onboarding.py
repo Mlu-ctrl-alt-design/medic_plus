@@ -7,7 +7,7 @@ the admin path and the paid signup path produce identical tenants.
 import frappe
 from frappe import _
 
-from medic_plus.api._provisioning import provision_doctor
+from medic_plus.api._provisioning import create_user, provision_doctor
 from medic_plus.api.validators import (
 	validate_hpcsa_number,
 	validate_practice_number,
@@ -25,7 +25,13 @@ def onboard_doctor(
 	practice_name: str,
 	is_dispensing_doctor: bool = False,
 ) -> dict:
-	"""Provision a new doctor tenant end-to-end (admin backdoor)."""
+	"""Provision a new doctor tenant end-to-end (admin backdoor).
+
+	Raises:
+	    frappe.PermissionError: Caller is not a System Manager.
+	    frappe.ValidationError: Email or practice name already exists,
+	        or HPCSA / practice / mobile number format is invalid.
+	"""
 	if "System Manager" not in frappe.get_roles():
 		frappe.throw(_("Only System Managers can onboard doctors."), frappe.PermissionError)
 
@@ -43,7 +49,6 @@ def onboard_doctor(
 		)
 
 	try:
-		from medic_plus.api._provisioning import create_user
 		create_user(full_name, email, mobile, roles=["Practice Doctor", "Practice Admin"])
 		result = provision_doctor(
 			full_name=full_name,
