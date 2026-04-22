@@ -162,13 +162,12 @@ class TestSignupStatus(FrappeTestCase):
 		r = signup_status(request_name=self.req.name)
 		self.assertFalse(r["ready"])
 		self.assertEqual(r["payment_status"], "Unpaid")
+		self.assertEqual(r["status"], "Pending")
 
 	def test_status_ready_after_provisioning(self):
 		from medic_plus.api.signup import signup_status
-		self.assertTrue(
-			self.existing_practice,
-			"At least one Practice must exist on the site to run this test.",
-		)
+		if not self.existing_practice:
+			self.skipTest("At least one Practice must exist on the site to run this test.")
 		frappe.db.set_value("Practice Registration Request", self.req.name, {
 			"payment_status": "Paid",
 			"status": "Provisioned",
@@ -177,3 +176,10 @@ class TestSignupStatus(FrappeTestCase):
 		})
 		r = signup_status(request_name=self.req.name)
 		self.assertTrue(r["ready"])
+
+	def test_status_unknown_request_returns_empty(self):
+		from medic_plus.api.signup import signup_status
+		r = signup_status(request_name="PRR-99999999")
+		self.assertFalse(r["ready"])
+		self.assertIsNone(r["status"])
+		self.assertIsNone(r["payment_status"])

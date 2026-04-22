@@ -318,13 +318,17 @@ def signup_status(request_name: str) -> dict:
 	issue_completion_token), not through this endpoint.
 	"""
 	request_name = (request_name or "").strip()
+	# Guest-callable endpoint: do NOT distinguish unknown from known request
+	# names — returning a generic empty shape prevents enumeration of the
+	# predictable `PRR-.#####` namespace under rate limits.
+	empty = {"payment_status": None, "status": None, "ready": False}
 	if not request_name or not frappe.db.exists("Practice Registration Request", request_name):
-		frappe.throw(_("Registration request not found."), frappe.ValidationError)
+		return empty
 
 	row = frappe.db.get_value(
 		"Practice Registration Request",
 		request_name,
-		["payment_status", "status", "provisioned_practice", "email", "completion_email_sent_at"],
+		["payment_status", "status", "provisioned_practice", "completion_email_sent_at"],
 		as_dict=True,
 	)
 	ready = bool(
