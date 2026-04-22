@@ -68,3 +68,69 @@ class TestNotifyAdminsRelocated(FrappeTestCase):
 		})
 		# Should not raise even if no recipients exist.
 		notify_admins_of_new_request(doc)
+
+
+class TestCompletionToken(FrappeTestCase):
+	"""verify_signup_completion_token + set_password_and_login happy and sad paths."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		# set_password_and_login calls frappe.local.login_manager.login_as(),
+		# which is only set up during an HTTP request. Stub it with a no-op
+		# so the consume + redirect flow is exercisable in tests. (Real HTTP
+		# calls always have a fully initialised LoginManager.)
+		class _StubLoginManager:
+			def login_as(self, user, **_kwargs):
+				frappe.set_user(user)
+
+		frappe.local.login_manager = _StubLoginManager()
+		self.email = f"tok.{frappe.generate_hash(length=6)}@test.local"
+		# Unique SA-format mobile to dodge User.mobile_no unique index
+		# collisions with pre-existing staging data.
+		self.mobile = "082" + "".join(str(random.randint(0, 9)) for _ in range(7))
+		# Pre-create a User (simulates post-provisioning state)
+		frappe.get_doc({
+			"doctype": "User",
+			"email": self.email,
+			"first_name": "Token",
+			"last_name": "Tester",
+			"send_welcome_email": 0,
+		}).insert(ignore_permissions=True)
+		frappe.get_doc({
+			"doctype": "Practice Registration Request",
+			"practice_name": f"Tok Practice {frappe.generate_hash(length=6)}",
+			"full_name": "Token Tester",
+			"email": self.email,
+			"mobile": self.mobile,
+			"hpcsa_number": "MP11111",
+			"practice_number": "1234567",
+			"status": "Provisioned",
+		}).insert(ignore_permissions=True)
+		self.req_name = frappe.db.get_value("Practice Registration Request", {"email": self.email}, "name")
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def test_issue_and_consume_token(self):
+		from medic_plus.api.signup import (
+			issue_completion_token,
+			verify_signup_completion_token,
+			set_password_and_login,
+		)
+		token = issue_completion_token(email=self.email, request_name=self.req_name)
+		self.assertEqual(len(token), 48)
+
+		info = verify_signup_completion_token(token=token)
+		self.assertEqual(info["email"], self.email)
+		self.assertGreater(info["expires_in"], 0)
+
+		# Consumed -> second verify fails
+		result = set_password_and_login(token=token, password="S0meLongP@ssword123")
+		self.assertEqual(result["redirect"], "/app/practice")
+		with self.assertRaises(frappe.ValidationError):
+			verify_signup_completion_token(token=token)
+
+	def test_invalid_token(self):
+		from medic_plus.api.signup import verify_signup_completion_token
+		with self.assertRaises(frappe.ValidationError):
+			verify_signup_completion_token(token="nope-not-a-real-token")

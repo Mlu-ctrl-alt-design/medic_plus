@@ -92,7 +92,7 @@ def request_signup_otp(
 
 	duplicate = frappe.db.exists(
 		"Practice Registration Request",
-		{"email": email, "status": ["in", ["Pending", "Approved"]]},
+		{"email": email, "status": ["in", ["Pending", "Provisioned"]]},
 	)
 	if duplicate:
 		frappe.throw(
@@ -159,7 +159,7 @@ def verify_signup_otp(email: str, otp: str) -> dict:
 		frappe.throw(_("An account with this email already exists."), frappe.ValidationError)
 	if frappe.db.exists(
 		"Practice Registration Request",
-		{"email": email, "status": ["in", ["Pending", "Approved"]]},
+		{"email": email, "status": ["in", ["Pending", "Provisioned"]]},
 	):
 		frappe.throw(
 			_("A registration request for {0} is already pending or approved.").format(email),
@@ -221,3 +221,87 @@ def notify_admins_of_new_request(doc) -> None:
 		""",
 		now=False,
 	)
+
+
+# ---------------------------------------------------------------------------
+# Completion token — signed one-time URL issued after provisioning
+# ---------------------------------------------------------------------------
+
+COMPLETION_TOKEN_TTL_SECONDS = 12 * 3600
+_COMPLETION_PREFIX = "medic_plus:signup_complete:"
+
+
+def _completion_key(token: str) -> str:
+	return _COMPLETION_PREFIX + hashlib.sha256(token.encode()).hexdigest()
+
+
+def issue_completion_token(email: str, request_name: str) -> str:
+	"""Generate a signed one-time URL token. Called post-provisioning.
+
+	Returns the plaintext token. Only the SHA-256 hash is stored in Redis.
+	"""
+	token = frappe.generate_hash(length=48)
+	frappe.cache().set_value(
+		_completion_key(token),
+		{
+			"email": email,
+			"request_name": request_name,
+			"issued_at": frappe.utils.now(),
+		},
+		expires_in_sec=COMPLETION_TOKEN_TTL_SECONDS,
+	)
+	return token
+
+
+@frappe.whitelist(allow_guest=True)
+@rate_limit(limit=30, seconds=600)
+def verify_signup_completion_token(token: str) -> dict:
+	"""Check whether a completion token is still valid and return the email."""
+	token = (token or "").strip()
+	if not token:
+		frappe.throw(_("Completion token is required."), frappe.ValidationError)
+	payload = frappe.cache().get_value(_completion_key(token))
+	if not payload:
+		frappe.throw(
+			_("This completion link has expired or has already been used."),
+			frappe.ValidationError,
+		)
+	return {
+		"email": payload["email"],
+		"request_name": payload["request_name"],
+		"expires_in": COMPLETION_TOKEN_TTL_SECONDS,
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+@rate_limit(limit=5, seconds=600)
+def set_password_and_login(token: str, password: str) -> dict:
+	"""Consume the completion token, set the password, log the user in.
+
+	One-shot: on success the Redis entry is deleted so re-use returns 'expired'.
+	"""
+	from frappe.utils.password import update_password
+
+	token = (token or "").strip()
+	password = (password or "").strip()
+	if not token or not password:
+		frappe.throw(_("Token and password are required."), frappe.ValidationError)
+	if len(password) < 10:
+		frappe.throw(_("Password must be at least 10 characters."), frappe.ValidationError)
+
+	payload = frappe.cache().get_value(_completion_key(token))
+	if not payload:
+		frappe.throw(
+			_("This completion link has expired or has already been used."),
+			frappe.ValidationError,
+		)
+
+	email = payload["email"]
+	if not frappe.db.exists("User", email):
+		frappe.throw(_("Matching account was not found."), frappe.ValidationError)
+
+	update_password(user=email, pwd=password)
+	frappe.cache().delete_value(_completion_key(token))
+
+	frappe.local.login_manager.login_as(email)
+	return {"redirect": "/app/practice"}
