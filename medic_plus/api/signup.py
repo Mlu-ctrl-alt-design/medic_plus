@@ -305,3 +305,35 @@ def set_password_and_login(token: str, password: str) -> dict:
 
 	frappe.local.login_manager.login_as(email)
 	return {"redirect": "/app/practice"}
+
+
+@frappe.whitelist(allow_guest=True)
+@rate_limit(limit=60, seconds=600)
+def signup_status(request_name: str) -> dict:
+	"""Poll endpoint for /signup/success page.
+
+	Returns the PRR's current payment_status and status, plus a `ready` bool
+	indicating whether the frontend should redirect to /signup/complete.
+	The completion token itself is delivered via email (see
+	issue_completion_token), not through this endpoint.
+	"""
+	request_name = (request_name or "").strip()
+	if not request_name or not frappe.db.exists("Practice Registration Request", request_name):
+		frappe.throw(_("Registration request not found."), frappe.ValidationError)
+
+	row = frappe.db.get_value(
+		"Practice Registration Request",
+		request_name,
+		["payment_status", "status", "provisioned_practice", "email", "completion_email_sent_at"],
+		as_dict=True,
+	)
+	ready = bool(
+		row.status == "Provisioned"
+		and row.provisioned_practice
+		and row.completion_email_sent_at  # webhook emitted the email already
+	)
+	return {
+		"payment_status": row.payment_status,
+		"status": row.status,
+		"ready": ready,
+	}

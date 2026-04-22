@@ -134,3 +134,46 @@ class TestCompletionToken(FrappeTestCase):
 		from medic_plus.api.signup import verify_signup_completion_token
 		with self.assertRaises(frappe.ValidationError):
 			verify_signup_completion_token(token="nope-not-a-real-token")
+
+
+class TestSignupStatus(FrappeTestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.req = frappe.get_doc({
+			"doctype": "Practice Registration Request",
+			"practice_name": f"Stat Practice {frappe.generate_hash(length=6)}",
+			"full_name": "Stat Tester",
+			"email": f"stat.{frappe.generate_hash(length=6)}@test.local",
+			"mobile": "0821234567",
+			"hpcsa_number": "MP22222",
+			"practice_number": "1234567",
+			"status": "Pending",
+			"payment_status": "Unpaid",
+		}).insert(ignore_permissions=True)
+		# PRAC-00001 may not exist on every environment; fetch any real
+		# Practice name to satisfy the Link field on provisioned_practice.
+		self.existing_practice = frappe.db.get_value("Practice", {}, "name")
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def test_status_not_ready_before_provisioning(self):
+		from medic_plus.api.signup import signup_status
+		r = signup_status(request_name=self.req.name)
+		self.assertFalse(r["ready"])
+		self.assertEqual(r["payment_status"], "Unpaid")
+
+	def test_status_ready_after_provisioning(self):
+		from medic_plus.api.signup import signup_status
+		self.assertTrue(
+			self.existing_practice,
+			"At least one Practice must exist on the site to run this test.",
+		)
+		frappe.db.set_value("Practice Registration Request", self.req.name, {
+			"payment_status": "Paid",
+			"status": "Provisioned",
+			"provisioned_practice": self.existing_practice,
+			"completion_email_sent_at": frappe.utils.now(),
+		})
+		r = signup_status(request_name=self.req.name)
+		self.assertTrue(r["ready"])
