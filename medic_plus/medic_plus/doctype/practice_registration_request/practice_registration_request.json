@@ -28,6 +28,9 @@
   "provisioned_practice",
   "rejection_reason",
   "section_break_meta",
+  "provisioning_error",
+  "provisioning_attempted_at",
+  "completion_email_sent_at",
   "submitted_at"
  ],
  "fields": [
@@ -48,7 +51,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Pending\nApproved\nRejected"
+   "options": "Pending\nProvisioned\nProvisioning Failed\nRejected"
   },
   {
    "fieldname": "section_break_contact",
@@ -164,6 +167,24 @@
    "label": "Submission Info"
   },
   {
+   "fieldname": "provisioning_error",
+   "fieldtype": "Small Text",
+   "label": "Provisioning Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provisioning_attempted_at",
+   "fieldtype": "Datetime",
+   "label": "Provisioning Attempted At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completion_email_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Completion Email Sent At",
+   "read_only": 1
+  },
+  {
    "fieldname": "submitted_at",
    "fieldtype": "Datetime",
    "label": "Submitted At",
@@ -171,7 +192,7 @@
   }
  ],
  "links": [],
- "modified": "2026-04-14 00:00:00.000000",
+ "modified": "2026-04-22 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Practice Registration Request",
