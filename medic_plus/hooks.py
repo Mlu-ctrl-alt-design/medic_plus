@@ -28,6 +28,8 @@ fixtures = [
 			"Healthcare Practitioner-custom_is_dispensing_doctor",
 			"Healthcare Practitioner-custom_column_break_signature",
 			"Healthcare Practitioner-custom_practitioner_signature",
+			"Healthcare Practitioner-custom_section_associated_practices",
+			"Healthcare Practitioner-associated_practices_html",
 			# Item — SA medicine fields
 			"Item-custom_schedule",
 			"Item-custom_nappi_code",
@@ -98,8 +100,14 @@ doc_events = {
 	},
 	# Practice Setup Checklist — steps 1–6
 	"Practice": {
-		"after_insert": "medic_plus.api.billing.start_trial_for_practice",
-		"on_update": "medic_plus.api.doc_events.update_checklist_on_practice_save",
+		"after_insert": [
+			"medic_plus.api.billing.start_trial_for_practice",
+			"medic_plus.api.doc_events.sync_practice_doctors",
+		],
+		"on_update": [
+			"medic_plus.api.doc_events.update_checklist_on_practice_save",
+			"medic_plus.api.doc_events.sync_practice_doctors",
+		],
 	},
 	"Practice Member": {
 		"after_insert": "medic_plus.api.doc_events.update_checklist_on_member_status",

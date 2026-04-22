@@ -21,6 +21,24 @@
 .mp-field input:focus { outline:none; border-color:var(--mp-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
 .mp-field input.invalid { border-color:var(--mp-err); }
 .mp-field input.invalid:focus { box-shadow:0 0 0 3px rgba(220,38,38,.12); }
+
+/* input with attached title dropdown */
+.mp-input-group { display:flex; align-items:stretch; border:1.5px solid #d1d5db; border-radius:8px; overflow:hidden; background:#fff; transition:border-color .2s, box-shadow .2s; }
+.mp-input-group:focus-within { border-color:var(--mp-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.mp-field.has-error .mp-input-group { border-color:var(--mp-err); }
+.mp-field.has-error .mp-input-group:focus-within { box-shadow:0 0 0 3px rgba(220,38,38,.12); }
+.mp-input-group .mp-title {
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:#f9fafb; padding:0 12px; font-size:.95rem; font-weight:600; color:#374151;
+  border-right:1.5px solid #e5e7eb; outline:none; min-width:56px;
+}
+.mp-input-group select.mp-title { cursor:pointer; }
+.mp-input-group span.mp-title { user-select:none; }
+.mp-input-group input {
+  border:none !important; box-shadow:none !important; flex:1; padding:9px 12px;
+  font-size:.95rem; background:transparent;
+}
+.mp-input-group input:focus { outline:none; box-shadow:none !important; }
 .mp-field .field-err { display:none; font-size:.78rem; color:var(--mp-err); margin-top:4px; }
 .mp-field.has-error .field-err { display:block; }
 .req { color:var(--mp-err); margin-left:2px; }
@@ -94,8 +112,18 @@
     <!-- Personal details -->
     <div class="mp-field" id="f-full_name">
       <label for="full_name">Full Name <span class="req">*</span></label>
-      <input type="text" id="full_name" name="full_name"
-             autocomplete="name" placeholder="Dr Jane Nkosi" required>
+      <div class="mp-input-group" id="full_name-group">
+        <select class="mp-title" id="title" name="title" aria-label="Title">
+          <option value="Dr" selected>Dr</option>
+          <option value="Prof">Prof</option>
+          <option value="Mr">Mr</option>
+          <option value="Mrs">Mrs</option>
+          <option value="Ms">Ms</option>
+          <option value="">—</option>
+        </select>
+        <input type="text" id="full_name" name="full_name"
+               autocomplete="name" placeholder="Jane Nkosi" required>
+      </div>
       <span class="field-err" id="err-full_name">Please enter your full name.</span>
     </div>
 
@@ -125,17 +153,21 @@
     <div class="mp-row">
       <div class="mp-field" id="f-hpcsa_number">
         <label for="hpcsa_number">HPCSA Number <span class="req">*</span></label>
-        <input type="text" id="hpcsa_number" name="hpcsa_number"
-               placeholder="MP0123456" required>
-        <span class="hint">Your Health Professions Council registration number</span>
-        <span class="field-err" id="err-hpcsa_number">Please enter your HPCSA number.</span>
+        <div class="mp-input-group">
+          <span class="mp-title" aria-hidden="true" style="cursor:default;">MP</span>
+          <input type="text" id="hpcsa_number" name="hpcsa_number"
+                 inputmode="numeric" placeholder="0123456" maxlength="8" required>
+        </div>
+        <span class="hint">Your Health Professions Council registration number (digits only)</span>
+        <span class="field-err" id="err-hpcsa_number">Enter 4–8 digits (MP prefix is added for you).</span>
       </div>
       <div class="mp-field" id="f-practice_number">
         <label for="practice_number">Practice Number <span class="req">*</span></label>
         <input type="text" id="practice_number" name="practice_number"
-               placeholder="0010000" required>
-        <span class="hint">Your medical billing practice number</span>
-        <span class="field-err" id="err-practice_number">Please enter your practice number.</span>
+               inputmode="numeric" placeholder="0010000"
+               maxlength="7" minlength="7" pattern="\d{7}" required>
+        <span class="hint">Your 7-digit medical billing practice number</span>
+        <span class="field-err" id="err-practice_number">Practice number must be exactly 7 digits.</span>
       </div>
     </div>
 
@@ -225,6 +257,24 @@
     if (inp) inp.addEventListener("input", function() { clearError(name); });
   });
 
+  // HPCSA: strip non-digits as they type (UI shows locked "MP" prefix)
+  const hpcsaInp = inputEl("hpcsa_number");
+  if (hpcsaInp) {
+    hpcsaInp.addEventListener("input", function() {
+      const cleaned = hpcsaInp.value.replace(/\D/g, "");
+      if (cleaned !== hpcsaInp.value) hpcsaInp.value = cleaned;
+    });
+  }
+
+  // Practice number: strip non-digits on input
+  const pracInp = inputEl("practice_number");
+  if (pracInp) {
+    pracInp.addEventListener("input", function() {
+      const cleaned = pracInp.value.replace(/\D/g, "").slice(0, 7);
+      if (cleaned !== pracInp.value) pracInp.value = cleaned;
+    });
+  }
+
   document.getElementById("doctor-form").addEventListener("submit", async function (e) {
     e.preventDefault();
 
@@ -241,6 +291,20 @@
     const email = vals.email;
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("email", "Please enter a valid email address.");
+      valid = false;
+    }
+
+    // HPCSA: 4–8 digits (MP prefix is implicit)
+    const hpcsaDigits = (vals.hpcsa_number || "").replace(/\D/g, "");
+    if (!/^\d{4,8}$/.test(hpcsaDigits)) {
+      setError("hpcsa_number", "Enter 4–8 digits (MP prefix is added for you).");
+      valid = false;
+    }
+
+    // Practice number: exactly 7 digits
+    const pracDigits = (vals.practice_number || "").replace(/\D/g, "");
+    if (!/^\d{7}$/.test(pracDigits)) {
+      setError("practice_number", "Practice number must be exactly 7 digits.");
       valid = false;
     }
 
@@ -267,15 +331,19 @@
     document.getElementById("form-alert").style.display = "none";
 
     try {
+      // Combine title + full_name; "Dr Jane Nkosi" etc.
+      const title = (document.getElementById("title") || {}).value || "";
+      const fullNameWithTitle = (title ? title + " " : "") + vals.full_name;
+
       const res = await frappe.call({
         method: "medic_plus.api.registration.register_doctor",
         args: {
-          full_name:            vals.full_name,
+          full_name:            fullNameWithTitle,
           email:                email,
           mobile:               (inputEl("mobile") || {}).value || "",
           practice_name:        vals.practice_name,
-          hpcsa_number:         vals.hpcsa_number,
-          practice_number:      vals.practice_number,
+          hpcsa_number:         "MP" + hpcsaDigits,
+          practice_number:      pracDigits,
           is_dispensing_doctor: document.getElementById("dispensing").checked ? 1 : 0,
         },
         freeze: false,

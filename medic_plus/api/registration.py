@@ -13,6 +13,12 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils.html_utils import escape_html
 
+from medic_plus.api.validators import (
+	validate_hpcsa_number,
+	validate_practice_number,
+	validate_sa_mobile,
+)
+
 
 # ---------------------------------------------------------------------------
 # Guest endpoints
@@ -37,8 +43,9 @@ def register_doctor(
 	email = email.strip().lower()
 	full_name = escape_html(full_name.strip())
 
-	if mobile:
-		_validate_mobile(mobile)
+	mobile = validate_sa_mobile(mobile)
+	hpcsa_number = validate_hpcsa_number(hpcsa_number)
+	practice_number = validate_practice_number(practice_number)
 	_validate_registration(email, practice_name=practice_name)
 
 	frappe.get_doc({
@@ -75,8 +82,7 @@ def register_patient(
 	email = email.strip().lower()
 	full_name = escape_html(full_name.strip())
 
-	if mobile:
-		_validate_mobile(mobile)
+	mobile = validate_sa_mobile(mobile)
 	_validate_registration(email)
 
 	frappe.get_doc({
@@ -146,12 +152,6 @@ def on_user_verified(doc, method=None) -> None:
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
-
-def _validate_mobile(mobile: str) -> None:
-	digits = "".join(c for c in mobile if c.isdigit())
-	if len(digits) > 10:
-		frappe.throw(_("Mobile number must be 10 digits (e.g. 0821234567)."), frappe.ValidationError)
-
 
 def _validate_registration(email: str, practice_name: str | None = None) -> None:
 	if frappe.db.exists("User", email):

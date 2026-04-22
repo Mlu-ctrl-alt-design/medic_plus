@@ -12,6 +12,12 @@ Wrapped in a transaction — any failure rolls back all inserts.
 import frappe
 from frappe import _
 
+from medic_plus.api.validators import (
+	validate_hpcsa_number,
+	validate_practice_number,
+	validate_sa_mobile,
+)
+
 
 @frappe.whitelist()
 def onboard_doctor(
@@ -99,6 +105,9 @@ def submit_registration_request(
 		frappe.ValidationError: If a pending/approved request or user already exists.
 	"""
 	email = email.strip().lower()
+	mobile = validate_sa_mobile(mobile)
+	hpcsa_number = validate_hpcsa_number(hpcsa_number)
+	practice_number = validate_practice_number(practice_number) if practice_number else ""
 
 	if frappe.db.exists("User", email):
 		frappe.throw(_("An account with this email already exists."), frappe.ValidationError)
@@ -118,9 +127,9 @@ def submit_registration_request(
 		"practice_name": practice_name.strip(),
 		"full_name": full_name.strip(),
 		"email": email,
-		"mobile": mobile.strip(),
-		"hpcsa_number": hpcsa_number.strip(),
-		"practice_number": (practice_number or "").strip(),
+		"mobile": mobile,
+		"hpcsa_number": hpcsa_number,
+		"practice_number": practice_number,
 		"is_dispensing_doctor": frappe.utils.cint(is_dispensing_doctor),
 		"status": "Pending",
 	})
