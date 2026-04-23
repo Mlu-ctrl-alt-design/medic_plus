@@ -307,6 +307,40 @@ def set_password_and_login(token: str, password: str) -> dict:
 	return {"redirect": "/app/practice"}
 
 
+# ---------------------------------------------------------------------------
+# Scheduler — retry stuck Paid-but-not-Provisioned PRRs
+# ---------------------------------------------------------------------------
+
+def retry_failed_provisioning() -> None:
+	"""Find PRRs stuck after a webhook failure and retry provisioning.
+
+	Targets rows where payment landed but provisioning never completed,
+	older than 5 minutes (so we don't race an in-flight webhook).
+	"""
+	from datetime import timedelta
+	from medic_plus.api.yoco import _handle_payment_succeeded
+
+	cutoff = frappe.utils.now_datetime() - timedelta(minutes=5)
+	stuck = frappe.get_all(
+		"Practice Registration Request",
+		filters={
+			"payment_status": "Paid",
+			"status": ["in", ["Pending", "Provisioning Failed"]],
+			"provisioned_practice": ["is", "not set"],
+			"modified": ["<", cutoff],
+		},
+		pluck="name",
+	)
+	for name in stuck:
+		try:
+			_handle_payment_succeeded({"metadata": {"request_name": name}})
+		except Exception:
+			frappe.log_error(
+				title=f"retry_failed_provisioning failed for {name}",
+				message=frappe.get_traceback(),
+			)
+
+
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=60, seconds=600)
 def signup_status(request_name: str) -> dict:

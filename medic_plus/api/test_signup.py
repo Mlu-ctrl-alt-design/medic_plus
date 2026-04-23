@@ -248,3 +248,42 @@ class TestYocoAutoProvision(FrappeTestCase):
 		self.assertEqual(row.payment_status, "Paid")
 		self.assertEqual(row.status, "Provisioning Failed")
 		self.assertIn("boom", row.provisioning_error or "")
+
+
+class TestRetryScheduler(FrappeTestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.mobile = "082" + "".join(str(random.randint(0, 9)) for _ in range(7))
+		self.req = frappe.get_doc({
+			"doctype": "Practice Registration Request",
+			"practice_name": f"Retry Practice {frappe.generate_hash(length=6)}",
+			"full_name": "Retry Tester",
+			"email": f"retry.{frappe.generate_hash(length=6)}@test.local",
+			"mobile": self.mobile,
+			"hpcsa_number": "MP44444",
+			"practice_number": "1234567",
+			"status": "Provisioning Failed",
+			"payment_status": "Paid",
+			"yoco_checkout_id": "ch_retry_xyz",
+			"provisioning_error": "simulated boom",
+		}).insert(ignore_permissions=True)
+		# Rewind `modified` past the 5-min cutoff so retry picks it up.
+		six_min_ago = frappe.utils.add_to_date(frappe.utils.now_datetime(), minutes=-6)
+		frappe.db.sql(
+			"UPDATE `tabPractice Registration Request` SET modified=%s WHERE name=%s",
+			(six_min_ago, self.req.name),
+		)
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def test_retry_provisions_stuck_request(self):
+		from medic_plus.api.signup import retry_failed_provisioning
+		retry_failed_provisioning()
+		row = frappe.db.get_value(
+			"Practice Registration Request", self.req.name,
+			["status", "provisioned_practice"],
+			as_dict=True,
+		)
+		self.assertEqual(row.status, "Provisioned")
+		self.assertTrue(row.provisioned_practice)

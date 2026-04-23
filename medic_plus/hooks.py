@@ -122,11 +122,12 @@ doc_events = {
 
 }
 
-# Scheduler — expire stale unmask requests every 15 minutes
+# Scheduler — expire stale unmask requests + retry stuck signup provisioning every 15 minutes
 scheduler_events = {
 	"cron": {
 		"*/15 * * * *": [
 			"medic_plus.api.data_access.expire_stale_requests",
+			"medic_plus.api.signup.retry_failed_provisioning",
 		],
 	},
 }
