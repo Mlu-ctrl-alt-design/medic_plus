@@ -55,9 +55,9 @@ class TestNotifyAdminsRelocated(FrappeTestCase):
 	"""notify_admins_of_new_request must be importable and callable from signup.py."""
 
 	def test_function_exists_and_accepts_prr(self):
+		from unittest.mock import patch
 		from medic_plus.api.signup import notify_admins_of_new_request
 		# Build a minimal PRR-shaped object; we only verify the import + no-throw.
-		# frappe.get_all returns [] in test because no Healthcare Administrator roles typically assigned.
 		doc = frappe._dict({
 			"name": "PRR-TEST-00000",
 			"practice_name": "X",
@@ -66,8 +66,11 @@ class TestNotifyAdminsRelocated(FrappeTestCase):
 			"hpcsa_number": "MP1",
 			"is_dispensing_doctor": 0,
 		})
-		# Should not raise even if no recipients exist.
-		notify_admins_of_new_request(doc)
+		# Real recipients (e.g. Administrator getting the Healthcare Administrator
+		# role on staging) would make Email Queue reject the unmailable name —
+		# stub sendmail so the assertion is purely "function executes cleanly".
+		with patch("medic_plus.api.signup.frappe.sendmail"):
+			notify_admins_of_new_request(doc)
 
 
 class TestCompletionToken(FrappeTestCase):
