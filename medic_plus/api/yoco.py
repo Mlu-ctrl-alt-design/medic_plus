@@ -36,6 +36,7 @@ from frappe.rate_limiter import rate_limit
 from medic_plus.api._provisioning import create_user, provision_doctor
 
 _YOCO_CHECKOUT_URL = "https://payments.yoco.com/api/checkouts"
+_YOCO_WEBHOOKS_URL = "https://payments.yoco.com/api/webhooks"
 #: Reject webhooks older than this (replay protection).
 _WEBHOOK_MAX_AGE_SECONDS = 5 * 60
 
@@ -197,6 +198,81 @@ def create_signup_checkout(request_name: str) -> dict:
 		"status": "ok",
 		"checkout_id": data.get("id"),
 		"redirect_url": data.get("redirectUrl"),
+	}
+
+
+# ---------------------------------------------------------------------------
+# Admin helper — register a webhook with Yoco and capture the signing secret
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def register_yoco_webhook(name: str = "Medic Plus signup") -> dict:
+	"""Call Yoco's POST /api/webhooks to register our handler URL.
+
+	Yoco returns the signing secret exactly once in the create response; we
+	persist it to Medic Plus Yoco Settings.webhook_secret so subsequent
+	payment.succeeded events pass HMAC verification.
+
+	Run from Desk's Bench Console as Administrator (or any System Manager).
+	Idempotent on the medic_plus side, but Yoco may reject duplicate
+	registrations for the same URL — delete the old subscription first via
+	their API or dashboard if you re-run.
+	"""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(
+			_("Only System Managers can register the Yoco webhook."),
+			frappe.PermissionError,
+		)
+	secret = _get_secret_key()
+	if not secret:
+		frappe.throw(
+			_("Yoco secret_key is not configured."),
+			frappe.ValidationError,
+		)
+
+	import requests
+	url = f"{frappe.utils.get_url()}/api/method/medic_plus.api.yoco.yoco_webhook"
+	resp = requests.post(
+		_YOCO_WEBHOOKS_URL,
+		json={"name": name, "url": url},
+		headers={
+			"Authorization": f"Bearer {secret}",
+			"Content-Type": "application/json",
+		},
+		timeout=15,
+	)
+	if resp.status_code not in (200, 201):
+		frappe.log_error(
+			title="Yoco webhook registration failed",
+			message=f"status={resp.status_code} body={resp.text[:1000]}",
+		)
+		frappe.throw(
+			_("Yoco rejected the webhook registration: {0}").format(resp.text[:300]),
+			frappe.ValidationError,
+		)
+
+	data = resp.json()
+	signing_secret = data.get("secret")
+	if not signing_secret:
+		frappe.throw(
+			_("Yoco did not return a signing secret. Response: {0}").format(resp.text[:300]),
+			frappe.ValidationError,
+		)
+
+	# Persist the secret. Falls back to Medic Plus Yoco Settings (canonical
+	# row) — accessor reads from there. Keep id around for later deletion.
+	doc = frappe.get_doc("Medic Plus Yoco Settings", "Medic Plus Yoco Settings")
+	doc.webhook_secret = signing_secret
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {
+		"status": "ok",
+		"webhook_id": data.get("id"),
+		"url": url,
+		"message": _(
+			"Webhook registered with Yoco and signing secret saved. Future payment.succeeded events will provision automatically."
+		),
 	}
 
 
