@@ -63,6 +63,7 @@ permission_query_conditions = {
 	"Inpatient Record": "medic_plus.api.permissions.get_inpatient_record_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
+	"Practitioner Schedule": "medic_plus.api.permissions.get_practitioner_schedule_permission_query",
 	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
 	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
 	# Data masking / consent

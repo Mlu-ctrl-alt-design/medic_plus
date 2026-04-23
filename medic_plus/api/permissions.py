@@ -140,6 +140,31 @@ def get_healthcare_practitioner_permission_query(user: str = None) -> str:
 	return f"`tabHealthcare Practitioner`.`name` IN ({escaped})"
 
 
+def get_practitioner_schedule_permission_query(user: str = None) -> str:
+	"""Practitioner Schedule visibility scoped to practitioners in the user's practice.
+
+	Healthcare's Practitioner Schedule has no `custom_practice` of its own;
+	instead each schedule references a practitioner via `practitioner` Link.
+	We reuse the same Practice Member → practitioner derivation as the
+	healthcare practitioner PQC.
+	"""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	member_practitioners = frappe.get_all(
+		"Practice Member",
+		filters={"practice": practice},
+		pluck="practitioner",
+	)
+	member_practitioners = [p for p in member_practitioners if p]
+	if not member_practitioners:
+		return "1=0"
+	escaped = ", ".join(frappe.db.escape(p) for p in member_practitioners)
+	return f"`tabPractitioner Schedule`.`practitioner` IN ({escaped})"
+
+
 def _get_company_filter(user: str, table: str, field: str = "company") -> str:
 	"""Return a WHERE clause scoping a financial doctype to the user's practice company."""
 	if _is_platform_admin(user):
