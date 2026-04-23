@@ -183,3 +183,68 @@ class TestSignupStatus(FrappeTestCase):
 		self.assertFalse(r["ready"])
 		self.assertIsNone(r["status"])
 		self.assertIsNone(r["payment_status"])
+
+
+class TestYocoAutoProvision(FrappeTestCase):
+	"""_handle_payment_succeeded must provision + emit completion token."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.mobile = "082" + "".join(str(random.randint(0, 9)) for _ in range(7))
+		self.req = frappe.get_doc({
+			"doctype": "Practice Registration Request",
+			"practice_name": f"Webhook Practice {frappe.generate_hash(length=6)}",
+			"full_name": "Webhook Tester",
+			"email": f"hook.{frappe.generate_hash(length=6)}@test.local",
+			"mobile": self.mobile,
+			"hpcsa_number": "MP33333",
+			"practice_number": "1234567",
+			"status": "Pending",
+			"payment_status": "Pending",
+			"yoco_checkout_id": "ch_test_abc",
+		}).insert(ignore_permissions=True)
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def _fake_yoco_payload(self):
+		return {"metadata": {"request_name": self.req.name}, "checkoutId": "ch_test_abc"}
+
+	def test_webhook_provisions_once(self):
+		from medic_plus.api.yoco import _handle_payment_succeeded
+		_handle_payment_succeeded(self._fake_yoco_payload())
+
+		row = frappe.db.get_value(
+			"Practice Registration Request", self.req.name,
+			["payment_status", "status", "provisioned_practice", "completion_email_sent_at"],
+			as_dict=True,
+		)
+		self.assertEqual(row.payment_status, "Paid")
+		self.assertEqual(row.status, "Provisioned")
+		self.assertTrue(row.provisioned_practice, "provisioned_practice not set")
+		self.assertTrue(row.completion_email_sent_at, "completion_email_sent_at not set")
+		self.assertTrue(frappe.db.exists("User", self.req.email))
+		self.assertTrue(frappe.db.exists("Practice", row.provisioned_practice))
+
+	def test_webhook_idempotent(self):
+		from medic_plus.api.yoco import _handle_payment_succeeded
+		_handle_payment_succeeded(self._fake_yoco_payload())
+		first_practice = frappe.db.get_value("Practice Registration Request", self.req.name, "provisioned_practice")
+		_handle_payment_succeeded(self._fake_yoco_payload())
+		second_practice = frappe.db.get_value("Practice Registration Request", self.req.name, "provisioned_practice")
+		self.assertEqual(first_practice, second_practice, "Double-fired webhook changed provisioned_practice")
+
+	def test_webhook_marks_failure_on_exception(self):
+		"""If provision_doctor raises, PRR flips to Provisioning Failed."""
+		from medic_plus.api.yoco import _handle_payment_succeeded
+		from unittest.mock import patch
+		with patch("medic_plus.api.yoco.provision_doctor", side_effect=RuntimeError("boom")):
+			_handle_payment_succeeded(self._fake_yoco_payload())
+		row = frappe.db.get_value(
+			"Practice Registration Request", self.req.name,
+			["payment_status", "status", "provisioning_error"],
+			as_dict=True,
+		)
+		self.assertEqual(row.payment_status, "Paid")
+		self.assertEqual(row.status, "Provisioning Failed")
+		self.assertIn("boom", row.provisioning_error or "")

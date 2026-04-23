@@ -33,6 +33,8 @@ import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
 
+from medic_plus.api._provisioning import create_user, provision_doctor
+
 _YOCO_CHECKOUT_URL = "https://payments.yoco.com/api/checkouts"
 #: Reject webhooks older than this (replay protection).
 _WEBHOOK_MAX_AGE_SECONDS = 5 * 60
@@ -233,10 +235,10 @@ def _verify_webhook_signature(
 
 
 def _handle_payment_succeeded(data: dict) -> None:
+	"""Mark PRR as Paid, provision the doctor, issue a completion token."""
 	request_name = (data.get("metadata") or {}).get("request_name")
 	checkout_id = data.get("checkoutId") or data.get("id")
 
-	# Prefer metadata.request_name; fall back to matching by checkout ID.
 	target = None
 	if request_name and frappe.db.exists("Practice Registration Request", request_name):
 		target = request_name
@@ -253,13 +255,108 @@ def _handle_payment_succeeded(data: dict) -> None:
 		)
 		return
 
+	req = frappe.get_doc("Practice Registration Request", target)
+
+	# Idempotency: if already provisioned, just ensure Paid is recorded and exit.
+	if req.provisioned_practice:
+		if req.payment_status != "Paid":
+			frappe.db.set_value(
+				"Practice Registration Request", target,
+				{"payment_status": "Paid", "yoco_paid_at": frappe.utils.now()},
+			)
+			frappe.db.commit()
+		return
+
+	# Mark Paid first so payment state is recorded even if provisioning fails.
 	frappe.db.set_value(
-		"Practice Registration Request",
-		target,
-		{
-			"payment_status": "Paid",
-			"yoco_paid_at": frappe.utils.now(),
-		},
+		"Practice Registration Request", target,
+		{"payment_status": "Paid", "yoco_paid_at": frappe.utils.now()},
+	)
+	frappe.db.commit()
+
+	try:
+		# Email verification happens via the completion-token flow, so the
+		# User can be created here without going through Frappe's sign_up.
+		if not frappe.db.exists("User", req.email):
+			create_user(
+				full_name=req.full_name,
+				email=req.email,
+				mobile=req.mobile or "",
+				roles=["Practice Doctor", "Practice Admin"],
+			)
+
+		result = provision_doctor(
+			full_name=req.full_name,
+			email=req.email,
+			mobile=req.mobile or "",
+			hpcsa_number=req.hpcsa_number or "",
+			practice_number=req.practice_number or "",
+			practice_name=req.practice_name,
+			is_dispensing_doctor=bool(req.is_dispensing_doctor),
+		)
+
+		frappe.db.set_value(
+			"Practice Registration Request", target,
+			{
+				"status": "Provisioned",
+				"provisioned_practice": result["practice"],
+				"provisioning_attempted_at": frappe.utils.now(),
+				"provisioning_error": None,
+			},
+		)
+		frappe.db.commit()
+
+		_emit_completion_email(target, req.email, req.practice_name)
+
+	except Exception as exc:
+		frappe.db.rollback()
+		frappe.db.set_value(
+			"Practice Registration Request", target,
+			{
+				"status": "Provisioning Failed",
+				"provisioning_attempted_at": frappe.utils.now(),
+				"provisioning_error": str(exc),
+			},
+		)
+		frappe.db.commit()
+		frappe.log_error(
+			title=f"Signup provisioning failed for {req.email}",
+			message=frappe.get_traceback(),
+		)
+
+
+def _emit_completion_email(request_name: str, email: str, practice_name: str) -> None:
+	"""Issue the signed completion token and email the applicant.
+
+	In developer_mode the URL is also logged to Error Log so staging devs can
+	recover it when mute_emails=1.
+	"""
+	from medic_plus.api.signup import issue_completion_token
+
+	token = issue_completion_token(email=email, request_name=request_name)
+	completion_url = f"{frappe.utils.get_url()}/signup/complete?token={token}"
+
+	if frappe.conf.get("developer_mode"):
+		frappe.log_error(
+			title=f"[DEV] Completion URL for {email}",
+			message=completion_url,
+		)
+
+	frappe.sendmail(
+		recipients=[email],
+		subject=_("Your Medic Plus practice is ready"),
+		message=_(
+			"<p>Your practice <strong>{0}</strong> has been activated.</p>"
+			"<p>Click the button below within 12 hours to set your password and log in:</p>"
+			"<p><a href=\"{1}\" style=\"background:#2563eb;color:#fff;padding:10px 20px;"
+			"border-radius:6px;text-decoration:none;font-weight:600;\">Set your password</a></p>"
+			"<p>If the link expires, you can reset your password from the login page.</p>"
+		).format(practice_name, completion_url),
+		now=False,
+	)
+	frappe.db.set_value(
+		"Practice Registration Request", request_name,
+		"completion_email_sent_at", frappe.utils.now(),
 	)
 	frappe.db.commit()
 
