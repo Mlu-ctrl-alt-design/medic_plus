@@ -232,7 +232,7 @@
 
     try {
       const res = await frappe.call({
-        method: "medic_plus.api.registration.register_patient",
+        method: "medic_plus.api.patient_registration.register_patient",
         args: {
           full_name:          full_name,
           email:              email,
