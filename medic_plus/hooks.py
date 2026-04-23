@@ -8,7 +8,7 @@ app_license = "mit"
 required_apps = ["frappe/healthcare"]
 
 # Website assets — included on all public website pages
-web_include_js = ["/assets/medic_plus/js/register_links.js"]
+web_include_js = ["/assets/medic_plus/js/signup_link.js"]
 
 # Fixtures — synced on bench migrate
 fixtures = [
