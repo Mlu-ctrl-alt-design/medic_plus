@@ -47,18 +47,34 @@ _WEBHOOK_MAX_AGE_SECONDS = 5 * 60
 # sites that haven't migrated yet, and to site_config keys for ops overrides.
 # ---------------------------------------------------------------------------
 
+_YOCO_SETTINGS_NAME = "Medic Plus Yoco Settings"
+
+
 def _get_yoco_settings_doc():
-	"""Return the Medic Plus Yoco Settings single doc, or None if unavailable.
+	"""Return the Medic Plus Yoco Settings doc, or None if unavailable.
+
+	The DocType is a regular (non-Single) doctype; ops creates one row named
+	exactly "Medic Plus Yoco Settings" via the Desk and pastes the credentials
+	into it. If multiple rows exist (e.g. ops set up several merchants),
+	the first by creation is used.
 
 	Cached on frappe.local for the duration of the request.
 	"""
 	cached = getattr(frappe.local, "_medic_yoco_settings", None)
 	if cached is not None:
 		return cached or None
+	doc = False
 	try:
-		doc = frappe.get_cached_doc("Medic Plus Yoco Settings", "Medic Plus Yoco Settings")
+		if frappe.db.exists("Medic Plus Yoco Settings", _YOCO_SETTINGS_NAME):
+			doc = frappe.get_cached_doc("Medic Plus Yoco Settings", _YOCO_SETTINGS_NAME)
+		else:
+			fallback = frappe.db.get_value(
+				"Medic Plus Yoco Settings", {}, "name", order_by="creation asc"
+			)
+			if fallback:
+				doc = frappe.get_cached_doc("Medic Plus Yoco Settings", fallback)
 	except Exception:
-		doc = False  # sentinel for "tried but failed"
+		doc = False
 	frappe.local._medic_yoco_settings = doc
 	return doc or None
 

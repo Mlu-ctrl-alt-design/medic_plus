@@ -56,7 +56,7 @@
    "description": "Amount charged at doctor signup, in ZAR cents. e.g. 49900 = R499.00"
   }
  ],
- "is_single": 1,
+ "autoname": "Prompt",
  "links": [],
  "modified": "2026-04-23 00:00:00.000000",
  "modified_by": "Administrator",
