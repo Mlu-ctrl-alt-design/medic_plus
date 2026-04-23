@@ -1,0 +1,180 @@
+{% extends "templates/web.html" %}
+{% block title %}Set your password — Medic Plus{% endblock %}
+{% block page_content %}
+<style>
+:root { --mp-primary:#2563eb; --mp-err:#dc2626; --mp-ok:#059669; }
+.mp-wrap { max-width:480px; margin:64px auto; padding:0 16px; }
+.mp-wrap h1 { font-size:1.45rem; margin:0 0 8px; color:#111827; }
+.mp-wrap .sub { color:#6b7280; line-height:1.55; font-size:.95rem; margin-bottom:24px; }
+.mp-loading { text-align:center; padding:40px 0; color:#6b7280; font-size:.95rem; }
+.mp-loading .spin {
+  width:40px; height:40px; margin:0 auto 14px;
+  border:3px solid #e5e7eb; border-top-color:var(--mp-primary);
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.mp-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; margin-bottom:18px; font-size:.92rem; }
+.mp-card strong { color:#111827; }
+.mp-field { margin-bottom:16px; }
+.mp-field label { display:block; font-size:.84rem; font-weight:600; margin-bottom:5px; color:#374151; }
+.mp-field input {
+  width:100%; padding:9px 12px; border:1.5px solid #d1d5db;
+  border-radius:8px; font-size:.95rem; box-sizing:border-box;
+  transition:border-color .2s, box-shadow .2s; background:#fff;
+}
+.mp-field input:focus { outline:none; border-color:var(--mp-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.mp-field.has-error input { border-color:var(--mp-err); }
+.mp-field .field-err { display:none; font-size:.78rem; color:var(--mp-err); margin-top:4px; }
+.mp-field.has-error .field-err { display:block; }
+.mp-rules { font-size:.78rem; color:#9ca3af; margin:-6px 0 14px; }
+.mp-btn {
+  width:100%; padding:12px; background:var(--mp-primary); color:#fff;
+  border:none; border-radius:8px; font-size:1rem; font-weight:600;
+  cursor:pointer; transition:background .2s, opacity .2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.mp-btn:hover:not(:disabled) { background:#1d4ed8; }
+.mp-btn:disabled { opacity:.55; cursor:not-allowed; }
+.mp-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.4);
+  border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; display:none; }
+.mp-alert { display:none; margin-top:14px; padding:12px 14px; border-radius:8px; font-size:.9rem; }
+.mp-alert.error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.mp-expired {
+  text-align:center; padding:40px 16px;
+}
+.mp-expired .icon { font-size:3rem; }
+.mp-expired h2 { font-size:1.25rem; margin:14px 0 8px; color:#111827; }
+.mp-expired p { color:#6b7280; margin-bottom:20px; }
+.mp-link-btn {
+  display:inline-block; padding:10px 20px; background:var(--mp-primary);
+  color:#fff; border-radius:8px; font-weight:600; text-decoration:none;
+}
+</style>
+
+<div class="mp-wrap">
+  <div class="mp-loading" id="loading">
+    <div class="spin"></div>
+    Verifying your activation link…
+  </div>
+
+  <div id="form-block" style="display:none;">
+    <h1>Set your password</h1>
+    <p class="sub">One last step — create a password for your new account.</p>
+
+    <div class="mp-card">
+      Activating <strong id="acct-email"></strong>
+    </div>
+
+    <form id="pwd-form" novalidate>
+      <div class="mp-field" id="f-password">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" minlength="10" required>
+        <span class="field-err">Password must be at least 10 characters.</span>
+      </div>
+      <div class="mp-field" id="f-confirm_password">
+        <label for="confirm_password">Confirm password</label>
+        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
+        <span class="field-err">Passwords must match.</span>
+      </div>
+      <p class="mp-rules">At least 10 characters. Both fields must match.</p>
+
+      <button type="submit" class="mp-btn" id="submit">
+        <span class="mp-spinner" id="spin"></span>
+        <span id="lbl">Set password &amp; log in</span>
+      </button>
+      <div class="mp-alert" id="alert"></div>
+    </form>
+  </div>
+
+  <div id="expired-block" class="mp-expired" style="display:none;">
+    <div class="icon">⏱️</div>
+    <h2>Link expired</h2>
+    <p>This activation link has expired or has already been used.</p>
+    <a class="mp-link-btn" href="/login?redirect-to=/app/practice">Reset your password</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  const TOKEN = {{ frappe.utils.escape_html(token) | tojson }};
+
+  function $(id) { return document.getElementById(id); }
+  function show(id, display) { $(id).style.display = display || "block"; }
+  function hide(id) { $(id).style.display = "none"; }
+
+  function showErr(name, msg) {
+    const w = $("f-" + name);
+    w.classList.add("has-error");
+    if (msg) w.querySelector(".field-err").textContent = msg;
+  }
+  function clearErr(name) { $("f-" + name).classList.remove("has-error"); }
+  function showAlert(text) {
+    const a = $("alert");
+    a.textContent = text;
+    a.className = "mp-alert error";
+    a.style.display = "block";
+  }
+  function setBusy(b) {
+    $("submit").disabled = !!b;
+    $("spin").style.display = b ? "block" : "none";
+  }
+  function parseServerError(err) {
+    try {
+      if (err._server_messages) {
+        const arr = JSON.parse(err._server_messages);
+        const obj = typeof arr[0] === "string" ? JSON.parse(arr[0]) : arr[0];
+        return obj.message || String(obj);
+      }
+    } catch (e) {}
+    return err.message || "Could not set password. Please try again.";
+  }
+
+  // Verify the token first
+  if (!TOKEN) {
+    hide("loading");
+    show("expired-block");
+    return;
+  }
+  frappe.call({
+    method: "medic_plus.api.signup.verify_signup_completion_token",
+    args: { token: TOKEN },
+  }).then(function (r) {
+    hide("loading");
+    const m = (r && r.message) || {};
+    if (!m.email) { show("expired-block"); return; }
+    $("acct-email").textContent = m.email;
+    show("form-block");
+  }).catch(function () {
+    hide("loading");
+    show("expired-block");
+  });
+
+  // Password form submit
+  $("password").addEventListener("input", function () { clearErr("password"); });
+  $("confirm_password").addEventListener("input", function () { clearErr("confirm_password"); });
+
+  $("pwd-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    hide("alert");
+    const pw = $("password").value;
+    const cp = $("confirm_password").value;
+    let ok = true;
+    if (pw.length < 10) { showErr("password", "Password must be at least 10 characters."); ok = false; }
+    if (pw !== cp) { showErr("confirm_password", "Passwords must match."); ok = false; }
+    if (!ok) return;
+
+    setBusy(true);
+    frappe.call({
+      method: "medic_plus.api.signup.set_password_and_login",
+      args: { token: TOKEN, password: pw },
+    }).then(function (r) {
+      const m = (r && r.message) || {};
+      window.location = m.redirect || "/app/practice";
+    }).catch(function (err) {
+      setBusy(false);
+      showAlert(parseServerError(err));
+    });
+  });
+})();
+</script>
+{% endblock %}
