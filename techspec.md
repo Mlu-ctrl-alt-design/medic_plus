@@ -253,6 +253,22 @@ Key lessons embedded in `CLAUDE.md` (Tests → UI Tests section):
 
 ---
 
+## 2026-04-22 — Phase 6: Doctor Self-Registration (OTP + Yoco)
+
+- `/signup` funnel replaces `/register` and `/register/doctor`.
+- Yoco webhook is the sole provisioning trigger (auto-provisions `provision_doctor` on `payment.succeeded`).
+- Post-payment UX uses a signed one-time completion URL (12-hr TTL, SHA-256 hashed in Redis at rest) instead of Frappe's password reset.
+- 15-min scheduler retries any PRR stuck in `Paid but not Provisioned`.
+- `Registration Request` DocType dropped; orphan Users cleaned up by patch (System Users skipped and logged for manual review).
+- Admin `onboard_doctor` refactored to share `provision_doctor` (now emits Company + POS + Checklist + Folder).
+
+Production fixes surfaced by the E2E test:
+- `_handle_payment_succeeded` runs as Administrator (Healthcare Practitioner.on_update needs User Permission insert; webhook signature is verified upstream so the elevation is safe).
+- `complete.html` and `success.html` gate their immediate `frappe.call` on `whenFrappeReady` — the inline script runs before `frappe-web.bundle` is parsed.
+- Form-handler errors use the `.then(success, error)` tuple form; `.catch` doesn't always fire on Frappe XHR rejections.
+
+---
+
 ## Roadmap
 
 - [ ] Prescription print format — Jinja, per-practice letterhead ✅ Done (Phase 1D)
