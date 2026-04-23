@@ -1,0 +1,260 @@
+{% extends "templates/web.html" %}
+{% block title %}Patient Registration — Medic Plus{% endblock %}
+{% block page_content %}
+<style>
+:root { --mp-primary:#2563eb; --mp-err:#dc2626; }
+.mp-wrap { max-width:500px; margin:48px auto; padding:0 16px; }
+.mp-wrap h1 { font-size:1.65rem; margin-bottom:4px; color:#111827; }
+.mp-wrap .sub { color:#6b7280; margin-bottom:32px; font-size:.95rem; }
+
+.mp-field { margin-bottom:20px; }
+.mp-field label { display:block; font-size:.84rem; font-weight:600; margin-bottom:5px; color:#374151; }
+.mp-field input,
+.mp-field select {
+  width:100%; padding:9px 12px; border:1.5px solid #d1d5db;
+  border-radius:8px; font-size:.95rem; box-sizing:border-box;
+  transition:border-color .2s, box-shadow .2s; background:#fff;
+}
+.mp-field input:focus,
+.mp-field select:focus { outline:none; border-color:var(--mp-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.mp-field input.invalid { border-color:var(--mp-err); }
+.mp-field input.invalid:focus { box-shadow:0 0 0 3px rgba(220,38,38,.12); }
+.mp-field .field-err { display:none; font-size:.78rem; color:var(--mp-err); margin-top:4px; }
+.mp-field.has-error .field-err { display:block; }
+.mp-field .hint { font-size:.78rem; color:#9ca3af; margin-top:3px; display:block; }
+.req { color:var(--mp-err); margin-left:2px; }
+
+.mp-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+.mp-btn {
+  width:100%; padding:12px; background:var(--mp-primary); color:#fff;
+  border:none; border-radius:8px; font-size:1rem; font-weight:600;
+  cursor:pointer; margin-top:4px; transition:background .2s, opacity .2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.mp-btn:hover:not(:disabled) { background:#1d4ed8; }
+.mp-btn:disabled { opacity:.55; cursor:not-allowed; }
+.mp-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.4);
+  border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; display:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.mp-alert { margin-top:18px; padding:14px 16px; border-radius:8px; font-size:.9rem; display:none; line-height:1.45; }
+.mp-alert.success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.mp-alert.error   { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+
+.mp-success { display:none; text-align:center; padding:40px 20px; }
+.mp-success .check { font-size:3rem; margin-bottom:16px; }
+.mp-success h2 { font-size:1.4rem; margin-bottom:8px; }
+.mp-success p { color:#6b7280; font-size:.95rem; margin-bottom:6px; }
+.mp-success .steps { text-align:left; background:#f9fafb; border-radius:10px;
+  padding:18px 20px; margin-top:24px; list-style:none; }
+.mp-success .steps li { padding:6px 0; font-size:.9rem; color:#374151;
+  display:flex; align-items:center; gap:10px; }
+.mp-success .steps li::before { content:attr(data-n);
+  width:22px; height:22px; background:var(--mp-primary); color:#fff;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:.72rem; font-weight:700; flex-shrink:0; }
+
+.mp-footer { margin-top:24px; font-size:.875rem; color:#9ca3af; text-align:center; }
+.mp-footer a { color:var(--mp-primary); text-decoration:none; font-weight:500; }
+
+@media(max-width:500px){
+  .mp-row { grid-template-columns:1fr; }
+  .mp-wrap { margin-top:28px; }
+}
+</style>
+
+<div class="mp-wrap">
+  <h1>Patient Registration</h1>
+  <p class="sub">Create your account to book appointments and access your health records.</p>
+
+  <form id="patient-form" novalidate>
+
+    <div class="mp-field" id="f-full_name">
+      <label for="full_name">Full Name <span class="req">*</span></label>
+      <input type="text" id="full_name" name="full_name"
+             autocomplete="name" placeholder="John Smith" required>
+      <span class="field-err" id="err-full_name">Please enter your full name.</span>
+    </div>
+
+    <div class="mp-field" id="f-email">
+      <label for="email">Email Address <span class="req">*</span></label>
+      <input type="email" id="email" name="email"
+             autocomplete="email" placeholder="john@example.com" required>
+      <span class="field-err" id="err-email">Please enter a valid email address.</span>
+    </div>
+
+    <div class="mp-row">
+      <div class="mp-field" id="f-mobile">
+        <label for="mobile">Mobile Number</label>
+        <input type="tel" id="mobile" name="mobile"
+               autocomplete="tel" placeholder="0821234567" maxlength="10">
+        <span class="field-err" id="err-mobile">Mobile number must be 10 digits (e.g. 0821234567).</span>
+      </div>
+      <div class="mp-field">
+        <label for="date_of_birth">Date of Birth</label>
+        <input type="date" id="date_of_birth" name="date_of_birth"
+               max="{{ today or '' }}" autocomplete="bday">
+        <span class="hint">Used to verify your identity</span>
+      </div>
+    </div>
+
+    {% if practices %}
+    <div class="mp-field">
+      <label for="preferred_practice">Preferred Practice</label>
+      <select id="preferred_practice" name="preferred_practice">
+        <option value="">— Select a practice (optional) —</option>
+        {% for p in practices %}
+        <option value="{{ p.name }}">{{ p.practice_name }}</option>
+        {% endfor %}
+      </select>
+      <span class="hint">You can also link a practice after logging in</span>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="mp-btn" id="submit-btn">
+      <span class="mp-spinner" id="spinner"></span>
+      <span id="btn-label">Create Account</span>
+    </button>
+    <div class="mp-alert" id="form-alert"></div>
+  </form>
+
+  <div class="mp-success" id="success-panel">
+    <div class="check">✉️</div>
+    <h2>Check your inbox</h2>
+    <p>We've sent a verification link to <strong id="sent-email"></strong></p>
+    <p>Click the link in the email to activate your account and set your password.</p>
+    <ul class="mp-steps steps">
+      <li data-n="1">Open the verification email from Medic Plus</li>
+      <li data-n="2">Click the link to verify your address</li>
+      <li data-n="3">Set your password when prompted</li>
+      <li data-n="4">Book your first appointment</li>
+    </ul>
+  </div>
+
+  <p class="mp-footer">
+    Already have an account? <a href="/login">Sign in</a>
+    &nbsp;·&nbsp;
+    <a href="/register">← Back</a>
+  </p>
+</div>
+
+<script>
+(function () {
+  function fieldEl(name) { return document.getElementById("f-" + name); }
+  function inputEl(name) { return document.getElementById(name); }
+
+  function setError(name, msg) {
+    const wrap = fieldEl(name);
+    const inp  = inputEl(name);
+    const err  = document.getElementById("err-" + name);
+    if (!wrap) return;
+    wrap.classList.add("has-error");
+    if (inp) inp.classList.add("invalid");
+    if (err && msg) err.textContent = msg;
+  }
+
+  function clearError(name) {
+    const wrap = fieldEl(name);
+    const inp  = inputEl(name);
+    if (!wrap) return;
+    wrap.classList.remove("has-error");
+    if (inp) inp.classList.remove("invalid");
+  }
+
+  function showAlert(text, type) {
+    const el = document.getElementById("form-alert");
+    el.innerHTML = '<span style="margin-right:6px">' + (type === "error" ? "⚠" : "✓") + '</span>' + text;
+    el.className = "mp-alert " + type;
+    el.style.display = "block";
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function parseServerError(err) {
+    try {
+      if (err._server_messages) {
+        const arr = JSON.parse(err._server_messages);
+        const obj = typeof arr[0] === "string" ? JSON.parse(arr[0]) : arr[0];
+        return obj.message || String(obj);
+      }
+    } catch (e) {}
+    return err.message || "Registration failed. Please try again.";
+  }
+
+  ["full_name", "email", "mobile"].forEach(function(name) {
+    const inp = inputEl(name);
+    if (inp) inp.addEventListener("input", function() { clearError(name); });
+  });
+
+  document.getElementById("patient-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    let valid = true;
+    const full_name = (inputEl("full_name").value || "").trim();
+    const email     = (inputEl("email").value || "").trim();
+
+    if (!full_name) { setError("full_name", null); valid = false; }
+    else clearError("full_name");
+
+    if (!email) {
+      setError("email", "Please enter your email address.");
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("email", "Please enter a valid email address.");
+      valid = false;
+    } else {
+      clearError("email");
+    }
+
+    const mobileVal = (inputEl("mobile") || {}).value || "";
+    if (mobileVal && mobileVal.replace(/\D/g, "").length > 10) {
+      setError("mobile", "Mobile number must be 10 digits (e.g. 0821234567).");
+      valid = false;
+    } else {
+      clearError("mobile");
+    }
+
+    if (!valid) {
+      showAlert("Please fix the highlighted fields before continuing.", "error");
+      return;
+    }
+
+    const btn     = document.getElementById("submit-btn");
+    const spinner = document.getElementById("spinner");
+    const label   = document.getElementById("btn-label");
+    const dobEl   = inputEl("date_of_birth");
+    const practEl = inputEl("preferred_practice");
+
+    btn.disabled = true;
+    spinner.style.display = "block";
+    label.textContent = "Creating account…";
+    document.getElementById("form-alert").style.display = "none";
+
+    try {
+      const res = await frappe.call({
+        method: "medic_plus.api.patient_registration.register_patient",
+        args: {
+          full_name:          full_name,
+          email:              email,
+          mobile:             (inputEl("mobile") || {}).value || "",
+          date_of_birth:      dobEl ? dobEl.value || null : null,
+          preferred_practice: practEl ? practEl.value || null : null,
+        },
+        freeze: false,
+      });
+
+      if (res.message && res.message.status === "pending") {
+        document.getElementById("patient-form").style.display = "none";
+        document.getElementById("sent-email").textContent = email;
+        document.getElementById("success-panel").style.display = "block";
+      }
+    } catch (err) {
+      showAlert(parseServerError(err), "error");
+      btn.disabled = false;
+      spinner.style.display = "none";
+      label.textContent = "Create Account";
+    }
+  });
+}());
+</script>
+{% endblock %}

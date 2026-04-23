@@ -24,7 +24,7 @@ Guidance for Claude Code working in this repository.
 | Membership | `Practice Member` (User → Practice, role: Admin/Doctor/Receptionist) |
 | Data isolation | Permission Query Conditions in `api/permissions.py` + `hooks.py` |
 | Custom fields | Fixtures in `fixtures/custom_field.json` — never create via UI |
-| Frontend | `marley_frontend` app (React SPA) — referred to as "Moli" in some PRD docs |
+| Frontend | `marley_frontend` app (Vue 3 SPA) — referred to as "Moli" in some PRD docs |
 
 **Never use Company or Frappe User Permissions for tenant scoping.** The isolation model is entirely `custom_practice` Link fields + Permission Query Conditions.
 
@@ -120,6 +120,9 @@ test: add cross-tenant isolation tests for Patient
   - `api/onboarding.py` — tenant provisioning
   - `api/dispense.py` — stock dispensing
   - `api/booking.py` — patient self-booking
+  - `api/billing.py` — subscription plans, feature gates, Paystack
+  - `api/inpatient.py` — inpatient dashboard stats and patient list
+  - `api/data_access.py` — patient data masking, two-sided OTP consent
   - `api/permissions.py` — permission query conditions (not endpoints)
   - `api/doc_events.py` — document lifecycle hooks (not endpoints)
 - Always guard with role check: `if "System Manager" not in frappe.get_roles(): frappe.throw(...)`
@@ -135,7 +138,7 @@ test: add cross-tenant isolation tests for Patient
 #### Unit / integration tests (Python)
 - Use `frappe.tests.utils.FrappeTestCase`
 - Every feature must have a cross-tenant isolation test: create 2 Practices, assert Doctor A cannot read Doctor B's records
-- Run: `bench --site medic-demo-staging.thedaystar.co.za run-tests --app medic_plus`
+- Run: `bench --site medic-demo-staging.thedaystar.co.za run-tests --app medic_plus --skip-before-tests`
 
 #### UI tests (Playwright)
 - **Every new feature must ship with Playwright UI tests** alongside the feature code — not as a follow-up.
@@ -156,11 +159,36 @@ test: add cross-tenant isolation tests for Patient
   ```
 - All tests must pass (skips are acceptable when staging has no data; failures are not).
 
+### Form Tours
+- Every new DocType **must** have a Form Tour that auto-launches on new documents.
+- File path: `medic_plus/medic_plus/form_tour/{snake_name}_form_tour/{snake_name}_form_tour.json`
+- Fields: `is_standard: 1`, `module: "Medic Plus"`, `save_on_complete: 1`, `reference_doctype: "<DocType>"`
+- Trigger from `{doctype}.js` in the doctype directory:
+  ```javascript
+  frappe.ui.form.on("<DocType>", {
+      refresh(frm) {
+          if (frm.is_new()) {
+              frm.tour.init({ tour_name: "<DocType> Form Tour" }).then(() => frm.tour.start());
+          }
+      },
+  });
+  ```
+- Tour steps: cover every user-facing required field with a `has_next_condition` guard; optional fields get a step but no condition.
+- The `form_tour/` directory is auto-synced on `bench migrate` — no fixtures entry needed.
+- After adding/changing `{doctype}.js`, run `bench build --app medic_plus`.
+
+### DocType Naming
+- **Never use `naming_rule: UUID`** for any doctype in this app.
+- Use `"naming_rule": "Expression (old style)"` with a meaningful prefix: e.g. `PRAC-.#####`, `PM-.#####`, `SN-.#####`.
+- Format: `{PREFIX}-.#####` — uppercase 2–4 char prefix, dash, 5-digit zero-padded counter.
+- Existing doctypes: Practice → `PRAC-.#####`, Practice Member → `PM-.#####`.
+
 ### Never
 - Modify ERPNext, Healthcare, or any other app's source files
 - Use `frappe.db.sql()` raw queries where ORM works
 - Commit `.pyc` files, `__pycache__`, or `node_modules`
 - Use `git add -A` or `git add .`
+- Use `naming_rule: UUID` for any doctype
 
 ---
 
@@ -171,12 +199,18 @@ test: add cross-tenant isolation tests for Patient
 | `Practice` | Medic Plus | Tenant entity — one per doctor/clinic |
 | `Practice Member` | Medic Plus | Links User → Practice with role |
 | `Sick Note` | Medic Plus | Submittable sick note with SA compliance fields |
+| `Practice Setup Checklist` | Medic Plus | Six-step onboarding tracker per practice |
+| `Data Unmask Request` | Medic Plus | POPIA two-sided OTP consent state machine |
+| `Clinical Access Log` | Medic Plus | Append-only audit trail for data unmask events |
+| `Medic Plus Settings` | Medic Plus | Platform-wide config (Paystack keys, etc.) |
+| `Practice Registration Request` | Medic Plus | Pending self-registration (Phase 6) |
 
 ## Custom Fields on Standard Doctypes
 
 | Doctype | Field | Type | Purpose |
 |---------|-------|------|---------|
 | Patient | `custom_practice` | Link → Practice | Tenant scoping |
+| Patient | `custom_sa_id_number` | Data | SA ID (POPIA-protected, masked in UI) |
 | Patient Appointment | `custom_practice` | Link → Practice | Tenant scoping |
 | Patient Encounter | `custom_practice` | Link → Practice | Tenant scoping |
 | Inpatient Record | `custom_practice` | Link → Practice | Tenant scoping |
@@ -196,7 +230,7 @@ All defined in `api/permissions.py`, registered in `hooks.py`:
 | Doctype | Query function |
 |---------|---------------|
 | Practice | `get_practice_permission_query` |
-| Practice Member | `get_practice_permission_query` |
+| Practice Member | `get_practice_member_permission_query` |
 | Patient | `get_patient_permission_query` |
 | Patient Appointment | `get_patient_appointment_permission_query` |
 | Patient Encounter | `get_patient_encounter_permission_query` |
@@ -205,6 +239,8 @@ All defined in `api/permissions.py`, registered in `hooks.py`:
 | Healthcare Practitioner | `get_healthcare_practitioner_permission_query` |
 | Stock Entry | `get_stock_entry_permission_query` |
 | Warehouse | `get_warehouse_permission_query` |
+| Data Unmask Request | `get_data_unmask_request_permission_query` |
+| Clinical Access Log | `get_clinical_access_log_permission_query` |
 
 `Healthcare Administrator` role bypasses all queries (platform admin).
 
@@ -217,7 +253,7 @@ All defined in `api/permissions.py`, registered in `hooks.py`:
 bench --site medic-demo-staging.thedaystar.co.za migrate
 
 # Run app tests
-bench --site medic-demo-staging.thedaystar.co.za run-tests --app medic_plus
+bench --site medic-demo-staging.thedaystar.co.za run-tests --app medic_plus --skip-before-tests
 
 # Export fixtures after UI changes (use sparingly — prefer code-first)
 bench --site medic-demo-staging.thedaystar.co.za export-fixtures --app medic_plus
@@ -227,6 +263,9 @@ bench --site medic-demo-staging.thedaystar.co.za clear-cache
 
 # Restart workers after Python changes
 bench restart
+
+# Build JS/CSS assets after doctype JS changes
+bench build --app medic_plus
 ```
 
 ---
@@ -237,7 +276,53 @@ All repos under `github.com/mlu-ctrl-alt-design`.
 
 ---
 
-## Phase 1 Status
+## Frontend Note
+
+The `marley_frontend` app is a **Vue 3 SPA** (not React). Components use `.vue` SFC syntax, state is Pinia, routing is Vue Router, API calls use Frappe UI's `createResource`. The PRD docs that say "React" are incorrect — ignore those references and use Vue 3 patterns.
+
+---
+
+## Testing Notes
+
+### Running tests
+
+```bash
+bench --site medic-demo-staging.thedaystar.co.za run-tests --app medic_plus --skip-before-tests
+```
+
+Always use `--skip-before-tests` on this site. Without it, ERPNext's `BootStrapTestData` (which runs at module import time) tries to create test companies and price lists that already exist on this staging site, causing the test runner to crash before any tests run.
+
+### Test record traversal guard
+
+Any new DocType that links (directly or transitively) to `Company`, `Healthcare Practitioner`, or `Employee` **must** have a `test_practice.py`-style guard to prevent the test framework from traversing into ERPNext test modules:
+
+```python
+# In test_<your_doctype>.py for any doctype that links to Practice:
+IGNORE_TEST_RECORD_DEPENDENCIES = ["Company", "Healthcare Practitioner"]
+```
+
+Without this, `compat_preload_test_records_upfront` will import ERPNext test modules, which triggers `BootStrapTestData()` at module level.
+
+### PQC testing pattern
+
+Do NOT test PQCs via `frappe.get_all()` after `frappe.set_user()` — `frappe.get_roles()` reads cached roles from the session. Instead call the PQC function directly with the target user:
+
+```python
+condition = get_my_doctype_permission_query(user="doctor@example.com")
+self.assertIn("PRAC-00001", condition)
+```
+
+### Python 3.14 LocalProxy mock setup
+
+When patching Frappe internals, bind the LocalProxy ContextVar in `setUpModule()` to prevent `RuntimeError` from unbound proxies. See `medic_plus/api/test_data_access.py` for the authoritative example.
+
+### One-time site setup (already done, document for reference)
+
+The "2026-2027" fiscal year was scoped to "Khwezi Medical Software Solutions" by adding a row to `tabFiscal Year Company`. This prevents global test fiscal year creation from conflicting with it.
+
+---
+
+## Phase Status
 
 | Phase | Branch | Status | Tag |
 |-------|--------|--------|-----|
@@ -247,3 +332,11 @@ All repos under `github.com/mlu-ctrl-alt-design`.
 | 1D — Prescription print format | `feature/phase-1d-prescriptions` | ✅ Merged | v0.1.1d |
 | 1E — Dispensing + stock management | `feature/phase-1e-dispensing` | ✅ Merged | v0.1.1e |
 | 1F — Marley frontend integration | `feature/phase-1f-moli-frontend` | 🔲 Pending | — |
+| 2 — Public booking portal + email OTP | `develop` | ✅ Merged | — |
+| 3A — Platform Owner workspace | `develop` | ✅ Merged | — |
+| 3B — Subscription billing + Paystack | `develop` | ✅ Merged | — |
+| 3C — Setup Checklist, patient portal, patient PQC | `develop` | ✅ Merged | — |
+| 3D — POPIA data masking + two-sided OTP | `develop` | ✅ Merged | — |
+| 3E — Inpatient Dashboard + API | `develop` | ✅ Merged | — |
+| 4 — Playwright UI test suite (44 tests) | `develop` | ✅ Merged | — |
+| 6 — Doctor self-registration approval flow | — | 🔲 Pending | — |

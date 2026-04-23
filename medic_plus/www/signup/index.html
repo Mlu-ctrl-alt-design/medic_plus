@@ -1,0 +1,449 @@
+{% extends "templates/web.html" %}
+{% block title %}Doctor Signup — Medic Plus{% endblock %}
+{% block page_content %}
+<style>
+:root { --mp-primary:#2563eb; --mp-err:#dc2626; --mp-ok:#059669; }
+.mp-wrap { max-width:600px; margin:32px auto; padding:0 16px; }
+.mp-progress { display:flex; gap:6px; margin-bottom:28px; }
+.mp-progress .seg { flex:1; height:4px; background:#e5e7eb; border-radius:2px; transition:background .3s; }
+.mp-progress .seg.active { background:var(--mp-primary); }
+.mp-progress .seg.done { background:var(--mp-ok); }
+.mp-step { display:none; }
+.mp-step.active { display:block; }
+.mp-step h1 { font-size:1.45rem; margin:0 0 4px; color:#111827; }
+.mp-step .sub { color:#6b7280; margin-bottom:24px; font-size:.92rem; }
+.mp-field { margin-bottom:18px; }
+.mp-field label { display:block; font-size:.84rem; font-weight:600; margin-bottom:5px; color:#374151; }
+.mp-field input[type=text],
+.mp-field input[type=email],
+.mp-field input[type=tel] {
+  width:100%; padding:9px 12px; border:1.5px solid #d1d5db;
+  border-radius:8px; font-size:.95rem; box-sizing:border-box;
+  transition:border-color .2s, box-shadow .2s; background:#fff;
+}
+.mp-field input:focus { outline:none; border-color:var(--mp-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.mp-field input.invalid { border-color:var(--mp-err); }
+.mp-field .hint { display:block; font-size:.78rem; color:#9ca3af; margin-top:3px; }
+.mp-field .field-err { display:none; font-size:.78rem; color:var(--mp-err); margin-top:4px; }
+.mp-field.has-error .field-err { display:block; }
+.mp-field.has-error input { border-color:var(--mp-err); }
+.req { color:var(--mp-err); margin-left:2px; }
+.mp-input-group { display:flex; align-items:stretch; border:1.5px solid #d1d5db; border-radius:8px; overflow:hidden; background:#fff; transition:border-color .2s, box-shadow .2s; }
+.mp-input-group:focus-within { border-color:var(--mp-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.mp-input-group .mp-title {
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:#f9fafb; padding:0 12px; font-size:.95rem; font-weight:600; color:#374151;
+  border-right:1.5px solid #e5e7eb; outline:none; min-width:56px;
+}
+.mp-input-group select.mp-title { cursor:pointer; }
+.mp-input-group span.mp-title { user-select:none; }
+.mp-input-group input { border:none !important; box-shadow:none !important; flex:1; padding:9px 12px; font-size:.95rem; background:transparent; }
+.mp-input-group input:focus { outline:none; box-shadow:none !important; }
+.mp-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.mp-check { display:flex; align-items:flex-start; gap:10px; margin:8px 0 22px; }
+.mp-check input[type=checkbox] { width:18px; height:18px; margin-top:2px; flex-shrink:0; cursor:pointer; }
+.mp-check .check-text { font-size:.88rem; color:#374151; line-height:1.4; }
+.mp-check .check-text small { display:block; color:#9ca3af; font-size:.78rem; margin-top:2px; }
+.mp-btn { width:100%; padding:12px; background:var(--mp-primary); color:#fff; border:none; border-radius:8px; font-size:1rem; font-weight:600; cursor:pointer; margin-top:4px; transition:background .2s, opacity .2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+.mp-btn:hover:not(:disabled) { background:#1d4ed8; }
+.mp-btn:disabled { opacity:.55; cursor:not-allowed; }
+.mp-btn.secondary { background:#fff; color:var(--mp-primary); border:1.5px solid var(--mp-primary); }
+.mp-btn.secondary:hover:not(:disabled) { background:#eff6ff; }
+.mp-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; display:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.mp-alert { margin-top:16px; padding:12px 14px; border-radius:8px; font-size:.9rem; display:none; line-height:1.45; }
+.mp-alert.success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.mp-alert.error   { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.mp-alert.info    { background:#eff6ff; color:#1e3a8a; border:1px solid #bfdbfe; }
+.mp-otp { display:flex; gap:8px; justify-content:center; margin:18px 0 8px; }
+.mp-otp input {
+  width:46px; height:54px; text-align:center; font-size:1.4rem; font-weight:600;
+  border:1.5px solid #d1d5db; border-radius:8px; background:#fff;
+  transition:border-color .2s, box-shadow .2s;
+}
+.mp-otp input:focus { outline:none; border-color:var(--mp-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.mp-resend { text-align:center; margin-top:14px; font-size:.85rem; color:#6b7280; }
+.mp-resend a { color:var(--mp-primary); font-weight:600; cursor:pointer; text-decoration:none; }
+.mp-resend a:hover { text-decoration:underline; }
+.mp-dev-otp {
+  margin-top:18px; padding:10px 14px; background:#fffbeb; border:1px dashed #f59e0b;
+  border-radius:8px; font-size:.85rem; color:#92400e; text-align:center;
+}
+.mp-dev-otp strong { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:1.05rem; letter-spacing:.1em; color:#78350f; }
+.mp-summary { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:18px 20px; margin-bottom:18px; }
+.mp-summary .row { display:flex; justify-content:space-between; padding:6px 0; font-size:.92rem; }
+.mp-summary .row .lbl { color:#6b7280; }
+.mp-summary .row .val { font-weight:600; color:#111827; }
+.mp-summary .total { border-top:1px solid #e5e7eb; margin-top:8px; padding-top:12px; font-size:1.05rem; }
+.mp-footer { margin-top:24px; font-size:.875rem; color:#9ca3af; text-align:center; }
+.mp-footer a { color:var(--mp-primary); text-decoration:none; font-weight:500; }
+@media(max-width:560px) {
+  .mp-row { grid-template-columns:1fr; }
+  .mp-otp input { width:38px; height:46px; font-size:1.15rem; }
+}
+</style>
+
+<div class="mp-wrap">
+  <div class="mp-progress" aria-label="Signup progress">
+    <div class="seg active" id="seg-1"></div>
+    <div class="seg" id="seg-2"></div>
+    <div class="seg" id="seg-3"></div>
+  </div>
+
+  <!-- Step 1: details -->
+  <section class="mp-step active" id="step-1">
+    <h1>Register your practice</h1>
+    <p class="sub">Three steps: details, verify your email, then activate.</p>
+
+    <form id="details-form" novalidate>
+      <div class="mp-field" id="f-practice_name">
+        <label for="practice_name">Practice Name <span class="req">*</span></label>
+        <input type="text" id="practice_name" name="practice_name" autocomplete="organization" placeholder="Nkosi Family Practice" required>
+        <span class="field-err">Please enter your practice name.</span>
+      </div>
+
+      <div class="mp-field" id="f-full_name">
+        <label for="full_name">Your Full Name <span class="req">*</span></label>
+        <div class="mp-input-group">
+          <select class="mp-title" id="title" name="title" aria-label="Title">
+            <option value="Dr" selected>Dr</option>
+            <option value="Prof">Prof</option>
+            <option value="Mr">Mr</option>
+            <option value="Mrs">Mrs</option>
+            <option value="Ms">Ms</option>
+            <option value="">—</option>
+          </select>
+          <input type="text" id="full_name" name="full_name" autocomplete="name" placeholder="Jane Nkosi" required>
+        </div>
+        <span class="field-err">Please enter your full name.</span>
+      </div>
+
+      <div class="mp-field" id="f-email">
+        <label for="email">Email Address <span class="req">*</span></label>
+        <input type="email" id="email" name="email" autocomplete="email" placeholder="jane@example.com" required>
+        <span class="field-err">Please enter a valid email address.</span>
+      </div>
+
+      <div class="mp-field" id="f-mobile">
+        <label for="mobile">Mobile Number <span class="req">*</span></label>
+        <input type="tel" id="mobile" name="mobile" autocomplete="tel" placeholder="0821234567" maxlength="10" required>
+        <span class="field-err">Mobile must be 10 digits, e.g. 0821234567.</span>
+      </div>
+
+      <div class="mp-row">
+        <div class="mp-field" id="f-hpcsa_number">
+          <label for="hpcsa_number">HPCSA Number <span class="req">*</span></label>
+          <div class="mp-input-group">
+            <span class="mp-title" aria-hidden="true">MP</span>
+            <input type="text" id="hpcsa_number" name="hpcsa_number" inputmode="numeric" placeholder="0123456" maxlength="8" required>
+          </div>
+          <span class="hint">Digits only — MP prefix is added.</span>
+          <span class="field-err">Enter 4–8 digits.</span>
+        </div>
+        <div class="mp-field" id="f-practice_number">
+          <label for="practice_number">Practice Number <span class="req">*</span></label>
+          <input type="text" id="practice_number" name="practice_number" inputmode="numeric" placeholder="0010000" maxlength="7" minlength="7" pattern="\d{7}" required>
+          <span class="hint">7-digit medical billing number.</span>
+          <span class="field-err">Practice number must be 7 digits.</span>
+        </div>
+      </div>
+
+      <div class="mp-check">
+        <input type="checkbox" id="dispensing" name="is_dispensing_doctor">
+        <div class="check-text">
+          I am a dispensing doctor
+          <small>Enables stock and dispensary management.</small>
+        </div>
+      </div>
+
+      <button type="submit" class="mp-btn" id="btn-step1">
+        <span class="mp-spinner" id="spin-1"></span>
+        <span id="lbl-1">Send verification code</span>
+      </button>
+      <div class="mp-alert" id="alert-1"></div>
+    </form>
+  </section>
+
+  <!-- Step 2: OTP -->
+  <section class="mp-step" id="step-2">
+    <h1>Verify your email</h1>
+    <p class="sub">Enter the 6-digit code we sent to <strong id="sent-to"></strong>.</p>
+
+    <form id="otp-form" novalidate>
+      <div class="mp-otp" id="otp-input">
+        <input type="text" inputmode="numeric" maxlength="1" data-otp="0" autocomplete="one-time-code" aria-label="Digit 1">
+        <input type="text" inputmode="numeric" maxlength="1" data-otp="1" aria-label="Digit 2">
+        <input type="text" inputmode="numeric" maxlength="1" data-otp="2" aria-label="Digit 3">
+        <input type="text" inputmode="numeric" maxlength="1" data-otp="3" aria-label="Digit 4">
+        <input type="text" inputmode="numeric" maxlength="1" data-otp="4" aria-label="Digit 5">
+        <input type="text" inputmode="numeric" maxlength="1" data-otp="5" aria-label="Digit 6">
+      </div>
+
+      <div class="mp-dev-otp" id="dev-otp" style="display:none;">
+        DEV: code is <strong data-dev-otp></strong>
+      </div>
+
+      <button type="submit" class="mp-btn" id="btn-step2" style="margin-top:18px;">
+        <span class="mp-spinner" id="spin-2"></span>
+        <span id="lbl-2">Verify code</span>
+      </button>
+      <div class="mp-resend">
+        Didn't get it? <a id="resend-link">Resend code</a>
+      </div>
+      <div class="mp-alert" id="alert-2"></div>
+    </form>
+  </section>
+
+  <!-- Step 3: Pay -->
+  <section class="mp-step" id="step-3">
+    <h1>Activate your practice</h1>
+    <p class="sub">A one-off setup fee gets your tenant provisioned, with email + dashboard access.</p>
+
+    <div class="mp-summary">
+      <div class="row"><span class="lbl">Practice</span><span class="val" id="sum-practice"></span></div>
+      <div class="row"><span class="lbl">Doctor</span><span class="val" id="sum-doctor"></span></div>
+      <div class="row"><span class="lbl">Plan</span><span class="val">Practice activation</span></div>
+      <div class="row total"><span class="lbl">Total</span><span class="val">R499.00</span></div>
+    </div>
+
+    <button type="button" class="mp-btn" id="btn-step3">
+      <span class="mp-spinner" id="spin-3"></span>
+      <span id="lbl-3">Pay with Yoco</span>
+    </button>
+    <div class="mp-alert" id="alert-3"></div>
+  </section>
+
+  <p class="mp-footer">
+    Already have an account? <a href="/login">Sign in</a>
+  </p>
+</div>
+
+<script>
+(function () {
+  const SIGNUP_FEE_RAND = "R499.00";
+
+  // ---- helpers ----
+  function $(id) { return document.getElementById(id); }
+  function showStep(n) {
+    [1, 2, 3].forEach(function (i) {
+      $("step-" + i).classList.toggle("active", i === n);
+      const seg = $("seg-" + i);
+      if (i < n)      { seg.classList.remove("active"); seg.classList.add("done"); }
+      else if (i === n) { seg.classList.add("active"); seg.classList.remove("done"); }
+      else            { seg.classList.remove("active"); seg.classList.remove("done"); }
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function setBusy(stepIdx, busy, busyLabel) {
+    const btn  = $("btn-step" + stepIdx);
+    const spin = $("spin-" + stepIdx);
+    const lbl  = $("lbl-" + stepIdx);
+    btn.disabled = !!busy;
+    spin.style.display = busy ? "block" : "none";
+    if (busy && busyLabel) lbl.dataset.prev = lbl.textContent, lbl.textContent = busyLabel;
+    if (!busy && lbl.dataset.prev)         lbl.textContent = lbl.dataset.prev, delete lbl.dataset.prev;
+  }
+  function showAlert(stepIdx, text, type) {
+    const el = $("alert-" + stepIdx);
+    el.textContent = text;
+    el.className = "mp-alert " + (type || "error");
+    el.style.display = "block";
+  }
+  function clearAlert(stepIdx) { $("alert-" + stepIdx).style.display = "none"; }
+  function setError(name, msg) {
+    const w = $("f-" + name);
+    if (!w) return;
+    w.classList.add("has-error");
+    if (msg) w.querySelector(".field-err").textContent = msg;
+  }
+  function clearError(name) {
+    const w = $("f-" + name);
+    if (w) w.classList.remove("has-error");
+  }
+  function parseServerError(err) {
+    try {
+      // 1) frappe.call surfaces _server_messages directly
+      let raw = err && err._server_messages;
+      // 2) frappe.call also wraps the response object as err.responseJSON
+      if (!raw && err && err.responseJSON) raw = err.responseJSON._server_messages;
+      // 3) some flows attach the response under err.exception or as a string
+      if (!raw && err && typeof err === "object" && err.exception) return err.exception;
+      if (raw) {
+        const arr = JSON.parse(raw);
+        const obj = typeof arr[0] === "string" ? JSON.parse(arr[0]) : arr[0];
+        return obj.message || String(obj);
+      }
+    } catch (e) {}
+    return (err && (err.message || err.exception)) || "Something went wrong. Please try again.";
+  }
+
+  // ---- inline validation ----
+  ["practice_name", "full_name", "email", "mobile", "hpcsa_number", "practice_number"].forEach(function (name) {
+    const inp = $(name);
+    if (inp) inp.addEventListener("input", function () { clearError(name); });
+  });
+  $("hpcsa_number").addEventListener("input", function (e) {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+  $("practice_number").addEventListener("input", function (e) {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+  $("mobile").addEventListener("input", function (e) {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+
+  function validateStep1() {
+    let ok = true;
+    [["practice_name", "Please enter your practice name."],
+     ["full_name", "Please enter your full name."]].forEach(function (p) {
+      if (!$(p[0]).value.trim()) { setError(p[0], p[1]); ok = false; }
+    });
+    const email = $("email").value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setError("email", "Enter a valid email address."); ok = false; }
+    const mobile = $("mobile").value.trim();
+    if (!/^0\d{9}$/.test(mobile)) { setError("mobile", "Mobile must be 10 digits, starting with 0."); ok = false; }
+    const hp = $("hpcsa_number").value.trim();
+    if (!/^\d{4,8}$/.test(hp)) { setError("hpcsa_number", "Enter 4–8 digits."); ok = false; }
+    const pn = $("practice_number").value.trim();
+    if (!/^\d{7}$/.test(pn)) { setError("practice_number", "Practice number must be 7 digits."); ok = false; }
+    return ok;
+  }
+
+  // ---- state ----
+  const state = { email: "", practiceName: "", fullName: "" };
+
+  // ---- step 1 submit (request OTP) ----
+  $("details-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    clearAlert(1);
+    if (!validateStep1()) return;
+
+    const title = $("title").value;
+    const baseName = $("full_name").value.trim();
+    const fullName = title ? (title + " " + baseName) : baseName;
+
+    state.email        = $("email").value.trim().toLowerCase();
+    state.practiceName = $("practice_name").value.trim();
+    state.fullName     = fullName;
+
+    setBusy(1, true, "Sending code…");
+    frappe.call({
+      method: "medic_plus.api.signup.request_signup_otp",
+      args: {
+        practice_name:        state.practiceName,
+        full_name:            fullName,
+        email:                state.email,
+        mobile:               $("mobile").value.trim(),
+        hpcsa_number:         "MP" + $("hpcsa_number").value.trim(),
+        practice_number:      $("practice_number").value.trim(),
+        is_dispensing_doctor: $("dispensing").checked ? 1 : 0,
+      },
+    }).then(function (r) {
+      setBusy(1, false);
+      const m = r && r.message;
+      if (!m) { showAlert(1, "Unexpected response. Please try again."); return; }
+      $("sent-to").textContent = state.email;
+      if (m._dev_otp) {
+        const el = document.querySelector("[data-dev-otp]");
+        el.textContent = m._dev_otp;
+        $("dev-otp").style.display = "block";
+      } else {
+        $("dev-otp").style.display = "none";
+      }
+      // Reset OTP inputs
+      document.querySelectorAll("#otp-input input").forEach(function (i) { i.value = ""; });
+      showStep(2);
+      const first = document.querySelector("#otp-input input");
+      if (first) first.focus();
+    }).catch(function (err) {
+      setBusy(1, false);
+      showAlert(1, parseServerError(err));
+    });
+  });
+
+  // ---- step 2 OTP UX ----
+  const otpInputs = document.querySelectorAll("#otp-input input");
+  otpInputs.forEach(function (inp, idx) {
+    inp.addEventListener("input", function (e) {
+      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 1);
+      if (e.target.value && idx < otpInputs.length - 1) otpInputs[idx + 1].focus();
+    });
+    inp.addEventListener("keydown", function (e) {
+      if (e.key === "Backspace" && !e.target.value && idx > 0) otpInputs[idx - 1].focus();
+    });
+    inp.addEventListener("paste", function (e) {
+      const txt = (e.clipboardData || window.clipboardData).getData("text") || "";
+      const digits = txt.replace(/\D/g, "").slice(0, otpInputs.length);
+      if (!digits) return;
+      e.preventDefault();
+      digits.split("").forEach(function (d, i) { if (otpInputs[i]) otpInputs[i].value = d; });
+      const last = Math.min(digits.length, otpInputs.length) - 1;
+      otpInputs[last].focus();
+    });
+  });
+
+  function readOtp() {
+    return Array.from(otpInputs).map(function (i) { return i.value; }).join("");
+  }
+
+  $("resend-link").addEventListener("click", function () {
+    $("details-form").dispatchEvent(new Event("submit", { cancelable: true }));
+  });
+
+  $("otp-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    clearAlert(2);
+    const otp = readOtp();
+    if (otp.length !== 6) { showAlert(2, "Enter all six digits."); return; }
+    setBusy(2, true, "Verifying…");
+    frappe.call({
+      method: "medic_plus.api.signup.verify_signup_otp",
+      args: { email: state.email, otp: otp },
+    }).then(function (r) {
+      setBusy(2, false);
+      const m = r && r.message;
+      if (!m || !m.request) { showAlert(2, "Unexpected response. Please try again."); return; }
+      window.__mpReq = m.request;
+      $("sum-practice").textContent = state.practiceName;
+      $("sum-doctor").textContent = state.fullName;
+      showStep(3);
+    }, function (err) {
+      // frappe.call rejects with the raw XHR. The error-tuple form (.then's
+      // second arg) is more reliable than .catch on older Frappe builds.
+      setBusy(2, false);
+      showAlert(2, parseServerError(err));
+    });
+  });
+
+  // ---- step 3: create checkout ----
+  $("btn-step3").addEventListener("click", function () {
+    clearAlert(3);
+    if (!window.__mpReq) { showAlert(3, "No registration in progress. Please restart."); return; }
+    setBusy(3, true, "Opening Yoco…");
+    frappe.call({
+      method: "medic_plus.api.yoco.create_signup_checkout",
+      args: { request_name: window.__mpReq },
+    }).then(function (r) {
+      const m = r && r.message;
+      if (!m) { setBusy(3, false); showAlert(3, "Unexpected response. Please try again."); return; }
+      if (m.status === "not_configured") {
+        setBusy(3, false);
+        showAlert(3,
+          "Payments are not configured for this environment. Contact support with reference: " + window.__mpReq,
+          "info");
+        return;
+      }
+      if (m.redirect_url) {
+        window.location = m.redirect_url;
+        return;
+      }
+      setBusy(3, false);
+      showAlert(3, "Payment provider returned no redirect URL. Try again.");
+    }).catch(function (err) {
+      setBusy(3, false);
+      showAlert(3, parseServerError(err));
+    });
+  });
+})();
+</script>
+{% endblock %}

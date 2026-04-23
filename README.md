@@ -133,6 +133,15 @@ MIT
 
 ## Changelog
 
+### 2026-04-22 — Phase 6: Doctor Self-Registration (OTP + Yoco)
+- New 3-step `/signup` funnel: details → email OTP → Yoco checkout. Replaces `/register` and `/register/doctor` (deleted).
+- Yoco webhook auto-provisions on `payment.succeeded` (no admin approval). Idempotent re-fires; failures flip the PRR to `Provisioning Failed` with the traceback recorded.
+- Post-payment activation uses a signed one-time URL (12-hr TTL, SHA-256 hashed in Redis), surfaced via email and consumed at `/signup/complete` to set the password and auto-log in.
+- 15-min scheduler (`retry_failed_provisioning`) re-runs any PRR stuck Paid-but-not-Provisioned older than 5 min.
+- Admin `onboard_doctor` refactored to call the same `provision_doctor` as the paid path, so both produce identical tenants (Company + Practice + Practitioner + Practice Member + POS Profile + Folder + optional Warehouse + Setup Checklist).
+- Migration patches: clean orphan Users from the legacy `Registration Request` flow (skipping System Users), then drop the DocType + table.
+- Dev-only `_test_mark_paid` endpoint for hermetic Playwright E2E (gated on `developer_mode`).
+
 ### 2026-04-08 — Phase 3: Platform Owner Workspace
 - Custom Workspace "Medic Plus Platform" — Administrator/Healthcare Administrator only
 - 6 Number Cards: Total/Active Practices, Total Patients, Today's/This Month's Appointments, Sick Notes Issued

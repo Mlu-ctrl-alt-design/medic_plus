@@ -113,3 +113,39 @@ def update_checklist_on_first_invoice(doc, method=None):
 	practice = frappe.db.get_value("Practice", {"company": doc.company}, "name")
 	if practice:
 		on_billing_configured(practice)
+
+
+def sync_practice_doctors(doc, method=None):
+	"""Keep Practice Member (role=Doctor) in sync with the Practice.doctors child table.
+
+	Called on Practice after_insert and on_update. For each row in doc.doctors:
+	  - If no matching Practice Member exists, create one.
+	For any Practice Member (role=Doctor) whose practitioner is no longer in the
+	doctors table, remove it.
+	"""
+	current_practitioners = {row.practitioner for row in (doc.doctors or []) if row.practitioner}
+
+	# Existing Doctor Practice Members for this practice
+	existing = frappe.get_all(
+		"Practice Member",
+		filters={"practice": doc.name, "role": "Doctor"},
+		fields=["name", "practitioner"],
+		ignore_permissions=True,
+	)
+	existing_map = {pm["practitioner"]: pm["name"] for pm in existing}
+
+	# Add missing members
+	for practitioner in current_practitioners:
+		if practitioner not in existing_map:
+			pm = frappe.get_doc({
+				"doctype": "Practice Member",
+				"practice": doc.name,
+				"practitioner": practitioner,
+				"role": "Doctor",
+			})
+			pm.insert(ignore_permissions=True)
+
+	# Remove stale members (practitioner removed from child table)
+	for practitioner, pm_name in existing_map.items():
+		if practitioner not in current_practitioners:
+			frappe.delete_doc("Practice Member", pm_name, ignore_permissions=True, force=True)

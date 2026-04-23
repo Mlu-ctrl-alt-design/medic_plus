@@ -824,5 +824,31 @@
   "translatable": 0,
   "unique": 0,
   "width": null
+ },
+ {
+  "creation": "2026-04-16 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "custom_section_associated_practices",
+  "fieldtype": "Section Break",
+  "insert_after": "custom_practitioner_signature",
+  "label": "Associated Practices",
+  "module": "Medic Plus",
+  "modified": "2026-04-16 00:00:00.000000",
+  "name": "Healthcare Practitioner-custom_section_associated_practices",
+  "owner": "Administrator"
+ },
+ {
+  "creation": "2026-04-16 00:00:00.000000",
+  "doctype": "Custom Field",
+  "dt": "Healthcare Practitioner",
+  "fieldname": "associated_practices_html",
+  "fieldtype": "HTML",
+  "insert_after": "custom_section_associated_practices",
+  "label": "Associated Practices",
+  "module": "Medic Plus",
+  "modified": "2026-04-16 00:00:00.000000",
+  "name": "Healthcare Practitioner-associated_practices_html",
+  "owner": "Administrator"
  }
 ]

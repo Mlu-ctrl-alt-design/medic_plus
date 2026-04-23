@@ -95,6 +95,7 @@ def verify_and_book(
 	patient_last_name: str,
 	patient_email: str,
 	patient_phone: str,
+	patient_gender: str = "Prefer not to say",
 	appointment_type: str = None,
 ) -> dict:
 	"""Verify OTP then create the appointment in a single call."""
@@ -128,10 +129,14 @@ def verify_and_book(
 				"doctype": "Patient",
 				"first_name": patient_first_name,
 				"last_name": patient_last_name,
+				"sex": patient_gender,
 				"email": email,
 				"mobile": patient_phone,
 				"custom_practice": practice.name,
 				"status": "Active",
+				# Do not invite the patient as a Frappe user — booking portal
+				# patients are anonymous guests, not Desk users.
+				"invite_user": 0,
 			}
 		)
 		patient.insert(ignore_permissions=True)
@@ -141,15 +146,23 @@ def verify_and_book(
 		if not existing_practice:
 			frappe.db.set_value("Patient", patient_name, "custom_practice", practice.name)
 
-	# Create appointment
+	# Resolve appointment type — fall back to "Consultation" if none passed
+	resolved_type = appointment_type or frappe.db.get_value(
+		"Appointment Type", {"name": "Consultation"}, "name"
+	) or frappe.db.get_value("Appointment Type", {}, "name")
+
+	# Create appointment — duration must be > 0, appointment_for and
+	# appointment_type are mandatory in Healthcare.
 	appointment = frappe.get_doc(
 		{
 			"doctype": "Patient Appointment",
 			"patient": patient_name,
 			"practitioner": practitioner,
+			"appointment_for": "Practitioner",
 			"appointment_date": appointment_date,
 			"appointment_time": appointment_time,
-			"appointment_type": appointment_type,
+			"duration": 30,
+			"appointment_type": resolved_type,
 			"custom_practice": practice.name,
 			"status": "Open",
 		}
@@ -191,7 +204,7 @@ def _send_confirmation_email(email: str, patient_name: str, appointment, practic
 		<p style="color:#999;font-size:0.8rem;margin:24px 0 0;">Please arrive 10 minutes before your appointment time.</p>
 	</div>
 	"""
-	frappe.sendmail(recipients=[email], subject=subject, message=message, now=True)
+	frappe.sendmail(recipients=[email], subject=subject, message=message, now=False)
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +225,7 @@ def get_practice_practitioners(practice_slug: str) -> list:
 		"Practice Member",
 		filters={"practice": practice.name, "role": "Doctor"},
 		pluck="practitioner",
+		ignore_permissions=True,
 	)
 	practitioner_names = [m for m in members if m]
 	if not practitioner_names:
@@ -220,6 +234,7 @@ def get_practice_practitioners(practice_slug: str) -> list:
 		"Healthcare Practitioner",
 		filters={"name": ("in", practitioner_names), "status": "Active"},
 		fields=["name", "practitioner_name", "department", "image"],
+		ignore_permissions=True,
 	)
 
 
@@ -235,6 +250,9 @@ def get_availability(practice_slug: str, practitioner: str, date: str) -> list:
 	if not is_member:
 		frappe.throw(frappe._("Practitioner not found in this practice."), frappe.DoesNotExistError)
 
+	# Guest users cannot see Patient Appointment records through the normal
+	# permission query condition, so we must bypass permissions to get an
+	# accurate view of booked slots. We only read appointment_time (no PII).
 	booked_times = frappe.get_all(
 		"Patient Appointment",
 		filters={
@@ -243,9 +261,22 @@ def get_availability(practice_slug: str, practitioner: str, date: str) -> list:
 			"status": ("not in", ["Cancelled"]),
 		},
 		pluck="appointment_time",
+		ignore_permissions=True,
 	)
 
 	from datetime import datetime, timedelta
+
+	# Normalise booked times to "HH:MM:SS" strings. Frappe returns
+	# appointment_time as datetime.timedelta, whose str() drops the leading
+	# zero on hours < 10 ("8:00:00" not "08:00:00"), so naive comparison
+	# against slot strings like "08:00:00" never matches.
+	def _fmt_time(t):
+		if isinstance(t, timedelta):
+			total = int(t.total_seconds())
+			return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
+		return str(t)[:8]
+
+	booked_set = {_fmt_time(t) for t in booked_times}
 
 	available = []
 	start = datetime.strptime("08:00:00", "%H:%M:%S")
@@ -253,7 +284,7 @@ def get_availability(practice_slug: str, practitioner: str, date: str) -> list:
 	slot = start
 	while slot < end:
 		slot_str = slot.strftime("%H:%M:%S")
-		if slot_str not in [str(t) for t in booked_times]:
+		if slot_str not in booked_set:
 			available.append(slot_str)
 		slot += timedelta(minutes=30)
 

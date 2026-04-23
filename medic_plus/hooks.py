@@ -8,7 +8,7 @@ app_license = "mit"
 required_apps = ["frappe/healthcare"]
 
 # Website assets — included on all public website pages
-web_include_js = ["/assets/medic_plus/js/register_links.js"]
+web_include_js = ["/assets/medic_plus/js/signup_link.js"]
 
 # Fixtures — synced on bench migrate
 fixtures = [
@@ -28,6 +28,8 @@ fixtures = [
 			"Healthcare Practitioner-custom_is_dispensing_doctor",
 			"Healthcare Practitioner-custom_column_break_signature",
 			"Healthcare Practitioner-custom_practitioner_signature",
+			"Healthcare Practitioner-custom_section_associated_practices",
+			"Healthcare Practitioner-associated_practices_html",
 			# Item — SA medicine fields
 			"Item-custom_schedule",
 			"Item-custom_nappi_code",
@@ -98,8 +100,14 @@ doc_events = {
 	},
 	# Practice Setup Checklist — steps 1–6
 	"Practice": {
-		"after_insert": "medic_plus.api.billing.start_trial_for_practice",
-		"on_update": "medic_plus.api.doc_events.update_checklist_on_practice_save",
+		"after_insert": [
+			"medic_plus.api.billing.start_trial_for_practice",
+			"medic_plus.api.doc_events.sync_practice_doctors",
+		],
+		"on_update": [
+			"medic_plus.api.doc_events.update_checklist_on_practice_save",
+			"medic_plus.api.doc_events.sync_practice_doctors",
+		],
 	},
 	"Practice Member": {
 		"after_insert": "medic_plus.api.doc_events.update_checklist_on_member_status",
@@ -114,11 +122,12 @@ doc_events = {
 
 }
 
-# Scheduler — expire stale unmask requests every 15 minutes
+# Scheduler — expire stale unmask requests + retry stuck signup provisioning every 15 minutes
 scheduler_events = {
 	"cron": {
 		"*/15 * * * *": [
 			"medic_plus.api.data_access.expire_stale_requests",
+			"medic_plus.api.signup.retry_failed_provisioning",
 		],
 	},
 }

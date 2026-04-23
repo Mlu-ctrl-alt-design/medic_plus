@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "creation": "2026-04-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "practitioner",
+  "practitioner_name",
+  "column_break_1",
+  "department",
+  "is_primary"
+ ],
+ "fields": [
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practitioner",
+   "options": "Healthcare Practitioner",
+   "reqd": 1,
+   "set_only_once": 0
+  },
+  {
+   "fetch_from": "practitioner.practitioner_name",
+   "fieldname": "practitioner_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "practitioner.department",
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Department",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_primary",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Primary Doctor"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Practice Doctor",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC"
+}

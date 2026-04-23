@@ -1,0 +1,113 @@
+{% extends "templates/web.html" %}
+{% block title %}Payment cancelled — Medic Plus{% endblock %}
+{% block page_content %}
+<style>
+:root { --mp-primary:#2563eb; --mp-err:#dc2626; --mp-ok:#059669; }
+.mp-wrap { max-width:520px; margin:64px auto; padding:0 16px; text-align:center; }
+.mp-icon { font-size:3rem; }
+.mp-wrap h1 { font-size:1.45rem; margin:14px 0 8px; color:#111827; }
+.mp-wrap p { color:#6b7280; line-height:1.55; font-size:.95rem; }
+.mp-card {
+  margin-top:24px; padding:20px; background:#f9fafb;
+  border:1px solid #e5e7eb; border-radius:10px; text-align:left;
+}
+.mp-card .row { display:flex; justify-content:space-between; padding:4px 0; font-size:.9rem; }
+.mp-card .row .lbl { color:#6b7280; }
+.mp-card .row .val { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:#111827; }
+.mp-btn {
+  width:100%; padding:12px; background:var(--mp-primary); color:#fff;
+  border:none; border-radius:8px; font-size:1rem; font-weight:600;
+  cursor:pointer; margin-top:18px; transition:background .2s, opacity .2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.mp-btn:hover:not(:disabled) { background:#1d4ed8; }
+.mp-btn:disabled { opacity:.55; cursor:not-allowed; }
+.mp-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.4);
+  border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; display:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.mp-alert { display:none; margin-top:14px; padding:12px 14px; border-radius:8px; font-size:.9rem; }
+.mp-alert.error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.mp-alert.info  { background:#eff6ff; color:#1e3a8a; border:1px solid #bfdbfe; }
+.mp-footer { margin-top:18px; font-size:.875rem; color:#9ca3af; }
+.mp-footer a { color:var(--mp-primary); text-decoration:none; font-weight:500; }
+</style>
+
+<div class="mp-wrap">
+  <div class="mp-icon">↩️</div>
+  <h1>Payment cancelled</h1>
+  <p>You closed the payment window before finishing. No charge was made.</p>
+
+  {% if request_name %}
+  <div class="mp-card">
+    <div class="row"><span class="lbl">Reference</span><span class="val">{{ request_name }}</span></div>
+  </div>
+  {% endif %}
+
+  <button type="button" class="mp-btn" id="retry">
+    <span class="mp-spinner" id="spin"></span>
+    <span id="lbl">Retry payment</span>
+  </button>
+  <div class="mp-alert" id="alert"></div>
+
+  <p class="mp-footer">
+    <a href="/signup">Start over</a>
+    &nbsp;·&nbsp;
+    <a href="/login">Back to sign in</a>
+  </p>
+</div>
+
+<script>
+(function () {
+  const REQ = {{ frappe.utils.escape_html(request_name) | tojson }};
+  const btn = document.getElementById("retry");
+  const spin = document.getElementById("spin");
+  const lbl = document.getElementById("lbl");
+  const alert = document.getElementById("alert");
+
+  function setBusy(b, busyLabel) {
+    btn.disabled = !!b;
+    spin.style.display = b ? "block" : "none";
+    if (b && busyLabel) lbl.dataset.prev = lbl.textContent, lbl.textContent = busyLabel;
+    if (!b && lbl.dataset.prev) lbl.textContent = lbl.dataset.prev, delete lbl.dataset.prev;
+  }
+  function showAlert(text, type) {
+    alert.textContent = text;
+    alert.className = "mp-alert " + (type || "error");
+    alert.style.display = "block";
+  }
+  function parseServerError(err) {
+    try {
+      if (err._server_messages) {
+        const arr = JSON.parse(err._server_messages);
+        const obj = typeof arr[0] === "string" ? JSON.parse(arr[0]) : arr[0];
+        return obj.message || String(obj);
+      }
+    } catch (e) {}
+    return err.message || "Could not retry payment. Please start over.";
+  }
+
+  btn.addEventListener("click", function () {
+    alert.style.display = "none";
+    if (!REQ) { showAlert("No registration in progress. Please start over."); return; }
+    setBusy(true, "Opening Yoco…");
+    frappe.call({
+      method: "medic_plus.api.yoco.create_signup_checkout",
+      args: { request_name: REQ },
+    }).then(function (r) {
+      const m = (r && r.message) || {};
+      if (m.status === "not_configured") {
+        setBusy(false);
+        showAlert("Payments are not configured for this environment. Contact support with reference: " + REQ, "info");
+        return;
+      }
+      if (m.redirect_url) { window.location = m.redirect_url; return; }
+      setBusy(false);
+      showAlert("Payment provider returned no redirect. Please try again.");
+    }).catch(function (err) {
+      setBusy(false);
+      showAlert(parseServerError(err));
+    });
+  });
+})();
+</script>
+{% endblock %}

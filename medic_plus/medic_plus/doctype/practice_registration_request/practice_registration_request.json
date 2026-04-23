@@ -18,10 +18,20 @@
   "practice_number",
   "column_break_sa2",
   "is_dispensing_doctor",
+  "section_break_payment",
+  "payment_status",
+  "yoco_checkout_id",
+  "column_break_payment",
+  "yoco_paid_at",
+  "yoco_amount_cents",
   "section_break_review",
   "provisioned_practice",
   "rejection_reason",
   "section_break_meta",
+  "provisioning_error",
+  "provisioning_attempted_at",
+  "completion_email_sent_at",
+  "welcome_email_sent_at",
   "submitted_at"
  ],
  "fields": [
@@ -42,7 +52,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Pending\nApproved\nRejected"
+   "options": "Pending\nProvisioned\nProvisioning Failed\nRejected"
   },
   {
    "fieldname": "section_break_contact",
@@ -99,6 +109,42 @@
    "label": "I am a dispensing doctor"
   },
   {
+   "fieldname": "section_break_payment",
+   "fieldtype": "Section Break",
+   "label": "Payment"
+  },
+  {
+   "default": "Unpaid",
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Status",
+   "options": "Unpaid\nPending\nPaid\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "yoco_checkout_id",
+   "fieldtype": "Data",
+   "label": "Yoco Checkout ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_payment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "yoco_paid_at",
+   "fieldtype": "Datetime",
+   "label": "Paid At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "yoco_amount_cents",
+   "fieldtype": "Int",
+   "label": "Amount (cents)",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_review",
    "fieldtype": "Section Break",
    "label": "Review"
@@ -122,6 +168,31 @@
    "label": "Submission Info"
   },
   {
+   "fieldname": "provisioning_error",
+   "fieldtype": "Small Text",
+   "label": "Provisioning Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provisioning_attempted_at",
+   "fieldtype": "Datetime",
+   "label": "Provisioning Attempted At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completion_email_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Completion Email Sent At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "welcome_email_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Welcome Email Sent At",
+   "description": "Stamped after the owner welcome email + admin alert have been queued post-login.",
+   "read_only": 1
+  },
+  {
    "fieldname": "submitted_at",
    "fieldtype": "Datetime",
    "label": "Submitted At",
@@ -129,7 +200,7 @@
   }
  ],
  "links": [],
- "modified": "2026-04-14 00:00:00.000000",
+ "modified": "2026-04-23 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Practice Registration Request",
