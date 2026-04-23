@@ -31,6 +31,7 @@
   "provisioning_error",
   "provisioning_attempted_at",
   "completion_email_sent_at",
+  "welcome_email_sent_at",
   "submitted_at"
  ],
  "fields": [
@@ -185,6 +186,13 @@
    "read_only": 1
   },
   {
+   "fieldname": "welcome_email_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Welcome Email Sent At",
+   "description": "Stamped after the owner welcome email + admin alert have been queued post-login.",
+   "read_only": 1
+  },
+  {
    "fieldname": "submitted_at",
    "fieldtype": "Datetime",
    "label": "Submitted At",
@@ -192,7 +200,7 @@
   }
  ],
  "links": [],
- "modified": "2026-04-22 00:00:00.000000",
+ "modified": "2026-04-23 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Practice Registration Request",

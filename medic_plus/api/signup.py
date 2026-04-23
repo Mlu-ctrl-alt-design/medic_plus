@@ -189,6 +189,122 @@ def verify_signup_otp(email: str, otp: str) -> dict:
 	}
 
 
+# ---------------------------------------------------------------------------
+# Post-login welcome + admin alert
+#
+# Fired once the doctor has set their password and logged in. Splits into two
+# emails: the owner gets onboarding next-steps, platform admins get a
+# revenue/audit signal.
+# ---------------------------------------------------------------------------
+
+def send_owner_welcome_email(request_name: str) -> None:
+	"""Email the practice owner with desk URL + onboarding next-steps.
+
+	Idempotent: skips if welcome_email_sent_at is already stamped.
+	"""
+	prr = frappe.db.get_value(
+		"Practice Registration Request",
+		request_name,
+		[
+			"name", "email", "full_name", "practice_name",
+			"provisioned_practice", "welcome_email_sent_at",
+		],
+		as_dict=True,
+	)
+	if not prr or prr.welcome_email_sent_at or not prr.email:
+		return
+
+	base = frappe.utils.get_url()
+	practice_path = (
+		f"/app/practice/{prr.provisioned_practice}" if prr.provisioned_practice else "/app/practice"
+	)
+	context = {
+		"full_name": prr.full_name,
+		"practice_name": prr.practice_name,
+		"reference": prr.name,
+		"desk_url": f"{base}{practice_path}",
+		"invite_staff_url": f"{base}/app/practice-member/new",
+		"practitioner_url": f"{base}/app/healthcare-practitioner/new",
+		"import_patients_url": f"{base}/app/data-import/new?reference_doctype=Patient",
+		"schedule_url": f"{base}/app/practitioner-schedule",
+	}
+	body = frappe.render_template(
+		"medic_plus/templates/emails/practice_welcome.html", context
+	)
+	frappe.sendmail(
+		recipients=[prr.email],
+		subject=_("Welcome to Medic Plus — {0} is live").format(prr.practice_name),
+		message=body,
+		now=False,
+	)
+	frappe.db.set_value(
+		"Practice Registration Request", request_name,
+		"welcome_email_sent_at", frappe.utils.now(),
+	)
+
+
+def notify_admins_of_provisioned_practice(request_name: str) -> None:
+	"""Email enabled Healthcare Administrators about a newly-provisioned tenant.
+
+	Skips the literal `Administrator` account (Frappe's built-in name isn't a
+	deliverable email). Silently no-ops if no real admin recipients exist.
+	"""
+	prr = frappe.db.get_value(
+		"Practice Registration Request",
+		request_name,
+		[
+			"name", "email", "full_name", "mobile", "practice_name",
+			"hpcsa_number", "practice_number", "is_dispensing_doctor",
+			"provisioned_practice",
+		],
+		as_dict=True,
+	)
+	if not prr:
+		return
+
+	candidates = frappe.get_all(
+		"Has Role",
+		filters={"role": "Healthcare Administrator", "parenttype": "User"},
+		pluck="parent",
+	)
+	recipients = []
+	for u in candidates:
+		if u == "Administrator":
+			continue
+		row = frappe.db.get_value("User", u, ["enabled", "email"], as_dict=True)
+		if row and row.enabled and row.email and "@" in row.email:
+			recipients.append(row.email)
+	if not recipients:
+		return
+
+	base = frappe.utils.get_url()
+	practice_url = (
+		f"{base}/app/practice/{prr.provisioned_practice}"
+		if prr.provisioned_practice
+		else f"{base}/app/practice-registration-request/{prr.name}"
+	)
+	context = {
+		"practice_name": prr.practice_name,
+		"full_name": prr.full_name,
+		"email": prr.email,
+		"mobile": prr.mobile or "",
+		"hpcsa_number": prr.hpcsa_number or "",
+		"practice_number": prr.practice_number or "",
+		"is_dispensing_doctor": bool(prr.is_dispensing_doctor),
+		"reference": prr.name,
+		"practice_url": practice_url,
+	}
+	body = frappe.render_template(
+		"medic_plus/templates/emails/admin_provisioned.html", context
+	)
+	frappe.sendmail(
+		recipients=recipients,
+		subject=f"[Medic Plus] New practice provisioned: {prr.practice_name}",
+		message=body,
+		now=False,
+	)
+
+
 def notify_admins_of_new_request(doc) -> None:
 	"""Email Healthcare Administrators about a new registration request."""
 	admin_users = frappe.get_all(
@@ -302,6 +418,19 @@ def set_password_and_login(token: str, password: str) -> dict:
 
 	update_password(user=email, pwd=password)
 	frappe.cache().delete_value(_completion_key(token))
+
+	# Fire welcome + admin alert at first login — links land in inboxes when
+	# the account is actually usable. Failures here must not block login.
+	request_name = payload.get("request_name")
+	if request_name:
+		try:
+			send_owner_welcome_email(request_name)
+			notify_admins_of_provisioned_practice(request_name)
+		except Exception:
+			frappe.log_error(
+				title=f"Welcome email failed for {email}",
+				message=frappe.get_traceback(),
+			)
 
 	frappe.local.login_manager.login_as(email)
 	return {"redirect": "/app/practice"}

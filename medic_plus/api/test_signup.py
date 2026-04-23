@@ -115,6 +115,7 @@ class TestCompletionToken(FrappeTestCase):
 		frappe.db.rollback()
 
 	def test_issue_and_consume_token(self):
+		from unittest.mock import patch
 		from medic_plus.api.signup import (
 			issue_completion_token,
 			verify_signup_completion_token,
@@ -127,9 +128,18 @@ class TestCompletionToken(FrappeTestCase):
 		self.assertEqual(info["email"], self.email)
 		self.assertGreater(info["expires_in"], 0)
 
-		# Consumed -> second verify fails
-		result = set_password_and_login(token=token, password="S0meLongP@ssword123")
+		# Stub sendmail so we don't queue real emails; assert it was called.
+		with patch("medic_plus.api.signup.frappe.sendmail") as send_mock:
+			result = set_password_and_login(token=token, password="S0meLongP@ssword123")
 		self.assertEqual(result["redirect"], "/app/practice")
+		# Owner welcome email queued; admin alert is conditional on real
+		# Healthcare Administrator users existing — count 1 or 2 is OK.
+		self.assertGreaterEqual(send_mock.call_count, 1)
+		# welcome_email_sent_at stamped exactly once (idempotent path).
+		self.assertTrue(
+			frappe.db.get_value("Practice Registration Request", self.req_name, "welcome_email_sent_at")
+		)
+		# Consumed -> second verify fails
 		with self.assertRaises(frappe.ValidationError):
 			verify_signup_completion_token(token=token)
 
@@ -137,6 +147,30 @@ class TestCompletionToken(FrappeTestCase):
 		from medic_plus.api.signup import verify_signup_completion_token
 		with self.assertRaises(frappe.ValidationError):
 			verify_signup_completion_token(token="nope-not-a-real-token")
+
+	def test_welcome_email_idempotent(self):
+		"""send_owner_welcome_email skips if welcome_email_sent_at is set."""
+		from unittest.mock import patch
+		from medic_plus.api.signup import send_owner_welcome_email
+		# Pre-stamp the timestamp; the function should no-op.
+		frappe.db.set_value(
+			"Practice Registration Request", self.req_name,
+			"welcome_email_sent_at", frappe.utils.now(),
+		)
+		with patch("medic_plus.api.signup.frappe.sendmail") as send_mock:
+			send_owner_welcome_email(self.req_name)
+		send_mock.assert_not_called()
+
+	def test_admin_notify_skips_administrator(self):
+		"""Built-in 'Administrator' user is excluded from recipient list."""
+		from unittest.mock import patch
+		from medic_plus.api.signup import notify_admins_of_provisioned_practice
+		with patch("medic_plus.api.signup.frappe.sendmail") as send_mock:
+			notify_admins_of_provisioned_practice(self.req_name)
+		# If sendmail was called, recipients must not include "Administrator".
+		for call in send_mock.call_args_list:
+			recipients = call.kwargs.get("recipients") or (call.args[0] if call.args else [])
+			self.assertNotIn("Administrator", recipients)
 
 
 class TestSignupStatus(FrappeTestCase):
