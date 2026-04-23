@@ -206,6 +206,66 @@ def create_signup_checkout(request_name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @frappe.whitelist()
+def list_yoco_webhooks() -> dict:
+	"""GET /api/webhooks — list all currently-registered subscriptions.
+
+	Yoco caps the number of active subscriptions per business. Use this to
+	see what's already registered before calling register_yoco_webhook.
+	"""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(_("Only System Managers can read Yoco webhooks."), frappe.PermissionError)
+	secret = _get_secret_key()
+	if not secret:
+		frappe.throw(_("Yoco secret_key is not configured."), frappe.ValidationError)
+
+	import requests
+	resp = requests.get(
+		_YOCO_WEBHOOKS_URL,
+		headers={"Authorization": f"Bearer {secret}"},
+		timeout=15,
+	)
+	if not resp.ok:
+		frappe.throw(
+			_("Yoco rejected the list request: {0}").format(resp.text[:300]),
+			frappe.ValidationError,
+		)
+	data = resp.json()
+	# Yoco wraps the list under "subscriptions" or returns a top-level list.
+	subs = data.get("subscriptions") if isinstance(data, dict) else data
+	return {"subscriptions": subs or [], "raw": data}
+
+
+@frappe.whitelist()
+def delete_yoco_webhook(webhook_id: str) -> dict:
+	"""DELETE /api/webhooks/<id> — remove an existing subscription.
+
+	Useful when subscription_limit_exceeded blocks a fresh registration:
+	delete a stale subscription with this, then re-run register_yoco_webhook.
+	"""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(_("Only System Managers can delete Yoco webhooks."), frappe.PermissionError)
+	webhook_id = (webhook_id or "").strip()
+	if not webhook_id:
+		frappe.throw(_("webhook_id is required."), frappe.ValidationError)
+	secret = _get_secret_key()
+	if not secret:
+		frappe.throw(_("Yoco secret_key is not configured."), frappe.ValidationError)
+
+	import requests
+	resp = requests.delete(
+		f"{_YOCO_WEBHOOKS_URL}/{webhook_id}",
+		headers={"Authorization": f"Bearer {secret}"},
+		timeout=15,
+	)
+	if resp.status_code not in (200, 204):
+		frappe.throw(
+			_("Yoco rejected the delete: {0} {1}").format(resp.status_code, resp.text[:300]),
+			frappe.ValidationError,
+		)
+	return {"status": "ok", "deleted": webhook_id}
+
+
+@frappe.whitelist()
 def register_yoco_webhook(name: str = "Medic Plus signup") -> dict:
 	"""Call Yoco's POST /api/webhooks to register our handler URL.
 
