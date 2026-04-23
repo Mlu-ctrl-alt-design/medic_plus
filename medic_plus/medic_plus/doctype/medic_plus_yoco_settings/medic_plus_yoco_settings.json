@@ -1,0 +1,85 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-04-23 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_creds",
+  "gateway_name",
+  "secret_key",
+  "public_key",
+  "webhook_secret",
+  "section_break_pricing",
+  "signup_fee_cents"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_creds",
+   "fieldtype": "Section Break",
+   "label": "Yoco API Credentials"
+  },
+  {
+   "fieldname": "gateway_name",
+   "fieldtype": "Data",
+   "label": "Gateway Name",
+   "description": "Human-readable name for the merchant account, e.g. 'Yoco Neds'."
+  },
+  {
+   "fieldname": "secret_key",
+   "fieldtype": "Password",
+   "label": "Secret Key",
+   "description": "From Yoco dashboard → Developers → Online Payments. Used server-side to create checkouts."
+  },
+  {
+   "fieldname": "public_key",
+   "fieldtype": "Data",
+   "label": "Public Key",
+   "description": "Publishable key (currently unused; reserved for future client-side flows)."
+  },
+  {
+   "fieldname": "webhook_secret",
+   "fieldtype": "Password",
+   "label": "Webhook Signing Secret",
+   "description": "From Yoco dashboard → Webhooks. Used to verify webhook HMAC signatures. Without this, payment events are rejected with HTTP 400."
+  },
+  {
+   "fieldname": "section_break_pricing",
+   "fieldtype": "Section Break",
+   "label": "Pricing"
+  },
+  {
+   "default": "49900",
+   "fieldname": "signup_fee_cents",
+   "fieldtype": "Int",
+   "label": "Signup Fee (cents ZAR)",
+   "description": "Amount charged at doctor signup, in ZAR cents. e.g. 49900 = R499.00"
+  }
+ ],
+ "is_single": 1,
+ "links": [],
+ "modified": "2026-04-23 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Medic Plus Yoco Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "role": "Administrator",
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

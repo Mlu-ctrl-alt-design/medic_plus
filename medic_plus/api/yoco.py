@@ -41,29 +41,70 @@ _WEBHOOK_MAX_AGE_SECONDS = 5 * 60
 
 
 # ---------------------------------------------------------------------------
-# Settings accessors
+# Settings accessors — read from `Medic Plus Yoco Settings` (single DocType).
+#
+# Falls back to `Medic Plus Settings.yoco_*` for backwards compatibility with
+# sites that haven't migrated yet, and to site_config keys for ops overrides.
 # ---------------------------------------------------------------------------
 
-def _get_secret_key() -> str | None:
+def _get_yoco_settings_doc():
+	"""Return the Medic Plus Yoco Settings single doc, or None if unavailable.
+
+	Cached on frappe.local for the duration of the request.
+	"""
+	cached = getattr(frappe.local, "_medic_yoco_settings", None)
+	if cached is not None:
+		return cached or None
 	try:
-		return frappe.db.get_single_value("Medic Plus Settings", "yoco_secret_key")
+		doc = frappe.get_cached_doc("Medic Plus Yoco Settings", "Medic Plus Yoco Settings")
 	except Exception:
-		return frappe.conf.get("yoco_secret_key")
+		doc = False  # sentinel for "tried but failed"
+	frappe.local._medic_yoco_settings = doc
+	return doc or None
+
+
+def _get_secret_key() -> str | None:
+	doc = _get_yoco_settings_doc()
+	if doc:
+		val = doc.get_password("secret_key", raise_exception=False)
+		if val:
+			return val
+	# Legacy fallback (Phase 6 preview): keys lived on Medic Plus Settings
+	try:
+		val = frappe.db.get_single_value("Medic Plus Settings", "yoco_secret_key")
+		if val:
+			return val
+	except Exception:
+		pass
+	return frappe.conf.get("yoco_secret_key")
 
 
 def _get_webhook_secret() -> str | None:
+	doc = _get_yoco_settings_doc()
+	if doc:
+		val = doc.get_password("webhook_secret", raise_exception=False)
+		if val:
+			return val
 	try:
-		return frappe.db.get_single_value("Medic Plus Settings", "yoco_webhook_secret")
+		val = frappe.db.get_single_value("Medic Plus Settings", "yoco_webhook_secret")
+		if val:
+			return val
 	except Exception:
-		return frappe.conf.get("yoco_webhook_secret")
+		pass
+	return frappe.conf.get("yoco_webhook_secret")
 
 
 def _get_signup_fee_cents() -> int:
+	doc = _get_yoco_settings_doc()
+	if doc and doc.signup_fee_cents:
+		return int(doc.signup_fee_cents)
 	try:
 		value = frappe.db.get_single_value("Medic Plus Settings", "yoco_signup_fee_cents")
+		if value:
+			return int(value)
 	except Exception:
-		value = None
-	return int(value) if value else 49900  # R499.00 default
+		pass
+	return 49900  # R499.00 default
 
 
 # ---------------------------------------------------------------------------
