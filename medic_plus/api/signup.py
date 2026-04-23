@@ -308,6 +308,26 @@ def set_password_and_login(token: str, password: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Dev-only: simulate a Yoco webhook success for UI tests
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist(allow_guest=True)
+def _test_mark_paid(request_name: str) -> dict:
+	"""Simulate a Yoco payment.succeeded webhook. Gated on developer_mode.
+
+	Returns 404-shaped response on production sites so the endpoint is
+	effectively absent when not needed.
+	"""
+	if not frappe.conf.get("developer_mode"):
+		frappe.local.response.http_status_code = 404
+		return {"error": "not found"}
+
+	from medic_plus.api.yoco import _handle_payment_succeeded
+	_handle_payment_succeeded({"metadata": {"request_name": request_name}})
+	return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # Scheduler — retry stuck Paid-but-not-Provisioned PRRs
 # ---------------------------------------------------------------------------
 
