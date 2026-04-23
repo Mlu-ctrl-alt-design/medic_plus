@@ -129,24 +129,32 @@
     return err.message || "Could not set password. Please try again.";
   }
 
-  // Verify the token first
+  // Verify the token first. frappe.call lives in frappe-web.bundle.js which
+  // loads further down the page, so wait for it to be ready before firing.
+  function whenFrappeReady(cb) {
+    if (window.frappe && typeof window.frappe.call === "function") return cb();
+    setTimeout(function () { whenFrappeReady(cb); }, 50);
+  }
+
   if (!TOKEN) {
     hide("loading");
     show("expired-block");
     return;
   }
-  frappe.call({
-    method: "medic_plus.api.signup.verify_signup_completion_token",
-    args: { token: TOKEN },
-  }).then(function (r) {
-    hide("loading");
-    const m = (r && r.message) || {};
-    if (!m.email) { show("expired-block"); return; }
-    $("acct-email").textContent = m.email;
-    show("form-block");
-  }).catch(function () {
-    hide("loading");
-    show("expired-block");
+  whenFrappeReady(function () {
+    frappe.call({
+      method: "medic_plus.api.signup.verify_signup_completion_token",
+      args: { token: TOKEN },
+    }).then(function (r) {
+      hide("loading");
+      const m = (r && r.message) || {};
+      if (!m.email) { show("expired-block"); return; }
+      $("acct-email").textContent = m.email;
+      show("form-block");
+    }, function () {
+      hide("loading");
+      show("expired-block");
+    });
   });
 
   // Password form submit

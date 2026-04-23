@@ -60,12 +60,21 @@
   const MAX_MS  = 90000;
   const start = Date.now();
 
+  function whenFrappeReady(cb) {
+    if (window.frappe && typeof window.frappe.call === "function") return cb();
+    setTimeout(function () { whenFrappeReady(cb); }, 50);
+  }
+
   function poll() {
     if (!REQ) {
       document.getElementById("fallback").classList.add("show");
       document.getElementById("spinner").style.display = "none";
       return;
     }
+    return whenFrappeReady(function () { return _doPoll(); });
+  }
+
+  function _doPoll() {
     frappe.call({
       method: "medic_plus.api.signup.signup_status",
       args: { request_name: REQ },

@@ -235,7 +235,22 @@ def _verify_webhook_signature(
 
 
 def _handle_payment_succeeded(data: dict) -> None:
-	"""Mark PRR as Paid, provision the doctor, issue a completion token."""
+	"""Mark PRR as Paid, provision the doctor, issue a completion token.
+
+	The webhook hits this as Guest (Yoco's HTTP request has no Frappe session),
+	but provisioning needs Administrator privileges to insert User Permissions
+	via Healthcare Practitioner's on_update hook. The webhook signature was
+	already verified by yoco_webhook upstream, so the elevation is safe.
+	"""
+	original_user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		_provision_from_payment(data)
+	finally:
+		frappe.set_user(original_user)
+
+
+def _provision_from_payment(data: dict) -> None:
 	request_name = (data.get("metadata") or {}).get("request_name")
 	checkout_id = data.get("checkoutId") or data.get("id")
 

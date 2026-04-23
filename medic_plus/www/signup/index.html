@@ -262,13 +262,19 @@
   }
   function parseServerError(err) {
     try {
-      if (err._server_messages) {
-        const arr = JSON.parse(err._server_messages);
+      // 1) frappe.call surfaces _server_messages directly
+      let raw = err && err._server_messages;
+      // 2) frappe.call also wraps the response object as err.responseJSON
+      if (!raw && err && err.responseJSON) raw = err.responseJSON._server_messages;
+      // 3) some flows attach the response under err.exception or as a string
+      if (!raw && err && typeof err === "object" && err.exception) return err.exception;
+      if (raw) {
+        const arr = JSON.parse(raw);
         const obj = typeof arr[0] === "string" ? JSON.parse(arr[0]) : arr[0];
         return obj.message || String(obj);
       }
     } catch (e) {}
-    return err.message || "Something went wrong. Please try again.";
+    return (err && (err.message || err.exception)) || "Something went wrong. Please try again.";
   }
 
   // ---- inline validation ----
@@ -328,7 +334,7 @@
         full_name:            fullName,
         email:                state.email,
         mobile:               $("mobile").value.trim(),
-        hpcsa_number:         $("hpcsa_number").value.trim(),
+        hpcsa_number:         "MP" + $("hpcsa_number").value.trim(),
         practice_number:      $("practice_number").value.trim(),
         is_dispensing_doctor: $("dispensing").checked ? 1 : 0,
       },
@@ -401,7 +407,9 @@
       $("sum-practice").textContent = state.practiceName;
       $("sum-doctor").textContent = state.fullName;
       showStep(3);
-    }).catch(function (err) {
+    }, function (err) {
+      // frappe.call rejects with the raw XHR. The error-tuple form (.then's
+      // second arg) is more reliable than .catch on older Frappe builds.
       setBusy(2, false);
       showAlert(2, parseServerError(err));
     });
