@@ -1,0 +1,99 @@
+{% extends "templates/web.html" %}
+{% block title %}Activating your practice — Medic Plus{% endblock %}
+{% block page_content %}
+<style>
+:root { --mp-primary:#2563eb; --mp-err:#dc2626; --mp-ok:#059669; }
+.mp-wrap { max-width:520px; margin:64px auto; padding:0 16px; text-align:center; }
+.mp-wrap h1 { font-size:1.45rem; margin:18px 0 8px; color:#111827; }
+.mp-wrap p { color:#6b7280; line-height:1.55; font-size:.95rem; }
+.mp-spinner-large {
+  width:56px; height:56px;
+  border:4px solid #e5e7eb; border-top-color:var(--mp-primary);
+  border-radius:50%; margin:0 auto; animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.mp-status {
+  margin-top:24px; padding:14px 18px; background:#eff6ff; color:#1e3a8a;
+  border:1px solid #bfdbfe; border-radius:10px; font-size:.92rem;
+}
+.mp-fallback {
+  display:none; margin-top:24px; padding:18px 20px; background:#fffbeb;
+  border:1px solid #fde68a; border-radius:10px; text-align:left;
+}
+.mp-fallback.show { display:block; }
+.mp-fallback h2 { font-size:1.05rem; color:#78350f; margin:0 0 6px; }
+.mp-fallback p { color:#78350f; font-size:.9rem; margin:0; }
+.mp-fallback code {
+  display:inline-block; margin-top:6px; padding:3px 8px; background:#fff;
+  border:1px solid #fde68a; border-radius:4px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:#92400e; font-size:.85rem;
+}
+.mp-footer { margin-top:24px; font-size:.875rem; color:#9ca3af; }
+.mp-footer a { color:var(--mp-primary); text-decoration:none; font-weight:500; }
+</style>
+
+<div class="mp-wrap">
+  <div class="mp-spinner-large" id="spinner"></div>
+  <h1>Payment received</h1>
+  <p>We're setting up your practice — this usually takes a few seconds.</p>
+
+  <div class="mp-status" id="status-msg">Provisioning your tenant…</div>
+
+  <div class="mp-fallback" id="fallback">
+    <h2>Still working on it</h2>
+    <p>
+      Provisioning is taking longer than usual. Check your email — once activation is ready you'll receive a one-time link to set your password.
+      If you don't receive anything within 30 minutes, contact support and quote
+      reference: <code>{{ request_name }}</code>
+    </p>
+  </div>
+
+  <p class="mp-footer">
+    <a href="/login">Back to sign in</a>
+  </p>
+</div>
+
+<script>
+(function () {
+  const REQ = {{ frappe.utils.escape_html(request_name) | tojson }};
+  const POLL_MS = 2000;
+  const MAX_MS  = 90000;
+  const start = Date.now();
+
+  function poll() {
+    if (!REQ) {
+      document.getElementById("fallback").classList.add("show");
+      document.getElementById("spinner").style.display = "none";
+      return;
+    }
+    frappe.call({
+      method: "medic_plus.api.signup.signup_status",
+      args: { request_name: REQ },
+    }).then(function (r) {
+      const m = (r && r.message) || {};
+      if (m.ready) {
+        document.getElementById("status-msg").textContent = "Activation ready — check your email for the link.";
+        // Stop polling. Email holds the signed completion token.
+        return;
+      }
+      if (Date.now() - start > MAX_MS) {
+        document.getElementById("fallback").classList.add("show");
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("status-msg").style.display = "none";
+        return;
+      }
+      setTimeout(poll, POLL_MS);
+    }).catch(function () {
+      if (Date.now() - start > MAX_MS) {
+        document.getElementById("fallback").classList.add("show");
+        document.getElementById("spinner").style.display = "none";
+        return;
+      }
+      setTimeout(poll, POLL_MS);
+    });
+  }
+
+  poll();
+})();
+</script>
+{% endblock %}
