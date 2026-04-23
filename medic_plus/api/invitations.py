@@ -1,15 +1,20 @@
 """Practice owner invites staff into their tenant.
 
-Single whitelisted endpoint that creates a User (with Frappe's standard
-welcome+set-password email), assigns the appropriate role, links the user
-to the practice via Practice Member, and — for Doctor invites — also
-provisions a Healthcare Practitioner row pre-scoped to the practice.
+Single-row endpoint `invite_staff` plus a CSV-driven bulk wrapper
+`invite_staff_bulk` that calls the per-row endpoint inside savepoints so
+one bad row doesn't block the rest. Both create a User (with Frappe's
+standard welcome+set-password email), assign the appropriate role, link
+the user to the practice via Practice Member, and — for Doctor invites —
+also provision a Healthcare Practitioner row pre-scoped to the practice.
 
 Authorization: caller must be a Practice Admin of the target practice
 (or a System Manager / Healthcare Administrator for ops support).
 """
 
 from __future__ import annotations
+
+import csv
+import io
 
 import frappe
 from frappe import _
@@ -159,4 +164,91 @@ def invite_staff(
 		"message": _("Invited {0} to {1}. They've been emailed a set-password link.").format(
 			full_name, practice
 		),
+	}
+
+
+# ---------------------------------------------------------------------------
+# Bulk variant — CSV upload of staff invites
+# ---------------------------------------------------------------------------
+
+# Required columns; everything else is ignored. Doctor-only columns are
+# only required when role == "Doctor".
+_BULK_COLUMNS = {"email", "full_name", "role"}
+
+
+@frappe.whitelist()
+@rate_limit(limit=10, seconds=3600)
+def invite_staff_bulk(practice: str, csv_data: str) -> dict:
+	"""Process a CSV string of invites: one row per staff member.
+
+	Required headers: ``email``, ``full_name``, ``role``. Optional:
+	``mobile``, ``hpcsa_number``, ``practice_number``. Doctor rows must
+	supply HPCSA + practice number.
+
+	Each row runs in its own savepoint — a failed row is reported back
+	but doesn't block the rest of the file.
+
+	Returns: ``{"succeeded": [...], "failed": [{row, email, error}, ...]}``.
+	"""
+	practice = (practice or "").strip()
+	csv_data = (csv_data or "").strip()
+	if not practice or not frappe.db.exists("Practice", practice):
+		frappe.throw(_("Unknown practice."), frappe.ValidationError)
+	if not csv_data:
+		frappe.throw(_("CSV data is required."), frappe.ValidationError)
+	if not _caller_can_invite(practice):
+		frappe.throw(
+			_("You don't have permission to invite staff into this practice."),
+			frappe.PermissionError,
+		)
+
+	reader = csv.DictReader(io.StringIO(csv_data))
+	headers = {h.strip().lower() for h in (reader.fieldnames or [])}
+	missing = _BULK_COLUMNS - headers
+	if missing:
+		frappe.throw(
+			_("CSV is missing required columns: {0}").format(", ".join(sorted(missing))),
+			frappe.ValidationError,
+		)
+
+	succeeded: list[dict] = []
+	failed: list[dict] = []
+
+	# Header row is line 1; data starts at line 2.
+	for line_no, raw in enumerate(reader, start=2):
+		row = {(k or "").strip().lower(): (v or "").strip() for k, v in raw.items()}
+		if not row.get("email") and not row.get("full_name"):
+			continue  # skip blank lines
+		savepoint = f"bulk_invite_row_{line_no}"
+		try:
+			frappe.db.savepoint(savepoint)
+			result = invite_staff(
+				practice=practice,
+				email=row.get("email", ""),
+				full_name=row.get("full_name", ""),
+				role=row.get("role", ""),
+				mobile=row.get("mobile") or None,
+				hpcsa_number=row.get("hpcsa_number") or None,
+				practice_number=row.get("practice_number") or None,
+			)
+			succeeded.append({"row": line_no, "email": row.get("email"), **result})
+		except Exception as exc:
+			# Roll back just this row's writes; bench keeps the outer txn alive.
+			try:
+				frappe.db.rollback(save_point=savepoint)
+			except Exception:
+				pass
+			failed.append({
+				"row": line_no,
+				"email": row.get("email"),
+				"error": str(exc),
+			})
+
+	# Commit successful rows; failed rows have already been rolled back.
+	frappe.db.commit()
+
+	return {
+		"succeeded": succeeded,
+		"failed": failed,
+		"message": _("{0} invited, {1} failed.").format(len(succeeded), len(failed)),
 	}
