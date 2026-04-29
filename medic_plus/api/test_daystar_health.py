@@ -256,6 +256,43 @@ class TestGetDashboardEndpoint(unittest.TestCase):
         self.assertEqual(kwargs.get("practice"), "PRAC-00001")
 
 
+class TestGetPatientDetailEndpoint(unittest.TestCase):
+    """Behavior tests for the whitelisted daystar_health.get_patient_detail.
+
+    The endpoint orchestrates: practice_resolver → cross-tenant guard
+    (the requested patient must belong to the user's Practice) →
+    build_patient_summary → return.
+    """
+
+    def _import(self):
+        from medic_plus.api import daystar_health
+        return daystar_health
+
+    def test_rejects_user_with_no_practice(self):
+        """No Practice Member → no patient detail. The SPA translates the
+        PermissionError into the no-practice error card; we never even
+        attempt the cross-tenant patient lookup."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   side_effect=frappe.PermissionError("no practice")):
+            with self.assertRaises(frappe.PermissionError):
+                m.get_patient_detail(patient="PAT-00001")
+
+    def test_rejects_cross_tenant_patient_request(self):
+        """A user signed into Practice A who requests a Patient that belongs
+        to Practice B gets PermissionError — never the patient's data, never
+        even a 'not found' that would confirm the patient exists. Distinct
+        error from 'patient not found' so the caller can't probe Practice
+        membership of arbitrary IDs."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.db.get_value",
+                   return_value="PRAC-00002"):  # patient belongs elsewhere
+            with self.assertRaises(frappe.PermissionError):
+                m.get_patient_detail(patient="PAT-FROM-OTHER-PRACTICE")
+
+
 class TestPatientPermissionQueryForDoctor(unittest.TestCase):
     """Behavior tests for the Patient PQC the Daystar Health patients-list
     screen relies on. The screen calls the REST resource API for Patient,
@@ -297,3 +334,73 @@ class TestPatientPermissionQueryForDoctor(unittest.TestCase):
              patch("medic_plus.api.permissions._get_user_practice", return_value=None):
             condition = m.get_patient_permission_query(user="orphan@example.test")
         self.assertEqual(condition, "1=0")
+
+
+class TestPatientSummaryFormatHelper(unittest.TestCase):
+    """Behavior tests for patient_summary._format_patient_summary.
+
+    The helper is a pure transformation: it accepts already-fetched rows and
+    returns the patient detail composite payload. POPIA exclusion and per-tab
+    caps are enforced here, so they're testable in isolation without DB or
+    auth context.
+    """
+
+    def _import(self):
+        from medic_plus.api import patient_summary
+        return patient_summary
+
+    def test_strips_custom_sa_id_number_from_patient_block(self):
+        """The composite must never expose POPIA-protected fields. Even if
+        the caller hands the helper a Patient row containing custom_sa_id_number,
+        the field is stripped before serialisation. The detail screen has no
+        unmask flow this iteration; the SA ID is simply unreachable."""
+        m = self._import()
+        patient_row = {
+            "name": "PAT-00001",
+            "patient_name": "Eleanor Chen",
+            "dob": "1964-03-14",
+            "sex": "Female",
+            "mobile": "+27821234567",
+            "email": "e.chen@example.test",
+            "custom_sa_id_number": "6403140001088",
+            "custom_practice": "PRAC-00001",
+        }
+        payload = m._format_patient_summary(
+            patient_row=patient_row,
+            visits=[], vitals=[], medications=[], labs=[], notes=[],
+        )
+        import json
+        serialised = json.dumps(payload, default=str)
+        self.assertNotIn("6403140001088", serialised,
+                         "POPIA: SA ID value must never appear anywhere in the payload")
+        self.assertNotIn("custom_sa_id_number", serialised,
+                         "POPIA: the field key itself must not leak (would advertise a maskable field)")
+
+    def test_per_tab_caps_enforced(self):
+        """Each tab is capped at the design's load limit. Visits / Labs /
+        Medications / Notes cap at 20; Vitals caps at 12 (the trend chart
+        renders exactly 12 data points). Caps are enforced even when the
+        caller hands in more rows — guards against future query tweaks
+        accidentally bloating the payload."""
+        m = self._import()
+        # 30 of each — well over the caps.
+        oversize = lambda kind: [{"id": f"{kind}-{i:03d}"} for i in range(30)]
+        payload = m._format_patient_summary(
+            patient_row={"name": "PAT-1"},
+            visits=oversize("V"),
+            vitals=oversize("VS"),
+            medications=oversize("M"),
+            labs=oversize("L"),
+            notes=oversize("N"),
+        )
+        self.assertEqual(len(payload["visits"]), 20, "Visits cap must be 20")
+        self.assertEqual(len(payload["vitals"]), 12, "Vitals cap must be 12 (trend chart length)")
+        self.assertEqual(len(payload["medications"]), 20, "Medications cap must be 20")
+        self.assertEqual(len(payload["labs"]), 20, "Labs cap must be 20")
+        self.assertEqual(len(payload["notes"]), 20, "Notes cap must be 20")
+        # The first 20 (or 12 for vitals) are preserved in order — caller is
+        # responsible for ordering, helper doesn't reshuffle.
+        self.assertEqual(payload["visits"][0]["id"], "V-000")
+        self.assertEqual(payload["visits"][19]["id"], "V-019")
+        self.assertEqual(payload["vitals"][0]["id"], "VS-000")
+        self.assertEqual(payload["vitals"][11]["id"], "VS-011")
