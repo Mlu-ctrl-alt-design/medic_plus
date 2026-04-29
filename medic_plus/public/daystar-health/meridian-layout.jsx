@@ -4,7 +4,7 @@ const { useState: mUseState, useMemo: mUseMemo, useEffect: mUseEffect } = React;
 function MSidebar({ route, go }) {
   const items = [
     { key: 'dashboard', icon: 'Home', label: 'Today' },
-    { key: 'appointments', icon: 'Calendar', label: 'Appointments', count: 12 },
+    { key: 'appointments', icon: 'Calendar', label: 'Appointments' },
     { key: 'patients', icon: 'Users', label: 'Patients' },
     { key: 'records', icon: 'ClipBoard', label: 'Medical Records' },
     { key: 'labs', icon: 'Beaker', label: 'Labs & Imaging' },
