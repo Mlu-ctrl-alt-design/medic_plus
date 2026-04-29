@@ -1,173 +1,220 @@
-// Daystar Health Dashboard ("Today")
+// Daystar Health Dashboard ("Today") — wired to medic_plus.api.daystar_health.get_dashboard.
+// Static MH_DATA mocks have been removed; the screen now hydrates from the
+// Practice-scoped endpoint and renders skeletons during load.
+
 function MDashboardScreen({ go }) {
-  const appts = window.MH_DATA.TODAY_APPTS;
-  const patients = window.MH_DATA.PATIENTS;
+  const [state, setState] = mUseState({ status: 'loading', data: null, error: null });
 
-  const kpis = [
-    { label: 'Today\'s appointments', value: '12', sub: '3 checked in · 1 in room', trend: [8, 10, 12, 9, 11, 13, 12], color: '#2563eb' },
-    { label: 'Active patients', value: '1,284', sub: '+18 this month', trend: [50, 53, 56, 60, 63, 66, 70], color: '#10b981' },
-    { label: 'Outstanding labs', value: '23', sub: '4 critical results', trend: [18, 20, 19, 22, 21, 24, 23], color: '#f59e0b' },
-    { label: 'Pending refills', value: '38', sub: '12 awaiting review', trend: [30, 32, 36, 34, 40, 38, 38], color: '#8b5cf6' },
-  ];
+  mUseEffect(() => {
+    let cancelled = false;
+    setState({ status: 'loading', data: null, error: null });
+    window.meridianApi
+      .call('medic_plus.api.daystar_health.get_dashboard')
+      .then((data) => { if (!cancelled) setState({ status: 'ready', data, error: null }); })
+      .catch((err) => {
+        if (cancelled) return;
+        setState({ status: 'error', data: null, error: err.message || 'Could not load dashboard.' });
+        window.meridianApi.showError(err.message || 'Could not load dashboard.');
+      });
+    return () => { cancelled = true; };
+  }, []);
 
-  const week = [
-    { d: 'Mon', visits: 18 }, { d: 'Tue', visits: 22 }, { d: 'Wed', visits: 19 },
-    { d: 'Thu', visits: 24 }, { d: 'Fri', visits: 21 }, { d: 'Sat', visits: 8 }, { d: 'Sun', visits: 0 },
-  ];
+  if (state.status === 'loading') return <DashboardSkeleton />;
+  if (state.status === 'error') return <DashboardError message={state.error} />;
+  return <DashboardReady go={go} data={state.data} />;
+}
 
+function DashboardSkeleton() {
   return (
-    <div className="page fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-            Good morning, Dr. Patel
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Wednesday, April 29 · {appts.length} patients on your schedule today.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary btn-sm"><window.MIcons.Calendar size={14} /> View full schedule</button>
-          <button className="btn btn-primary btn-sm"><window.MIcons.Plus size={14} /> New appointment</button>
-        </div>
+    <div className="page fade-in" data-testid="dashboard-skeleton">
+      <div style={{ marginBottom: 24 }}>
+        <SkeletonBar w={260} h={26} />
+        <div style={{ height: 8 }} />
+        <SkeletonBar w={360} h={14} />
       </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gap)', marginBottom: 'var(--gap)' }}>
-        {kpis.map((k, i) => (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gap)', marginBottom: 'var(--gap)' }}>
+        {[0, 1, 2].map(i => (
           <div key={i} className="kpi-tile">
-            <div className="kpi-label">{k.label}</div>
-            <div className="kpi-value">{k.value}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-              <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{k.sub}</span>
-              <div style={{ width: 70 }}><window.Sparkline data={k.trend} color={k.color} height={26} /></div>
-            </div>
+            <SkeletonBar w={120} h={12} />
+            <div style={{ height: 8 }} />
+            <SkeletonBar w={80} h={26} />
           </div>
         ))}
       </div>
+      <div className="card card-pad"><SkeletonBar w="100%" h={140} /></div>
+    </div>
+  );
+}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 'var(--gap)', marginBottom: 'var(--gap)' }}>
-        {/* Today's schedule */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h3 className="card-title">Today's schedule</h3>
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Wed, Apr 29 · Dr. Patel & Dr. Okafor</div>
-            </div>
-            <div className="segment">
-              <button className="active">Day</button>
-              <button>Week</button>
-              <button>Month</button>
-            </div>
-          </div>
-          <div>
-            {appts.map((a, i) => (
-              <div key={i} onClick={() => go('patient', a.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px', borderBottom: i < appts.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
-                <div style={{ width: 60, flexShrink: 0 }}>
-                  <div className="mono" style={{ fontSize: 13, fontWeight: 600 }}>{a.time}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{a.dur} min</div>
-                </div>
-                <div style={{ width: 3, height: 36, background: a.kind === 'urgent' ? 'var(--danger)' : a.kind === 'followup' ? 'var(--info)' : 'var(--accent)', borderRadius: 2 }} />
-                <div className="avatar avatar-sm" style={{ width: 32, height: 32, fontSize: 11 }}>
-                  {a.patient.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{a.patient}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{a.reason} · {a.provider} · {a.room}</div>
-                </div>
-                <span className={`badge ${a.status === 'In room' ? 'badge-info' : a.status === 'Checked in' ? 'badge-success' : 'badge-neutral'}`}>{a.status}</span>
-              </div>
-            ))}
-          </div>
+function SkeletonBar({ w = '100%', h = 14 }) {
+  return <div style={{ width: w, height: h, background: 'var(--bg-subtle)', borderRadius: 4, animation: 'pulse 1.6s infinite' }} />;
+}
+
+function DashboardError({ message }) {
+  return (
+    <div className="page fade-in">
+      <div className="card card-pad" data-testid="dashboard-error" style={{ textAlign: 'center', padding: 60 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Couldn't load dashboard</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function DashboardReady({ go, data }) {
+  const today = data.today_schedule || [];
+  const recent = data.recent_patients || [];
+  const week = data.week_volume || [];
+  const apptKpi = (data.kpis && data.kpis.today_appointments) || { value: 0, breakdown: {} };
+  const activeKpi = (data.kpis && data.kpis.active_patients) || { value: 0 };
+  const labKpi = (data.kpis && data.kpis.outstanding_labs) || { value: 0 };
+  const subtitleParts = Object.entries(apptKpi.breakdown || {}).map(([k, v]) => `${v} ${k.toLowerCase()}`);
+  const subtitleText = subtitleParts.length ? subtitleParts.join(' · ') : 'No appointments today';
+
+  return (
+    <div className="page fade-in" data-testid="dashboard-ready">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1 data-testid="dashboard-greeting" style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+            {data.greeting}
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{data.today_label} · {today.length} patients on your schedule today.</p>
         </div>
-
-        {/* Right column: alerts + week chart */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Needs attention</h3>
-              <span className="badge badge-warn">5</span>
-            </div>
-            <div>
-              {[
-                { icon: 'AlertTriangle', tone: 'urgent', who: 'James Whitaker', what: 'BP 142/94 — above target', when: '20 min ago', id: 'MH-10341' },
-                { icon: 'Beaker', tone: 'watch', who: 'Eleanor Chen', what: 'A1c result requires review', when: '1h ago', id: 'MH-10042' },
-                { icon: 'Pill', tone: 'watch', who: 'Robert Kim', what: 'Refill request: Tiotropium', when: '2h ago', id: 'MH-10744' },
-                { icon: 'Mail', tone: 'normal', who: 'Marcus Rivera', what: 'Sent inhaler technique question', when: '3h ago', id: 'MH-10118' },
-              ].map((a, i, arr) => {
-                const Ic = window.MIcons[a.icon];
-                const tone = a.tone === 'urgent' ? '#ef4444' : a.tone === 'watch' ? '#f59e0b' : '#3b82f6';
-                return (
-                  <div key={i} onClick={() => go('patient', a.id)} style={{ display: 'flex', gap: 10, padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: a.tone === 'urgent' ? 'var(--danger-soft)' : a.tone === 'watch' ? 'var(--warn-soft)' : 'var(--info-soft)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                      <Ic size={14} stroke={tone} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 500 }}>{a.who}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{a.what}</div>
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{a.when}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="card card-pad">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-              <h3 style={{ fontSize: 13.5, fontWeight: 600, margin: 0 }}>This week's volume</h3>
-              <span className="mono" style={{ fontSize: 12, color: 'var(--text-muted)' }}>112 visits</span>
-            </div>
-            <svg viewBox="0 0 280 100" style={{ width: '100%', height: 100 }}>
-              {week.map((d, i) => {
-                const max = Math.max(...week.map(w => w.visits)) || 1;
-                const h = (d.visits / max) * 70;
-                const x = 20 + i * 36;
-                return (
-                  <g key={i}>
-                    <rect x={x} y={80 - h} width="22" height={h} fill="var(--accent)" rx="3" opacity={i === 2 ? 1 : 0.55} />
-                    <text x={x + 11} y="94" textAnchor="middle" fontSize="9" fill="var(--text-dim)" fontFamily="var(--font-mono)">{d.d}</text>
-                    <text x={x + 11} y={76 - h} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="var(--font-mono)">{d.visits || ''}</text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <a className="btn btn-secondary btn-sm" href={data.view_full_schedule_url} target="_blank" rel="noreferrer" data-testid="view-full-schedule">
+            <window.MIcons.Calendar size={14} /> View full schedule
+          </a>
         </div>
       </div>
 
-      {/* Bottom: recent patients */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gap)', marginBottom: 'var(--gap)' }}>
+        <KpiTile label="Today's appointments" value={apptKpi.value} subtitle={subtitleText} testId="kpi-today-appointments" />
+        <KpiTile label="Active patients" value={activeKpi.value} subtitle="Across the practice" testId="kpi-active-patients" />
+        <KpiTile label="Outstanding labs" value={labKpi.value} subtitle="Open or in progress" testId="kpi-outstanding-labs" />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 'var(--gap)', marginBottom: 'var(--gap)' }}>
+        <TodaysSchedule today={today} go={go} todayLabel={data.today_label} />
+        <WeekVolumeCard week={week} />
+      </div>
+
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">Recently seen patients</h3>
           <button className="btn btn-ghost btn-sm" onClick={() => go('patients')}>All patients</button>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="table">
-            <thead>
-              <tr><th>Patient</th><th>MRN</th><th>Last visit</th><th>Conditions</th><th>Risk</th><th>Status</th><th>Next appt</th></tr>
-            </thead>
-            <tbody>
-              {patients.slice(0, 6).map(p => (
-                <tr key={p.id} onClick={() => go('patient', p.id)}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div className="avatar avatar-sm" style={{ width: 28, height: 28, fontSize: 10 }}>{p.name.split(' ').map(n => n[0]).join('')}</div>
-                      <div>
-                        <div style={{ fontWeight: 500 }}>{p.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{p.age} {p.sex} · {p.primary}</div>
+        <div style={{ overflowX: 'auto' }} data-testid="recent-patients">
+          {recent.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              No patient encounters yet.
+            </div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr><th>Patient</th><th>Last visit</th></tr>
+              </thead>
+              <tbody>
+                {recent.map(p => (
+                  <tr key={p.id} onClick={() => go('patient', p.id)}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className="avatar avatar-sm" style={{ width: 28, height: 28, fontSize: 10 }}>
+                          {(p.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 500 }}>{p.name || '—'}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                            {p.age != null ? `${p.age}` : '—'} {p.sex || ''}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="mono" style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.mrn}</td>
-                  <td>{p.lastSeen}</td>
-                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.conditions.slice(0, 2).join(', ') || '—'}</td>
-                  <td><span className={`badge ${p.risk === 'High' ? 'badge-danger' : p.risk === 'Moderate' ? 'badge-warn' : 'badge-success'}`}>{p.risk}</span></td>
-                  <td><span className={`badge ${p.status === 'Stable' ? 'pill-stable' : p.status === 'Watch' ? 'pill-watch' : 'pill-urgent'}`} style={{ background: p.status === 'Stable' ? 'var(--success-soft)' : p.status === 'Watch' ? 'var(--warn-soft)' : 'var(--danger-soft)' }}>{p.status}</span></td>
-                  <td className="mono" style={{ fontSize: 12 }}>{p.nextAppt}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td>{p.last_seen || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function KpiTile({ label, value, subtitle, testId }) {
+  return (
+    <div className="kpi-tile" data-testid={testId}>
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value">{value}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{subtitle}</div>
+    </div>
+  );
+}
+
+function TodaysSchedule({ today, go, todayLabel }) {
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Today's schedule</h3>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{todayLabel}</div>
+        </div>
+      </div>
+      <div data-testid="today-schedule">
+        {today.length === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            No appointments scheduled for today.
+          </div>
+        ) : today.map((a, i) => (
+          <div key={a.id} onClick={() => go('patient', a.patient_id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px', borderBottom: i < today.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
+            <div style={{ width: 60, flexShrink: 0 }}>
+              <div className="mono" style={{ fontSize: 13, fontWeight: 600 }}>{a.time}</div>
+              <div className="mono" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{a.duration} min</div>
+            </div>
+            <div className="avatar avatar-sm" style={{ width: 32, height: 32, fontSize: 11 }}>
+              {(a.patient_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{a.patient_name}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{a.reason || '—'} · {a.practitioner}</div>
+            </div>
+            <span className={`badge ${badgeClass(a.status)}`}>{a.status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function badgeClass(status) {
+  if (status === 'Confirmed') return 'badge-success';
+  if (status === 'Open') return 'badge-info';
+  if (status === 'No Show') return 'badge-danger';
+  return 'badge-neutral';
+}
+
+function WeekVolumeCard({ week }) {
+  const total = week.reduce((sum, d) => sum + (d.visits || 0), 0);
+  const max = Math.max(1, ...week.map(d => d.visits || 0));
+  return (
+    <div className="card card-pad">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+        <h3 style={{ fontSize: 13.5, fontWeight: 600, margin: 0 }}>This week's volume</h3>
+        <span className="mono" style={{ fontSize: 12, color: 'var(--text-muted)' }}>{total} visits</span>
+      </div>
+      <svg viewBox="0 0 280 100" style={{ width: '100%', height: 100 }} data-testid="week-volume">
+        {week.map((d, i) => {
+          const h = ((d.visits || 0) / max) * 70;
+          const x = 20 + i * 36;
+          return (
+            <g key={d.day}>
+              <rect x={x} y={80 - h} width="22" height={h} fill="var(--accent)" rx="3" opacity={d.visits ? 1 : 0.3} />
+              <text x={x + 11} y="94" textAnchor="middle" fontSize="9" fill="var(--text-dim)" fontFamily="var(--font-mono)">{d.day}</text>
+              <text x={x + 11} y={76 - h} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="var(--font-mono)">{d.visits || ''}</text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
