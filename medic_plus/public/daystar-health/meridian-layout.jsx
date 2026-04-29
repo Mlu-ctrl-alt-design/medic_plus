@@ -31,7 +31,7 @@ function MSidebar({ route, go }) {
         {items.slice(0, 2).map(it => {
           const Ic = window.MIcons[it.icon];
           return (
-            <button key={it.key} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
+            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
               <Ic size={17} /><span>{it.label}</span>
               {it.count && <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--accent-soft)', padding: '1px 6px', borderRadius: 4, color: 'var(--accent-text)', fontWeight: 500 }}>{it.count}</span>}
             </button>
@@ -41,7 +41,7 @@ function MSidebar({ route, go }) {
         {items.slice(2, 6).map(it => {
           const Ic = window.MIcons[it.icon];
           return (
-            <button key={it.key} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
+            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
               <Ic size={17} /><span>{it.label}</span>
             </button>
           );
@@ -50,7 +50,7 @@ function MSidebar({ route, go }) {
         {items.slice(6).map(it => {
           const Ic = window.MIcons[it.icon];
           return (
-            <button key={it.key} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
+            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
               <Ic size={17} /><span>{it.label}</span>
             </button>
           );
