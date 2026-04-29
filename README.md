@@ -133,6 +133,15 @@ MIT
 
 ## Changelog
 
+### 2026-04-29 — Phase 1F (Issue #4): Daystar Health SPA — auth flow wired to Frappe
+- Slice 1 of 5 wiring the `/daystar-health` SPA to real Frappe APIs.
+- New `practice_resolver.get_active_practice(user)` deep module — returns the user's active Practice or raises `frappe.PermissionError` for Guest / no-membership users. Reusable across all later Daystar Health endpoints.
+- New page bootstrap `www/daystar_health.py` exposes `csrf_token`, `session_user`, and `has_practice` to the SPA template; new `meridian-api.js` helper centralises CSRF + JSON conventions for every later screen (`call`, `resource`, `login`, `recoverPassword`, `logout`).
+- Replaced mock auth in `meridian-auth.jsx` with real `/api/method/login` and `frappe.core.doctype.user.user.reset_password` calls. New `MNoPracticeScreen` for authenticated users without a Practice Member row, with sign-out wired to `/api/method/logout`.
+- SPA first-render routing reads the bootstrap and chooses login / no-practice / dashboard at mount time — no more login-screen flicker for already-authenticated users.
+- Tests: 3 Python unit tests for `practice_resolver` + 5 Playwright tests covering anonymous, invalid creds, post-login routing, already-logged-in skip, and sign-out.
+- Bug fix: renamed `daystar-health.py` → `daystar_health.py` so Frappe's website controller resolver finds it (resolver maps hyphenated `.html` to underscored `.py`).
+
 ### 2026-04-22 — Phase 6: Doctor Self-Registration (OTP + Yoco)
 - New 3-step `/signup` funnel: details → email OTP → Yoco checkout. Replaces `/register` and `/register/doctor` (deleted).
 - Yoco webhook auto-provisions on `payment.succeeded` (no admin approval). Idempotent re-fires; failures flip the PRR to `Provisioning Failed` with the traceback recorded.

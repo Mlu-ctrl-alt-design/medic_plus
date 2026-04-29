@@ -4,6 +4,39 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-29 — Phase 1F (Issue #4): Daystar Health SPA — auth flow wired to Frappe
+
+### Scope
+Slice 1 of 5 for the `/daystar-health` Single-Page Application: replace the mock authentication with real Frappe auth, and lay the foundation that subsequent screens (dashboard, patients list, patient detail, profile) reuse.
+
+### Deep module: `practice_resolver`
+- `get_active_practice(user) -> str` resolves the user's active Practice via `Practice Member`, the single source of truth for "which Practice does this user belong to" across all Daystar Health endpoints.
+- Raises `frappe.PermissionError` for Guest and for any user without a Practice Member row. `Healthcare Administrator` role is *not* specially privileged here — admins still need a Practice Member to use this UI (they retain Frappe Desk access for admin work).
+
+### SPA bootstrap
+- `www/daystar_health.py` exposes `csrf_token`, `session_user`, and `has_practice` to the template via `get_context()`. Resolving `has_practice` server-side eliminates a first-render round trip and lets the SPA choose its initial route synchronously.
+- `meridian-api.js` is the new centralised SPA API client — wraps `fetch` with CSRF + JSON conventions, surfaces `call`, `resource`, `login`, `recoverPassword`, `logout`, `showError`. Every later slice consumes this helper rather than rolling its own.
+
+### Auth screens (`meridian-auth.jsx`)
+- `MLoginScreen` posts to `/api/method/login` with username/email + password. In-page error banner on bad credentials. Username (e.g. `Administrator`) and email both accepted (`type="text"` rather than `type="email"`).
+- `MRecoverScreen` posts to `frappe.core.doctype.user.user.reset_password`.
+- New `MNoPracticeScreen` renders for authenticated users without a Practice Member row. Sign-out posts to `/api/method/logout` with the CSRF token.
+
+### First-render routing
+The SPA's `initialRoute()` reads the bootstrap and chooses `login` / `no-practice` / `dashboard` at mount time. Already-authenticated users no longer see the login screen flicker.
+
+### Tests
+- Python: 3 unit tests for `practice_resolver` (member returns Practice, no-membership raises, Guest raises). Mocks `frappe.db` to keep tests pure; LocalProxy bound in `setUpModule` to avoid Python 3.14 + ContextVar issues.
+- Playwright: 5 tests covering anonymous → login screen, invalid credentials surface in-page error, admin login lands on no-practice card, already-logged-in admin skips login, sign-out returns to login.
+
+### Bug surfaced
+Frappe's website page renderer (`template_page.set_pymodule`) maps hyphenated `.html` templates to underscored `.py` companion modules. The pre-existing `daystar-health.py` was therefore dead code — Frappe was looking for `daystar_health.py`. Renamed to fix the bootstrap injection.
+
+### Out of scope (later slices)
+- Dashboard, patients list, patient detail, profile — all still consume static `MH_DATA` mocks. Issues #5, #6, #7, #8.
+
+---
+
 ## 2026-04-08 — Phase 3: Platform Owner Workspace
 
 ### Requirement
