@@ -254,3 +254,46 @@ class TestGetDashboardEndpoint(unittest.TestCase):
         bd.assert_called_once()
         kwargs = bd.call_args.kwargs
         self.assertEqual(kwargs.get("practice"), "PRAC-00001")
+
+
+class TestPatientPermissionQueryForDoctor(unittest.TestCase):
+    """Behavior tests for the Patient PQC the Daystar Health patients-list
+    screen relies on. The screen calls the REST resource API for Patient,
+    which Frappe scopes via this PQC. We exercise the contract: a Doctor
+    user signed into Practice A sees a query that filters to that Practice
+    only — Practice B's patients are unreachable.
+    """
+
+    def _import(self):
+        from medic_plus.api import permissions
+        return permissions
+
+    def test_query_restricts_doctor_to_their_own_practice(self):
+        """The PQC returns a SQL fragment scoping `tabPatient`.`custom_practice`
+        to the user's Practice. The patients list, which composes this fragment
+        into its REST query, therefore can never expose another Practice's data."""
+        m = self._import()
+        # frappe.db.escape wraps strings in quotes; replicate that for the test.
+        with patch("medic_plus.api.permissions._is_platform_admin", return_value=False), \
+             patch("medic_plus.api.permissions.frappe.get_roles", return_value=["Doctor"]), \
+             patch("medic_plus.api.permissions._get_user_practice", return_value="PRAC-00001"), \
+             patch("medic_plus.api.permissions.frappe.db.escape", side_effect=lambda v: f"'{v}'"):
+            condition = m.get_patient_permission_query(user="doctor.a@example.test")
+        self.assertIn("custom_practice", condition)
+        self.assertIn("PRAC-00001", condition)
+        # The other practice is *not* in the condition — readers of the
+        # condition (Frappe's query builder) cannot construct a query that
+        # leaks it.
+        self.assertNotIn("PRAC-00002", condition)
+
+    def test_query_blocks_user_with_no_practice_membership(self):
+        """A logged-in user who is not a platform admin, not a Patient, and
+        has no Practice Member row is fenced off entirely — the PQC returns
+        a tautology that matches no rows. This is the safety net behind the
+        no-practice error card on the SPA."""
+        m = self._import()
+        with patch("medic_plus.api.permissions._is_platform_admin", return_value=False), \
+             patch("medic_plus.api.permissions.frappe.get_roles", return_value=["System User"]), \
+             patch("medic_plus.api.permissions._get_user_practice", return_value=None):
+            condition = m.get_patient_permission_query(user="orphan@example.test")
+        self.assertEqual(condition, "1=0")
