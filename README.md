@@ -133,6 +133,13 @@ MIT
 
 ## Changelog
 
+### 2026-04-29 — Phase 1H (Issue #6): Daystar Health patients list wired to REST resource API
+- Slice 3 of 5 wiring the `/daystar-health` SPA. Patients screen now hydrates from `/api/resource/Patient` instead of `MH_DATA` mocks.
+- Server-side pagination (real `limit_start/limit_page_length/total`), 300ms-debounced search across `patient_name/mobile/email` via `or_filters`, sortable headers (`patient_name`, `dob`), page-size selector (25/50/100) persisted in `sessionStorage`. Skeleton + error + empty-state UI.
+- No new backend endpoint — PQC (`get_patient_permission_query`) handles tenant scoping for free.
+- Per design decisions: dropped risk/status/provider filter chips, MRN column, risk badge, status pill, conditions/allergies columns, last-seen column (covered later via patient detail), checkboxes/bulk actions, Export/Register buttons. Sidebar nav now has `data-testid={`nav-${key}`}` on every button for deterministic Playwright navigation.
+- Tests: 2 Python PQC contract tests (Doctor restricted to Practice; orphan gets `1=0`) + 5 Playwright tests (list render, search round-trip, prev/next pagination, page-size persistence, empty state).
+
 ### 2026-04-29 — Phase 1G (Issue #5): Daystar Health dashboard wired to live Practice data
 - Slice 2 of 5 wiring the `/daystar-health` SPA. Dashboard now hydrates from a real composite endpoint instead of `MH_DATA` mocks.
 - New deep module `api/dashboard_aggregator` — `build_dashboard(practice, user)` orchestrator + pure `_format_dashboard(...)` helper for testable shaping rules (greeting personalisation, week-volume always 7 days, recent-patients cap of 6, today-appointment status breakdown using the real Healthcare statuses).
