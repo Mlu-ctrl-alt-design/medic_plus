@@ -133,6 +133,13 @@ MIT
 
 ## Changelog
 
+### 2026-04-29 — Phase 1I (Issue #7): Daystar Health patient detail wired to composite endpoint
+- Slice 4 of 5 wiring the `/daystar-health` SPA. Patient detail screen now hydrates all six tabs (Overview / Visits / Vitals / Medications / Labs / Notes) from a single composite call.
+- New deep module `api/patient_summary` — `build_patient_summary(patient_name, practice)` orchestrator + pure `_format_patient_summary(...)` helper that applies per-tab caps (20 / 12 for vitals) and the POPIA whitelist (only `name / patient_name / dob / sex / mobile / email / status` make it into the patient block; `custom_sa_id_number` is unreachable).
+- New whitelisted endpoint `medic_plus.api.daystar_health.get_patient_detail(patient)` — looks up the patient's `custom_practice` and raises `frappe.PermissionError` for cross-tenant requests, then returns the composite. Same error class as no-practice so callers cannot probe Practice membership.
+- Tests: 4 Python (POPIA, per-tab caps, no-practice rejection, cross-tenant rejection) + 2 Playwright (detail loads all 6 tab containers; response body asserted POPIA-clean).
+- Surfaced Issue #12: Practice Admin / Doctor / Receptionist roles don't have read permission on Patient via Custom DocPerm — workaround in place (Physician role on selfserve.test).
+
 ### 2026-04-29 — Phase 1H (Issue #6): Daystar Health patients list wired to REST resource API
 - Slice 3 of 5 wiring the `/daystar-health` SPA. Patients screen now hydrates from `/api/resource/Patient` instead of `MH_DATA` mocks.
 - Server-side pagination (real `limit_start/limit_page_length/total`), 300ms-debounced search across `patient_name/mobile/email` via `or_filters`, sortable headers (`patient_name`, `dob`), page-size selector (25/50/100) persisted in `sessionStorage`. Skeleton + error + empty-state UI.

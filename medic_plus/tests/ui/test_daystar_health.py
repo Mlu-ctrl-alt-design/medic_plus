@@ -328,3 +328,73 @@ class TestPatientsListEmptyState:
         expect(page.locator('[data-testid="patients-empty-state"]')).to_be_visible(timeout=10_000)
         # No rows are visible.
         assert page.locator('[data-testid="patients-row"]').count() == 0
+
+
+# ── slice 4: patient detail ──────────────────────────────────────────────────
+
+
+class TestPatientDetailRender:
+    """Clicking a patient from the list navigates to the detail screen, which
+    fetches the composite endpoint once and hydrates all six tabs from the
+    bundle — no waterfall on tab switch."""
+
+    def test_detail_loads_all_tabs_render(self, admin_with_practice_membership, page: Page):
+        _login_as_admin(page)
+        _open_patients_screen(page)
+
+        # Administrator's view bypasses Patient PQC (Healthcare Administrator
+        # role). The list shows all 133 patients across every Practice, but
+        # get_patient_detail correctly rejects cross-tenant clicks. Search for
+        # a known PRAC-00001 patient prefix so we click a row in our Practice.
+        page.locator('[data-testid="patients-search"]').fill("Booking")
+        page.wait_for_timeout(800)
+        first_row = page.locator('[data-testid="patients-row"]').first
+        expect(first_row).to_be_visible(timeout=15_000)
+        first_row.click()
+
+        # Detail page renders.
+        expect(page.locator('[data-testid="patient-detail-page"]')).to_be_visible(timeout=15_000)
+        expect(page.locator('[data-testid="patient-name"]')).to_be_visible()
+
+        # All 6 tab buttons exist.
+        for tab_id in ("overview", "visits", "vitals", "medications", "labs", "notes"):
+            expect(page.locator(f'[data-testid="patient-tab-{tab_id}"]')).to_be_visible()
+
+        # Overview is the default — its content container is visible.
+        expect(page.locator('[data-testid="patient-tab-content-overview"]')).to_be_visible()
+
+        # Switch to each remaining tab and confirm its content container shows.
+        for tab_id in ("visits", "vitals", "medications", "labs", "notes"):
+            page.locator(f'[data-testid="patient-tab-{tab_id}"]').click()
+            expect(page.locator(f'[data-testid="patient-tab-content-{tab_id}"]')).to_be_visible(timeout=5_000)
+
+    def test_detail_payload_does_not_leak_custom_sa_id_number(self, admin_with_practice_membership, page: Page):
+        """POPIA contract: the detail screen's payload must never contain the
+        SA ID number. We grab the network response of the composite call and
+        assert the field is absent from the JSON."""
+        _login_as_admin(page)
+        _open_patients_screen(page)
+
+        captured = {}
+
+        def on_response(response):
+            url = response.url
+            if "get_patient_detail" in url and response.status == 200:
+                try:
+                    captured["body"] = response.text()
+                except Exception:
+                    pass
+
+        page.on("response", on_response)
+
+        page.locator('[data-testid="patients-search"]').fill("Booking")
+        page.wait_for_timeout(800)
+        first_row = page.locator('[data-testid="patients-row"]').first
+        expect(first_row).to_be_visible(timeout=15_000)
+        first_row.click()
+        expect(page.locator('[data-testid="patient-detail-page"]')).to_be_visible(timeout=15_000)
+
+        body = captured.get("body", "")
+        assert "custom_sa_id_number" not in body, (
+            "POPIA: the get_patient_detail response leaked custom_sa_id_number"
+        )

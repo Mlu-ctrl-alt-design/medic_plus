@@ -4,6 +4,37 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-29 — Phase 1I (Issue #7): Daystar Health patient detail — wired to composite endpoint
+
+### Scope
+Slice 4 of 5 wiring `/daystar-health`. Replaces the static `MH_DATA` lookups on the patient detail screen with a single composite endpoint that returns all six tabs in one round trip.
+
+### Deep module: `patient_summary`
+- `build_patient_summary(patient_name, practice)` — orchestrator. Fetches Patient + Patient Encounters (last 20) + Vital Signs (last 12) + active medications de-duped across encounters + Lab Tests (last 20) + Frappe Comments on the Patient (last 20). Hands them to the format helper.
+- `_format_patient_summary(...)` — pure transformation. Caps each tab and applies the **POPIA whitelist**: only the fields in `_PATIENT_PUBLIC_FIELDS` (`name / patient_name / dob / sex / mobile / email / status`) survive into the patient block. `custom_sa_id_number` is impossible to leak — it never appears in the response, even if the caller hands the helper a row containing it.
+
+### Endpoint: `daystar_health.get_patient_detail(patient)`
+- Cross-tenant guard: looks up the patient's `custom_practice` and refuses with `frappe.PermissionError` if it doesn't match the caller's active Practice. Same error class as no-practice, so an attacker can't probe Practice membership of arbitrary IDs by looking at the response code.
+- Returns the composite payload from `build_patient_summary`.
+- "See full record" links per tab go to the Frappe Desk filtered list — built into the payload as `full_record_links`.
+
+### Frontend rewire (`meridian-patient.jsx`)
+- Three render states: skeleton, error (with "Back to patients" CTA), ready.
+- Ready state has six tabs: Overview / Visits / Vitals / Medications / Labs / Notes — all hydrated from the same fetch, no waterfall on tab switch.
+- Notes tab renders Comment HTML via `dangerouslySetInnerHTML` (Frappe's HTML Editor field — same trust boundary as the Frappe Desk activity feed).
+
+### Tests
+- Python: 4 new unit tests — POPIA exclusion (the tracer), per-tab caps (visits/labs/meds/notes capped at 20, vitals at 12), endpoint rejects no-practice, endpoint rejects cross-tenant patient request.
+- Playwright: 2 new tests — detail screen renders all 6 tab containers (with search filter to ensure we click a row in our own Practice when admin's view bypasses Patient PQC); response body of the composite call asserted to never contain `custom_sa_id_number`.
+
+### Out of scope (later slices)
+- Profile + password change (#8) — last slice.
+
+### Surfaced gap (Issue #12)
+While testing as a real Practice user (selfserve.test), discovered that medic_plus ships no Custom DocPerm fixtures granting Practice Admin / Practice Doctor / Practice Receptionist roles read access on Patient and related Healthcare doctypes. Practice users get 403 from `/api/resource/Patient` *before* the PQC runs because the role-permission gate isn't open. Tracked in #12 with a workaround (Physician role added to test user).
+
+---
+
 ## 2026-04-29 — Phase 1H (Issue #6): Daystar Health patients list — wired to REST resource API
 
 ### Scope
