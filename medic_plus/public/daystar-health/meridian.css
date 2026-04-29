@@ -1,0 +1,70 @@
+/* Meridian Health overrides — teal accent on the same base system */
+:root {
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: oklch(0.96 0.04 250);
+  --accent-text: #1d4ed8;
+}
+[data-theme="dark"] {
+  --accent-soft: oklch(0.30 0.07 250);
+  --accent-text: #60a5fa;
+}
+.btn-primary {
+  background: linear-gradient(180deg, #3b82f6 0%, var(--accent) 100%);
+}
+.btn-primary:hover { background: linear-gradient(180deg, var(--accent) 0%, var(--accent-hover) 100%); }
+
+.auth-shell {
+  background:
+    radial-gradient(ellipse at top right, oklch(0.96 0.05 250) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom left, oklch(0.97 0.03 220) 0%, transparent 60%),
+    var(--bg);
+}
+[data-theme="dark"] .auth-shell {
+  background:
+    radial-gradient(ellipse at top right, oklch(0.25 0.07 250) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom left, oklch(0.22 0.04 220) 0%, transparent 60%),
+    var(--bg);
+}
+
+.avatar {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+/* Status pills specific to clinical workflows */
+.pill-stable { background: var(--success-soft); color: #047857; }
+.pill-watch { background: var(--warn-soft); color: #b45309; }
+.pill-urgent { background: var(--danger-soft); color: #b91c1c; }
+[data-theme="dark"] .pill-stable { color: #34d399; }
+[data-theme="dark"] .pill-watch { color: #fbbf24; }
+[data-theme="dark"] .pill-urgent { color: #f87171; }
+
+/* Calendar */
+.cal-grid {
+  display: grid;
+  grid-template-columns: 60px repeat(5, 1fr);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.cal-cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  min-height: 48px;
+  position: relative;
+  font-size: 11px;
+  padding: 4px 6px;
+}
+.cal-time { color: var(--text-dim); font-family: var(--font-mono); }
+.cal-event {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  margin-bottom: 2px;
+  cursor: pointer;
+}
+.cal-event.urgent { background: var(--danger-soft); border-left-color: var(--danger); color: #b91c1c; }
+.cal-event.followup { background: var(--info-soft); border-left-color: var(--info); }
