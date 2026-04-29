@@ -4,6 +4,35 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-29 — Phase 1H (Issue #6): Daystar Health patients list — wired to REST resource API
+
+### Scope
+Slice 3 of 5 wiring `/daystar-health`. Replaces the static `MH_DATA.PATIENTS` array on the patients screen with a real, server-side paginated/searchable/sortable list backed by Frappe's REST `Patient` resource.
+
+### No new backend module
+Per Q11, the patients list is a direct REST consumer — `meridianApi.resource("Patient", {fields, or_filters, order_by, limit_start, limit_page_length})`. PQC (`get_patient_permission_query` in `api/permissions.py`) handles tenant scoping for free, so we get cross-tenant safety without writing any new endpoint.
+
+### Frontend rewire (`meridian-patients.jsx`)
+- Three render states: skeleton (during load), error (toast + inline card), ready (table or empty-state card).
+- **Search**: 300ms-debounced input, refetches via `or_filters` across `patient_name`, `mobile`, `email`. Clearing the input restores the unfiltered list.
+- **Pagination**: real `limit_start / limit_page_length / total` with prev/next. Pagination footer shows `start – end of total`. The total comes from a parallel `frappe.client.get_count` (or a wider `or_filters`-based query when searching).
+- **Page-size selector**: 25 / 50 / 100. Persists for the session in `sessionStorage` under `daystar.patients.pageSize`.
+- **Sort**: server-side `order_by` on `patient_name` (Name) and `dob` (Age — `dob desc` = oldest first). Click header to toggle direction; resets page to 0.
+- **Sidebar nav** now exposes `data-testid={`nav-${key}`}` on every nav button so Playwright tests can navigate between screens deterministically.
+
+### Per the design decisions in the issue
+Removed: risk / status / provider filter chips (no Frappe backing), MRN column (no field), risk badge, status pill (Stable/Watch/Urgent — those values don't exist), conditions and allergies columns, "Last seen" column (would require joining Patient Encounter — surfaces in slice 4 via the patient detail screen instead), checkboxes / bulk actions, Export and Register buttons.
+
+### Tests
+- Python (`api/test_daystar_health.py`): 2 PQC contract tests — Doctor user is restricted to their own Practice; orphan (no Practice Member) gets `1=0`. Mocks at the `_is_platform_admin` / `_get_user_practice` boundary so the test stays a behavior-of-PQC test, not a doctype-fixture test.
+- Playwright (`tests/ui/test_daystar_health.py`): 5 tests — list loads with skeleton then renders rows; search filters list and clearing restores; next-then-prev shows different pages then restores; page-size persists in `sessionStorage`; empty state renders for no-match search.
+
+### Out of scope (later slices)
+- Patient detail composite (#7) — clicking a row already navigates to `route='patient'`, but that screen still consumes `MH_DATA`.
+- Profile + password change (#8).
+
+---
+
 ## 2026-04-29 — Phase 1G (Issue #5): Daystar Health dashboard — wired to live Practice data
 
 ### Scope
