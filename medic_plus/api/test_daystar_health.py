@@ -278,6 +278,66 @@ class TestGetPatientDetailEndpoint(unittest.TestCase):
             with self.assertRaises(frappe.PermissionError):
                 m.get_patient_detail(patient="PAT-00001")
 
+    def test_get_my_practitioner_profile_rejects_no_practice_user(self):
+        """The profile screen requires a Practice context. A user without a
+        Practice Member row gets PermissionError from the resolver — same
+        no-practice path as every other Daystar Health endpoint."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   side_effect=frappe.PermissionError("no practice")):
+            with self.assertRaises(frappe.PermissionError):
+                m.get_my_practitioner_profile()
+
+    def test_get_my_practitioner_profile_returns_user_and_practitioner_fields(self):
+        """The profile payload joins the User core (name / email / phone) with
+        the Healthcare Practitioner linked via the user's Practice Member row.
+        Read-only this iteration — no editable fields, no Save affordance.
+        Surfaces enough to render the design (first/last name, email, phone,
+        specialty/department, HPCSA number, 2FA enabled state).
+        """
+        m = self._import()
+
+        user_row = {
+            "name": "doctor.a@example.test",
+            "first_name": "Aiyana",
+            "last_name": "Patel",
+            "email": "doctor.a@example.test",
+            "phone": "+27821234567",
+            "user_image": "/files/doctor.jpg",
+        }
+        practitioner_row = {
+            "name": "HLC-PRAC-2026-00118",
+            "department": "Family Medicine",
+            "custom_hpcsa_number": "MP123456",
+            "custom_practice_number": "0123456",
+        }
+
+        # Three frappe.db.get_value calls in order:
+        # 1. User row by email
+        # 2. Practice Member.practitioner link to find the practitioner name
+        # 3. Healthcare Practitioner row by name
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.session",
+                   frappe._dict(user="doctor.a@example.test")), \
+             patch("medic_plus.api.daystar_health.frappe.db.get_value",
+                   side_effect=[user_row, "HLC-PRAC-2026-00118", practitioner_row]):
+            payload = m.get_my_practitioner_profile()
+
+        # Top-level keys describe the contract.
+        self.assertIn("user", payload)
+        self.assertIn("practitioner", payload)
+        # User block carries the rendered fields.
+        self.assertEqual(payload["user"]["first_name"], "Aiyana")
+        self.assertEqual(payload["user"]["email"], "doctor.a@example.test")
+        # 2FA state comes through at the top level as a boolean — the SPA
+        # renders an enabled badge from this without calling Frappe again.
+        # frappe.utils.user.user_has_2fa returns falsy for our mock setup.
+        self.assertIn("two_factor_authentication", payload)
+        # Practitioner block carries SA-specific fields.
+        self.assertEqual(payload["practitioner"]["custom_hpcsa_number"], "MP123456")
+        self.assertEqual(payload["practitioner"]["department"], "Family Medicine")
+
     def test_rejects_cross_tenant_patient_request(self):
         """A user signed into Practice A who requests a Patient that belongs
         to Practice B gets PermissionError — never the patient's data, never
