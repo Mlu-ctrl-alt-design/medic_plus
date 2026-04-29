@@ -25,6 +25,68 @@ def get_dashboard() -> dict:
     return build_dashboard(practice=practice, user=frappe.session.user)
 
 
+_USER_PROFILE_FIELDS = (
+    "name",
+    "first_name",
+    "last_name",
+    "email",
+    "phone",
+    "user_image",
+)
+
+_PRACTITIONER_PROFILE_FIELDS = (
+    "name",
+    "department",
+    "custom_hpcsa_number",
+    "custom_practice_number",
+)
+
+
+@frappe.whitelist()
+def get_my_practitioner_profile() -> dict:
+    """Return the read-only profile for the logged-in practitioner.
+
+    Joins ``User`` core fields with the ``Healthcare Practitioner`` linked
+    via the user's ``Practice Member`` row. Raises ``PermissionError`` for
+    callers without a Practice — the SPA surfaces that as the no-practice
+    error card, same as every other endpoint.
+    """
+    practice = get_active_practice()
+    user_email = frappe.session.user
+    user_row = frappe.db.get_value(
+        "User", user_email, list(_USER_PROFILE_FIELDS), as_dict=True
+    ) or {}
+    practitioner_name = frappe.db.get_value(
+        "Practice Member",
+        {"user": user_email, "practice": practice},
+        "practitioner",
+    )
+    practitioner_row = {}
+    if practitioner_name:
+        practitioner_row = frappe.db.get_value(
+            "Healthcare Practitioner",
+            practitioner_name,
+            list(_PRACTITIONER_PROFILE_FIELDS),
+            as_dict=True,
+        ) or {}
+    # 2FA per-user state is inferred from frappe.utils.user.user_has_2fa
+    # (the User doctype has no direct boolean for it). Returned as a flat
+    # field so the SPA can render an enabled/disabled badge without another
+    # round trip.
+    try:
+        from frappe.utils.user import user_has_2fa
+        twofa_enabled = bool(user_has_2fa(user_email))
+    except Exception:
+        twofa_enabled = False
+
+    return {
+        "user": dict(user_row),
+        "practitioner": dict(practitioner_row),
+        "practice": practice,
+        "two_factor_authentication": twofa_enabled,
+    }
+
+
 @frappe.whitelist()
 def get_patient_detail(patient: str) -> dict:
     """Return the composite payload for a Patient detail screen.

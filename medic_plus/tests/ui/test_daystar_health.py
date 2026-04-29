@@ -33,7 +33,7 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import BASE_URL, ADMIN_USER, ADMIN_PASS
+from conftest import BASE_URL, ADMIN_USER, ADMIN_PASS, RUN_TAG
 
 
 DAYSTAR_URL = f"{BASE_URL}/daystar-health"
@@ -368,6 +368,33 @@ class TestPatientDetailRender:
             page.locator(f'[data-testid="patient-tab-{tab_id}"]').click()
             expect(page.locator(f'[data-testid="patient-tab-content-{tab_id}"]')).to_be_visible(timeout=5_000)
 
+    def test_profile_renders_read_only(self, admin_with_practice_membership, page: Page):
+        """The profile screen shows User + Practitioner fields read-only.
+        No editable inputs, no Save button. Notifications was a tab in the
+        old mock; it is removed from the SPA's profile sidebar."""
+        _login_as_admin(page)
+        page.goto(DAYSTAR_URL)
+        expect(page.locator('[data-testid="dashboard-ready"]')).to_be_visible(timeout=20_000)
+        page.locator('[data-testid="nav-profile"]').click()
+        expect(page.locator('[data-testid="profile-page"]')).to_be_visible(timeout=15_000)
+
+        # Two tabs only — Profile and Sign-in & security.
+        expect(page.locator('[data-testid="profile-tab-account"]')).to_be_visible()
+        expect(page.locator('[data-testid="profile-tab-security"]')).to_be_visible()
+        # Notifications tab is gone from the SPA's profile.
+        assert page.locator('text=Notifications').count() == 0, (
+            "Profile sidebar must not contain a Notifications tab"
+        )
+
+        # Read-only fields render the logged-in user's data. The text values
+        # come from the Administrator account.
+        expect(page.locator('[data-testid="profile-first-name"]')).to_be_visible()
+        expect(page.locator('[data-testid="profile-email"]')).to_be_visible()
+
+        # No Save Changes button anywhere on the Profile tab.
+        save_btn = page.locator('[data-testid="profile-tab-content-account"] button:has-text("Save changes")')
+        assert save_btn.count() == 0, "Profile is read-only; no Save button expected"
+
     def test_detail_payload_does_not_leak_custom_sa_id_number(self, admin_with_practice_membership, page: Page):
         """POPIA contract: the detail screen's payload must never contain the
         SA ID number. We grab the network response of the composite call and
@@ -398,3 +425,100 @@ class TestPatientDetailRender:
         assert "custom_sa_id_number" not in body, (
             "POPIA: the get_patient_detail response leaked custom_sa_id_number"
         )
+
+
+# ── slice 5: profile + password change ───────────────────────────────────────
+
+
+@pytest.fixture
+def throwaway_practice_user():
+    """Create a fresh user with a known password for the password-change test.
+
+    The test will change the password through the SPA and verify the new
+    password lets them sign in. The user is torn down afterwards (along with
+    its Practice Member row).
+    """
+    import os
+    os.chdir('/home/fruppa/frappe-bench/sites')
+    import frappe
+    frappe.init(site='medic-demo-staging.thedaystar.co.za')
+    frappe.connect()
+
+    email = f"daystar.pwtest.{RUN_TAG}@example.local"
+    initial_password = "InitialPw123!"
+
+    user = frappe.get_doc({
+        "doctype": "User",
+        "email": email,
+        "first_name": "PwTest",
+        "last_name": "User",
+        "send_welcome_email": 0,
+        "enabled": 1,
+        "user_type": "System User",
+    })
+    user.append("roles", {"role": "Physician"})
+    user.insert(ignore_permissions=True)
+    user.new_password = initial_password
+    user.save(ignore_permissions=True)
+
+    member = frappe.get_doc({
+        "doctype": "Practice Member",
+        "user": email,
+        "practice": "PRAC-00001",
+        "role": "Admin",
+        "status": "Accepted",
+        "full_name": "PwTest User",
+        "email": email,
+    })
+    member.insert(ignore_permissions=True)
+    frappe.db.commit()
+
+    yield {"email": email, "password": initial_password, "member_name": member.name}
+
+    frappe.delete_doc("Practice Member", member.name, ignore_permissions=True, force=True)
+    frappe.delete_doc("User", email, ignore_permissions=True, force=True)
+    frappe.db.commit()
+    frappe.destroy()
+
+
+class TestProfilePasswordChange:
+    """The Security tab posts current/new password to Frappe's standard
+    update_password endpoint. After a successful change the user can sign
+    in with the new password — proven by signing out and signing back in."""
+
+    def test_password_change_round_trip(self, throwaway_practice_user, page: Page):
+        email = throwaway_practice_user["email"]
+        old_pw = throwaway_practice_user["password"]
+        new_pw = f"RoundTrip{RUN_TAG}!"
+
+        # 1. Sign in with the initial password.
+        page.goto(f"{BASE_URL}/login")
+        page.locator("#login_email").fill(email)
+        page.locator("#login_password").fill(old_pw)
+        page.locator(".btn-login[type='submit']").click()
+        page.wait_for_url(re.compile(r"/(app|desk)"), timeout=15_000)
+
+        # 2. Open the SPA → profile → security tab → change password.
+        page.goto(DAYSTAR_URL)
+        expect(page.locator('[data-testid="dashboard-ready"]')).to_be_visible(timeout=20_000)
+        page.locator('[data-testid="nav-profile"]').click()
+        expect(page.locator('[data-testid="profile-page"]')).to_be_visible(timeout=10_000)
+        page.locator('[data-testid="profile-tab-security"]').click()
+        expect(page.locator('[data-testid="profile-tab-content-security"]')).to_be_visible()
+
+        page.locator('[data-testid="profile-current-password"]').fill(old_pw)
+        page.locator('[data-testid="profile-new-password"]').fill(new_pw)
+        page.locator('[data-testid="profile-confirm-password"]').fill(new_pw)
+        page.locator('[data-testid="profile-update-password"]').click()
+
+        # Success feedback appears in-page.
+        expect(page.locator('[data-testid="profile-password-success"]')).to_be_visible(timeout=15_000)
+
+        # 3. Sign out, then sign back in with the new password.
+        page.context.clear_cookies()
+        page.goto(f"{BASE_URL}/login")
+        page.locator("#login_email").fill(email)
+        page.locator("#login_password").fill(new_pw)
+        page.locator(".btn-login[type='submit']").click()
+        page.wait_for_url(re.compile(r"/(app|desk)"), timeout=15_000)
+        # If we got here, the new password works end-to-end.
