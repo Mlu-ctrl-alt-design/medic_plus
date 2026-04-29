@@ -133,6 +133,16 @@ MIT
 
 ## Changelog
 
+### 2026-04-29 — Phase 1J (Issue #8): Daystar Health profile + password change (final SPA slice)
+- Final slice of 5 wiring the `/daystar-health` SPA. Replaces the hardcoded provider profile with the logged-in user's real data and wires password change to Frappe's standard endpoint.
+- New endpoint `medic_plus.api.daystar_health.get_my_practitioner_profile` — joins User (name / email / phone / image) with Healthcare Practitioner (department / HPCSA / practice number) via the Practice Member row, plus a top-level `two_factor_authentication` boolean from `frappe.utils.user.user_has_2fa`.
+- Profile tab is **read-only** — fields render as styled disabled boxes; no Save button. Footer note directs users to their practice administrator for changes.
+- Security tab posts current/new/confirm to `frappe.core.doctype.user.user.update_password`. Inline success/error feedback. 2FA state shown read-only with pointer to Frappe Desk for setup.
+- Notifications tab removed from the profile sidebar — no schema backing (per Q8 design decision).
+- Sidebar "Sign out" button was a route-change-only no-op; now calls `meridianApi.logout()` to actually end the session.
+- Tests: 2 new Python (no-practice rejection + payload contract) + 2 new Playwright (read-only rendering + password change round-trip with a throwaway Practice user).
+- **SPA wiring Phase 1 complete** (#4 → #5 → #6 → #7 → #8). Outstanding: #12 (Custom DocPerm fixtures for Practice roles).
+
 ### 2026-04-29 — Phase 1I (Issue #7): Daystar Health patient detail wired to composite endpoint
 - Slice 4 of 5 wiring the `/daystar-health` SPA. Patient detail screen now hydrates all six tabs (Overview / Visits / Vitals / Medications / Labs / Notes) from a single composite call.
 - New deep module `api/patient_summary` — `build_patient_summary(patient_name, practice)` orchestrator + pure `_format_patient_summary(...)` helper that applies per-tab caps (20 / 12 for vitals) and the POPIA whitelist (only `name / patient_name / dob / sex / mobile / email / status` make it into the patient block; `custom_sa_id_number` is unreachable).

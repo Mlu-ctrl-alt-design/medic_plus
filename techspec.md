@@ -4,6 +4,41 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-29 — Phase 1J (Issue #8): Daystar Health profile — wired + password change
+
+### Scope
+Slice 5 of 5 (final) wiring `/daystar-health`. Replaces the hardcoded provider profile with the logged-in user's real data, and wires the password-change form to Frappe's standard endpoint. Notifications tab is removed from the SPA's profile sidebar — no schema backing.
+
+### Endpoint: `daystar_health.get_my_practitioner_profile()`
+Joins User core (name, email, phone, user_image) with the Healthcare Practitioner linked via the user's Practice Member row (department, HPCSA number, practice number). Adds a top-level `two_factor_authentication` boolean derived from `frappe.utils.user.user_has_2fa` since User has no direct 2FA field.
+
+Same `frappe.PermissionError` no-practice gate as every other Daystar Health endpoint.
+
+### Frontend rewire (`meridian-profile.jsx`)
+- Three render states: skeleton, error card, ready (two tabs only — Account, Security).
+- **Profile tab**: read-only fields rendered as styled disabled boxes (`<ReadOnlyField>` helper). No "Save changes" button anywhere on the tab. Footer note tells the user to contact their practice administrator for changes.
+- **Security tab**: password-change form (current / new / confirm) posts to `frappe.core.doctype.user.user.update_password`. Success/error feedback inline. 2FA shown read-only with status badge ("Enabled" / "Not configured") and a pointer to the Frappe Desk for setup.
+- **Notifications tab removed** — no `User Notification Preference` doctype, so any UI we'd ship would be misleading.
+
+### Sidebar fix
+The bottom-of-sidebar "Sign out" button was wired to `go('login')` — that just changed the SPA route; the Frappe session was untouched. Fixed to call `window.meridianApi.logout()` so it actually ends the session. Also added `data-testid="nav-profile"` and `data-testid="nav-signout"` on those buttons.
+
+### Tests
+- Python: 2 new — endpoint rejects no-practice user (tracer); endpoint returns the documented payload (User + Practitioner blocks + 2FA boolean).
+- Playwright: 2 new — profile renders read-only with no Save button + Notifications tab absent; password change round-trip (uses a throwaway Practice user fixture, changes the password through the SPA, then signs in with the new password to prove end-to-end).
+
+### Slice 5 wraps Phase 1 of the SPA wiring (#4 → #5 → #6 → #7 → #8)
+The five issues delivered:
+- #4 — auth flow + foundation (`practice_resolver`, page bootstrap, `meridian-api.js`)
+- #5 — dashboard composite + frontend
+- #6 — patients list (REST resource API + server-side search/pagination)
+- #7 — patient detail composite (POPIA-filtered, per-tab capped)
+- #8 — profile read-only + password change
+
+Outstanding follow-up: **Issue #12** (Custom DocPerm fixtures for Practice roles) — currently unblocked on staging via a Physician role on the test user, but needs to land before the SPA can serve real Practice users without that workaround.
+
+---
+
 ## 2026-04-29 — Phase 1I (Issue #7): Daystar Health patient detail — wired to composite endpoint
 
 ### Scope
