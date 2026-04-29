@@ -133,6 +133,15 @@ MIT
 
 ## Changelog
 
+### 2026-04-29 — Phase 1G (Issue #5): Daystar Health dashboard wired to live Practice data
+- Slice 2 of 5 wiring the `/daystar-health` SPA. Dashboard now hydrates from a real composite endpoint instead of `MH_DATA` mocks.
+- New deep module `api/dashboard_aggregator` — `build_dashboard(practice, user)` orchestrator + pure `_format_dashboard(...)` helper for testable shaping rules (greeting personalisation, week-volume always 7 days, recent-patients cap of 6, today-appointment status breakdown using the real Healthcare statuses).
+- New whitelisted endpoint `medic_plus.api.daystar_health.get_dashboard` — thin orchestrator. Surfaces `frappe.PermissionError` from `practice_resolver` unchanged so the SPA can render the no-practice card.
+- Dashboard screen rewrite in `meridian-dashboard.jsx`: skeletons during load, error toast + inline error card on failure, three KPI tiles (today's appointments / active patients / outstanding labs), today's schedule, week-volume chart, recent-patients table.
+- Per design decision: dropped "Pending refills" KPI, "Needs attention" panel, MRN/Risk/Status columns, Day/Week/Month toggle, "New appointment" button. "View full schedule" links to Frappe Desk Patient Appointment list scoped to today + Practice.
+- Outstanding labs KPI uses a JOIN through `Patient.custom_practice` since `Lab Test` has no `custom_practice` field — avoided schema migration.
+- Tests: 4 format-helper unit tests + 2 endpoint contract tests + 1 Playwright dashboard render test (uses a temporary Practice Member row for Administrator with role=Admin to bypass the Doctor→Practitioner validation).
+
 ### 2026-04-29 — Phase 1F (Issue #4): Daystar Health SPA — auth flow wired to Frappe
 - Slice 1 of 5 wiring the `/daystar-health` SPA to real Frappe APIs.
 - New `practice_resolver.get_active_practice(user)` deep module — returns the user's active Practice or raises `frappe.PermissionError` for Guest / no-membership users. Reusable across all later Daystar Health endpoints.
