@@ -18,7 +18,10 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import BASE_URL, ADMIN_USER, ADMIN_PASS, RUN_TAG, _frappe_login
+try:
+    from conftest import BASE_URL, ADMIN_USER, ADMIN_PASS, RUN_TAG, _frappe_login
+except ImportError:
+    RUN_TAG = "0"  # bench run-tests preloader path; tests run only under pytest.
 
 
 # ── Test data ─────────────────────────────────────────────────────────────────

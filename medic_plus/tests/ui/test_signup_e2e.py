@@ -15,7 +15,11 @@ import time
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import BASE_URL, RUN_TAG, ADMIN_USER, ADMIN_PASS, _frappe_login
+try:
+    from conftest import BASE_URL, RUN_TAG, ADMIN_USER, ADMIN_PASS, _frappe_login
+except ImportError:
+    BASE_URL = ""
+    RUN_TAG = "0"  # bench run-tests preloader path; tests run only under pytest.
 
 
 EMAIL = f"e2e.signup.{RUN_TAG}@medic-ui-test.local"

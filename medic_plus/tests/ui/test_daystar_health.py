@@ -33,8 +33,10 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import BASE_URL, ADMIN_USER, ADMIN_PASS, RUN_TAG
-
+try:
+    from conftest import BASE_URL, ADMIN_USER, ADMIN_PASS, RUN_TAG
+except ImportError:
+    BASE_URL = ""  # bench run-tests preloader path; tests run only under pytest.
 
 DAYSTAR_URL = f"{BASE_URL}/daystar-health"
 

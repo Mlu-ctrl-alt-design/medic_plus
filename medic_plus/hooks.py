@@ -13,6 +13,7 @@ web_include_js = ["/assets/medic_plus/js/signup_link.js"]
 # Fixtures — synced on bench migrate
 fixtures = [
 	{"dt": "Role", "filters": [["role_name", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist", "Patient"]]]},
+	{"dt": "Custom DocPerm", "filters": [["role", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist"]]]},
 	{
 		"dt": "Custom Field",
 		"filters": [["name", "in", [
