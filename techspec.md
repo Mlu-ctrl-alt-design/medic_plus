@@ -4,6 +4,38 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-29 — Phase 1G (Issue #5): Daystar Health dashboard — wired to live Practice data
+
+### Scope
+Slice 2 of 5 wiring `/daystar-health`. Replaces the static `MH_DATA` constants on the dashboard screen with a real composite endpoint scoped to the user's active Practice.
+
+### Deep module: `dashboard_aggregator`
+- `build_dashboard(*, practice, user)` — orchestrator. Resolves the user's first name, runs Practice-scoped queries against Patient Appointment / Patient / Lab Test / Patient Encounter, then delegates to the format helper.
+- `_format_dashboard(...)` — pure transformation. Takes already-fetched values and returns the payload dict. Tested in isolation without a DB so the interesting rules (greeting personalisation, week-volume always 7 days, recent-patients cap at 6, status breakdown of today's appointments) have fast unit coverage.
+
+### Endpoint: `daystar_health.get_dashboard()`
+- Thin orchestrator: `practice_resolver.get_active_practice` → `build_dashboard` → return. Surfaces `frappe.PermissionError` unchanged so the SPA can render the no-practice card.
+
+### Frontend rewire (`meridian-dashboard.jsx`)
+- On mount, `meridianApi.call('medic_plus.api.daystar_health.get_dashboard')`. Skeleton placeholder during load; toast + inline error card on failure.
+- KPI tiles: today's appointments (with status-breakdown subtitle using *real* statuses — Confirmed / Open / Scheduled — not the mock's "checked-in / in-room"), active patients, outstanding labs.
+- Today's schedule, week-volume bar chart, recent-patients table all hydrate from the payload.
+- Per Q9 design decision: dropped the "Pending refills" KPI tile (no Frappe backing), the "Needs attention" alerts panel (no backing), the MRN/Risk/Status columns on recent patients, the Day/Week/Month toggle, and the "New appointment" button.
+- "View full schedule" button links to the Frappe Desk Patient Appointment list filtered by `custom_practice` and today's `appointment_date`.
+
+### Schema realities handled
+- `Lab Test` has no `custom_practice` field. The outstanding-labs KPI uses a JOIN through `Patient.custom_practice` rather than schema migration.
+- The `checked_in / in_room` statuses in the mock don't exist in `Patient Appointment`. The real statuses (`Confirmed / No Show / Open / Scheduled`) are surfaced verbatim.
+
+### Tests
+- Python (`api/test_daystar_health.py`): 4 format-helper unit tests + 2 endpoint contract tests (no-Practice rejection, payload shape on success). Mocks at the boundary so the helper is testable without DB or session.
+- Playwright (`tests/ui/test_daystar_health.py`): one test that creates a temporary `Practice Member` row for Administrator (role=Admin to bypass the Doctor → Healthcare Practitioner validation), logs in, asserts the dashboard renders all three KPI tiles, the week-volume chart, today-schedule and recent-patients sections, the greeting block, and the "View full schedule" link with the right `custom_practice` query string. Tears the Practice Member row down on teardown so the slice 1 no-practice tests still pass for Administrator.
+
+### Out of scope (later slices)
+- Patients list (#6), patient detail composite (#7), profile + password change (#8).
+
+---
+
 ## 2026-04-29 — Phase 1F (Issue #4): Daystar Health SPA — auth flow wired to Frappe
 
 ### Scope

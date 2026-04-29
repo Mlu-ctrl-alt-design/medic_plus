@@ -82,3 +82,175 @@ class TestPracticeResolver(unittest.TestCase):
             with self.assertRaises(frappe.PermissionError):
                 m.get_active_practice(user="Guest")
         gv.assert_not_called()
+
+
+class TestDashboardFormatHelper(unittest.TestCase):
+    """Behavior tests for dashboard_aggregator._format_dashboard.
+
+    This is the pure-data-shaping helper: it takes already-fetched rows and
+    counts and returns the dashboard payload. No DB, no session, no
+    frappe.utils. Testing it in isolation gives us fast, focused coverage of
+    the interesting transformation rules (capping, day-series shaping,
+    breakdown labelling, greeting personalisation).
+    """
+
+    def _import(self):
+        from medic_plus.api import dashboard_aggregator
+        return dashboard_aggregator
+
+    def _empty_inputs(self):
+        """Default zero-state input the helper accepts. Tests override only
+        the keys they care about, keeping each test focused on one rule."""
+        return {
+            "user_first_name": "",
+            "today_appointments": [],
+            "active_patient_count": 0,
+            "outstanding_lab_count": 0,
+            "weekly_encounter_counts": {},
+            "recent_patient_rows": [],
+            "view_full_schedule_url": "/app/patient-appointment",
+            "today_label": "Wednesday, April 29",
+        }
+
+    def test_greeting_uses_user_first_name(self):
+        """The greeting addresses the logged-in practitioner by first name so
+        the dashboard feels personal. When the first name is empty the greeting
+        falls back to a generic phrasing rather than an awkward 'Good morning, '."""
+        m = self._import()
+        inputs = self._empty_inputs()
+        inputs["user_first_name"] = "Sanjay"
+        payload = m._format_dashboard(**inputs)
+        self.assertIn("Sanjay", payload["greeting"])
+
+    def test_week_volume_returns_seven_days_even_with_sparse_input(self):
+        """The week-volume chart needs a stable 7-day x-axis. When some days
+        had zero encounters the helper must fill them with 0 rather than
+        skipping them — otherwise the chart shifts left and labels lie."""
+        m = self._import()
+        inputs = self._empty_inputs()
+        # Caller passes whatever counts they computed; the helper guarantees
+        # there are exactly 7 day entries in the returned series.
+        inputs["weekly_encounter_counts"] = {"Mon": 18, "Wed": 22}
+        payload = m._format_dashboard(**inputs)
+        self.assertEqual(len(payload["week_volume"]), 7)
+        # And the days that had data are surfaced unchanged.
+        by_day = {row["day"]: row["visits"] for row in payload["week_volume"]}
+        self.assertEqual(by_day["Mon"], 18)
+        self.assertEqual(by_day["Wed"], 22)
+        # The missing days appear with 0, not as absent keys.
+        for day in ("Tue", "Thu", "Fri", "Sat", "Sun"):
+            self.assertEqual(by_day.get(day, "MISSING"), 0,
+                             f"day {day} must default to 0, got {by_day.get(day, 'MISSING')}")
+
+    def test_recent_patients_capped_at_six(self):
+        """The 'Recently seen patients' table is a glance — six rows is the
+        design limit. The helper must enforce it even if the caller hands in
+        more rows, so future query tweaks can't accidentally bloat the table."""
+        m = self._import()
+        inputs = self._empty_inputs()
+        # Twelve fictional rows; only the first six should survive.
+        inputs["recent_patient_rows"] = [
+            {"id": f"PAT-{i:03d}", "name": f"Patient {i}"} for i in range(12)
+        ]
+        payload = m._format_dashboard(**inputs)
+        self.assertEqual(len(payload["recent_patients"]), 6)
+        # The first-six order is preserved (caller is responsible for ordering).
+        self.assertEqual(payload["recent_patients"][0]["id"], "PAT-000")
+        self.assertEqual(payload["recent_patients"][5]["id"], "PAT-005")
+
+    def test_today_appointments_kpi_counts_status_breakdown(self):
+        """The Today's Appointments KPI shows the total plus a status breakdown
+        so the doctor sees, at a glance, how many are confirmed vs still open.
+
+        Patient Appointment uses Frappe Healthcare's real statuses
+        (Confirmed / Open / Scheduled / No Show) — those are what the breakdown
+        labels surface, not the mock's invented 'checked in / in room' which
+        don't exist in the schema.
+        """
+        m = self._import()
+        inputs = self._empty_inputs()
+        inputs["today_appointments"] = [
+            {"id": "A1", "status": "Confirmed", "time": "08:00", "duration": 30,
+             "patient_id": "P1", "patient_name": "Alice", "reason": "Check-up",
+             "practitioner": "Dr X"},
+            {"id": "A2", "status": "Confirmed", "time": "09:00", "duration": 30,
+             "patient_id": "P2", "patient_name": "Bob", "reason": "Follow-up",
+             "practitioner": "Dr X"},
+            {"id": "A3", "status": "Open", "time": "10:00", "duration": 30,
+             "patient_id": "P3", "patient_name": "Carol", "reason": "Consult",
+             "practitioner": "Dr Y"},
+            {"id": "A4", "status": "Scheduled", "time": "11:00", "duration": 30,
+             "patient_id": "P4", "patient_name": "Dan", "reason": "Vaccination",
+             "practitioner": "Dr Y"},
+        ]
+        payload = m._format_dashboard(**inputs)
+        kpi = payload["kpis"]["today_appointments"]
+        self.assertEqual(kpi["value"], 4)
+        # Breakdown surfaces the *real* statuses — at minimum we assert each
+        # observed status is reflected in the breakdown count.
+        self.assertEqual(kpi["breakdown"]["Confirmed"], 2)
+        self.assertEqual(kpi["breakdown"]["Open"], 1)
+        self.assertEqual(kpi["breakdown"]["Scheduled"], 1)
+
+
+class TestGetDashboardEndpoint(unittest.TestCase):
+    """Behavior tests for the whitelisted daystar_health.get_dashboard entry.
+
+    The endpoint is intentionally a thin orchestrator: practice_resolver →
+    DB reads → dashboard_aggregator → return. We test the contract: it must
+    refuse callers without a Practice and produce the documented payload
+    shape on success.
+    """
+
+    def _import(self):
+        from medic_plus.api import daystar_health
+        return daystar_health
+
+    def test_rejects_user_with_no_practice(self):
+        """A logged-in user without a Practice Member row gets PermissionError
+        from the resolver and the endpoint surfaces it unchanged. The SPA
+        translates that into the no-practice error card."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   side_effect=frappe.PermissionError("no practice")):
+            with self.assertRaises(frappe.PermissionError):
+                m.get_dashboard()
+
+    def test_returns_documented_payload_shape_for_practice_user(self):
+        """The dashboard contract: when a Practice user calls get_dashboard
+        the endpoint returns a dict with greeting, kpis, today_schedule,
+        week_volume, recent_patients, today_label, view_full_schedule_url.
+
+        We mock build_dashboard rather than the DB so this stays an endpoint-
+        level contract test — the aggregator's contents are covered by the
+        format-helper tests above.
+        """
+        m = self._import()
+        fake_payload = {
+            "greeting": "Good morning, Dr. Aiyana",
+            "today_label": "Wednesday, April 29",
+            "kpis": {
+                "today_appointments": {"value": 2, "breakdown": {"Confirmed": 2}},
+                "active_patients": {"value": 41},
+                "outstanding_labs": {"value": 5},
+            },
+            "today_schedule": [],
+            "week_volume": [{"day": "Mon", "visits": 0}] * 7,
+            "recent_patients": [],
+            "view_full_schedule_url": "/app/patient-appointment",
+        }
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.build_dashboard",
+                   return_value=fake_payload) as bd:
+            payload = m.get_dashboard()
+        # The endpoint forwards the aggregator's output; spot-check the
+        # documented top-level keys are present.
+        for key in ("greeting", "kpis", "today_schedule", "week_volume",
+                    "recent_patients", "view_full_schedule_url"):
+            self.assertIn(key, payload, f"missing key: {key}")
+        # And the aggregator was invoked with the resolved Practice (not None
+        # or the user — orchestration contract).
+        bd.assert_called_once()
+        kwargs = bd.call_args.kwargs
+        self.assertEqual(kwargs.get("practice"), "PRAC-00001")
