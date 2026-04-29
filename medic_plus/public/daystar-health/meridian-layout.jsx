@@ -58,10 +58,10 @@ function MSidebar({ route, go }) {
       </div>
 
       <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
-        <button className="nav-item" onClick={() => go('profile')}>
+        <button data-testid="nav-profile" className="nav-item" onClick={() => go('profile')}>
           <window.MIcons.Settings size={17} /><span>Account</span>
         </button>
-        <button className="nav-item" onClick={() => go('login')}>
+        <button data-testid="nav-signout" className="nav-item" onClick={() => window.meridianApi.logout()}>
           <window.MIcons.Logout size={17} /><span>Sign out</span>
         </button>
       </div>
