@@ -293,3 +293,197 @@ class TestEncounterTemplateCrossTenant(IntegrationTestCase):
 		# The condition must exclude Practice A's name
 		if condition:
 			self.assertNotIn(self.practice_a, condition)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.8 — Chronic-disease follow-up template tests
+# ---------------------------------------------------------------------------
+
+CHRONIC_TEMPLATE_NAME = "Chronic Disease Follow-up Template"
+
+
+def _ensure_chronic_template() -> None:
+	"""Ensure the platform Chronic Disease Follow-up template exists (idempotent)."""
+	from medic_plus.api.encounter_templates import CHRONIC_TEMPLATE_NAME as CN
+	_ensure_appointment_type("Chronic Disease Follow-up")
+	if frappe.db.exists("Encounter Template", {"template_name": CN}):
+		return
+	frappe.get_doc({
+		"doctype": "Encounter Template",
+		"template_name": CN,
+		"appointment_type": "Chronic Disease Follow-up",
+		"is_platform_template": 1,
+		"field_defaults": json.dumps({"custom_chief_complaint": "Chronic disease review"}),
+		"required_fields": json.dumps([
+			"custom_blood_pressure_systolic",
+			"custom_blood_pressure_diastolic",
+			"custom_weight_kg",
+			"custom_smoking_status",
+			"custom_alcohol_use",
+			"custom_medication_adherence",
+		]),
+		"auto_orders": json.dumps([
+			{"order_type": "Lab", "order_name": "Fasting Lipogram", "notes": ""},
+			{"order_type": "Lab", "order_name": "Urine Microalbumin", "notes": ""},
+		]),
+		"smart_orders": json.dumps([
+			{"icd10_prefix": "E11", "order_type": "Lab", "order_name": "HbA1c",
+			 "notes": "Glycated haemoglobin"},
+			{"icd10_prefix": "N18", "order_type": "Lab", "order_name": "eGFR",
+			 "notes": "Estimated GFR from Creatinine"},
+			{"icd10_prefix": "N18", "order_type": "Lab", "order_name": "Urea and Creatinine",
+			 "notes": "Renal function"},
+		]),
+	}).insert(ignore_permissions=True)
+
+
+def _make_chronic_condition(patient: str, icd10_code: str, diagnosis_name: str) -> None:
+	if not frappe.db.exists("Diagnosis", diagnosis_name):
+		frappe.get_doc({
+			"doctype": "Diagnosis",
+			"diagnosis": diagnosis_name,
+		}).insert(ignore_permissions=True)
+	frappe.get_doc({
+		"doctype": "Patient Chronic Condition",
+		"patient": patient,
+		"diagnosis": diagnosis_name,
+		"icd10_code": icd10_code,
+		"chronic_status": "Active",
+		"started_on": "2024-01-01",
+	}).insert(ignore_permissions=True)
+
+
+class TestChronicTemplateApply(IntegrationTestCase):
+	"""Chronic template defaults chief_complaint and pre-populates baseline orders."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_chief_complaint_defaulted(self):
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		self.assertEqual(doc.custom_chief_complaint, "Chronic disease review")
+
+	def test_baseline_orders_prepopulated(self):
+		"""Fasting Lipogram and Urine Microalbumin pre-populated for all chronic visits."""
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("Fasting Lipogram", order_names)
+		self.assertIn("Urine Microalbumin", order_names)
+
+	def test_non_chronic_unaffected(self):
+		doc = _make_encounter(self.patient, appointment_type="Consultation")
+		self.assertFalse(doc.get("custom_chief_complaint"))
+
+
+class TestChronicSmartOrders(IntegrationTestCase):
+	"""Smart orders added based on patient's active ICD-10-coded conditions."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+
+	def test_diabetes_patient_gets_hba1c_order(self):
+		"""Patient with E11.x chronic condition gets HbA1c order."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"diab-{s}")
+		_make_chronic_condition(patient, "E11.9", f"Type 2 Diabetes {s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("HbA1c", order_names)
+
+	def test_ckd_patient_gets_egfr_order(self):
+		"""Patient with N18.x chronic condition gets eGFR and Urea orders."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"ckd-{s}")
+		_make_chronic_condition(patient, "N18.3", f"CKD Stage 3 {s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("eGFR", order_names)
+		self.assertIn("Urea and Creatinine", order_names)
+
+	def test_hypertension_only_no_extra_smart_orders(self):
+		"""Patient with I10 (hypertension) only gets baseline orders — no smart extras."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"htn-{s}")
+		_make_chronic_condition(patient, "I10", f"Essential Hypertension {s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertNotIn("HbA1c", order_names)
+		self.assertNotIn("eGFR", order_names)
+		# Baseline orders still present
+		self.assertIn("Fasting Lipogram", order_names)
+
+	def test_patient_no_conditions_gets_baseline_only(self):
+		"""Patient with no chronic conditions gets baseline orders only."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"nocond-{s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertNotIn("HbA1c", order_names)
+		self.assertIn("Fasting Lipogram", order_names)
+
+
+class TestChronicHypertensiveUrgency(IntegrationTestCase):
+	"""Non-blocking hypertensive urgency flag set when BP ≥ 180/110."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_urgency_flag_set_when_systolic_above_threshold(self):
+		"""hypertensive_urgency flag set (no exception) when systolic ≥ 180."""
+		from medic_plus.api.encounter_templates import check_hypertensive_urgency
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		doc.custom_blood_pressure_systolic = 185
+		doc.custom_blood_pressure_diastolic = 95
+		check_hypertensive_urgency(doc)
+		self.assertTrue(doc.flags.get("hypertensive_urgency"))
+
+	def test_no_flag_when_bp_normal(self):
+		"""No flag when BP is within normal limits."""
+		from medic_plus.api.encounter_templates import check_hypertensive_urgency
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		doc.custom_blood_pressure_systolic = 130
+		doc.custom_blood_pressure_diastolic = 85
+		check_hypertensive_urgency(doc)
+		self.assertFalse(doc.flags.get("hypertensive_urgency"))
+
+	def test_urgency_does_not_block_submit(self):
+		"""Hypertensive urgency warning does not raise ValidationError."""
+		from medic_plus.api.encounter_templates import validate_template_fields
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		# Populate required fields with urgency-range BP
+		doc.custom_blood_pressure_systolic = 190
+		doc.custom_blood_pressure_diastolic = 115
+		doc.custom_weight_kg = 80.0
+		doc.custom_smoking_status = "Non-smoker"
+		doc.custom_alcohol_use = "None"
+		doc.custom_medication_adherence = "Good"
+		# Should not raise
+		try:
+			validate_template_fields(doc)
+		except frappe.ValidationError:
+			self.fail("validate_template_fields raised ValidationError for urgency-range BP")
+
+
+class TestChronicRequiredFields(IntegrationTestCase):
+	"""before_submit raises ValidationError when chronic required fields missing."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_submit_without_systolic_raises(self):
+		from frappe.exceptions import ValidationError
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		with self.assertRaises(ValidationError) as ctx:
+			doc.submit()
+		self.assertIn("systolic", str(ctx.exception).lower())
