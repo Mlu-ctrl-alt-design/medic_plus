@@ -317,3 +317,21 @@ def get_purchase_invoice_permission_query(user: str = None) -> str:
 
 def get_journal_entry_permission_query(user: str = None) -> str:
 	return _get_company_filter(user, "Journal Entry")
+
+
+def get_encounter_template_permission_query(user: str = None) -> str:
+	"""PQC for Encounter Template.
+
+	Platform templates (is_platform_template=1, practice=null) are visible to
+	everyone. Practice-scoped templates are visible only to that practice.
+	"""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "`tabEncounter Template`.`is_platform_template` = 1"
+	escaped = frappe.db.escape(practice)
+	return (
+		f"(`tabEncounter Template`.`is_platform_template` = 1"
+		f" OR `tabEncounter Template`.`practice` = {escaped})"
+	)

@@ -1,0 +1,122 @@
+{
+ "actions": [],
+ "autoname": "ET-.#####",
+ "creation": "2026-04-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "template_name",
+  "appointment_type",
+  "column_break_1",
+  "is_platform_template",
+  "practice",
+  "section_defaults",
+  "field_defaults",
+  "section_required",
+  "required_fields",
+  "section_orders",
+  "auto_orders"
+ ],
+ "fields": [
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Template Name",
+   "reqd": 1,
+   "unique": 0
+  },
+  {
+   "fieldname": "appointment_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Appointment Type",
+   "options": "Appointment Type",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_platform_template",
+   "fieldtype": "Check",
+   "label": "Platform Template (all practices)"
+  },
+  {
+   "depends_on": "eval:!doc.is_platform_template",
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "label": "Practice",
+   "options": "Practice",
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_defaults",
+   "fieldtype": "Section Break",
+   "label": "Field Defaults"
+  },
+  {
+   "fieldname": "field_defaults",
+   "fieldtype": "JSON",
+   "label": "Field Defaults (JSON)",
+   "description": "JSON object mapping field_name to default value, e.g. {\"custom_chief_complaint\": \"Antenatal visit\"}"
+  },
+  {
+   "fieldname": "section_required",
+   "fieldtype": "Section Break",
+   "label": "Required Fields"
+  },
+  {
+   "fieldname": "required_fields",
+   "fieldtype": "JSON",
+   "label": "Required Fields (JSON)",
+   "description": "JSON array of field names that must be filled before submit, e.g. [\"custom_gravidity\"]"
+  },
+  {
+   "fieldname": "section_orders",
+   "fieldtype": "Section Break",
+   "label": "Auto-Orders"
+  },
+  {
+   "fieldname": "auto_orders",
+   "fieldtype": "JSON",
+   "label": "Auto Orders (JSON)",
+   "description": "JSON array of {order_type, order_name, notes} objects pre-populated on new encounters"
+  }
+ ],
+ "modified": "2026-04-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Encounter Template",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Practice Admin",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Practice Doctor"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}
