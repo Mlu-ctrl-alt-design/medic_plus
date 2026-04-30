@@ -51,16 +51,35 @@ const TWEAK_DEFAULTS = {
   "density": "comfortable"
 };
 
-function initialRoute() {
+const VALID_ROUTES = ['dashboard','patients','patient','profile','appointments','records','labs','medications','billing','practice','login','recover','no-practice'];
+
+function readUrlRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const r = params.get('screen');
+  if (r && VALID_ROUTES.includes(r)) return { route: r, arg: params.get('id') };
+  return null;
+}
+
+function initialRouteState() {
   const api = window.meridianApi || {};
-  if (!api.isAuthenticated) return 'login';
-  if (!api.hasPractice) return 'no-practice';
-  return 'dashboard';
+  if (!api.isAuthenticated) return { route: 'login', arg: null };
+  if (!api.hasPractice) return { route: 'no-practice', arg: null };
+  return readUrlRoute() || { route: 'dashboard', arg: null };
+}
+
+function syncUrl(r, arg, replace) {
+  const params = new URLSearchParams();
+  if (r && r !== 'dashboard') params.set('screen', r);
+  if (arg) params.set('id', arg);
+  const qs = params.toString();
+  const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+  const fn = replace ? 'replaceState' : 'pushState';
+  window.history[fn]({ route: r, arg }, '', url);
 }
 
 function App() {
-  const [route, setRoute] = useState(initialRoute);
-  const [routeArg, setRouteArg] = useState(null);
+  const [routeState, setRouteState] = useState(initialRouteState);
+  const { route, arg: routeArg } = routeState;
   const [tweaks, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
 
   useEffect(() => {
@@ -68,7 +87,26 @@ function App() {
     document.body.dataset.density = tweaks.density;
   }, [tweaks.theme, tweaks.density]);
 
-  const go = (r, arg = null) => { setRoute(r); setRouteArg(arg); window.scrollTo(0, 0); };
+  // On first paint, normalize the URL to match the resolved route (e.g.
+  // unauthenticated visit to ?screen=patient&id=X should rewrite to /).
+  useEffect(() => { syncUrl(route, routeArg, true); }, []);
+
+  // Browser back/forward — re-read the URL and update state without
+  // pushing a new history entry.
+  useEffect(() => {
+    const handler = () => {
+      const next = readUrlRoute() || { route: 'dashboard', arg: null };
+      setRouteState(next);
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, []);
+
+  const go = (r, arg = null) => {
+    setRouteState({ route: r, arg });
+    syncUrl(r, arg, false);
+    window.scrollTo(0, 0);
+  };
 
   if (route === 'login') return <><window.MLoginScreen go={go} /><Tweaks tweaks={tweaks} setTweak={setTweak} /></>;
   if (route === 'recover') return <><window.MRecoverScreen go={go} /><Tweaks tweaks={tweaks} setTweak={setTweak} /></>;
