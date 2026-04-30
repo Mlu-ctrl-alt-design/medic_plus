@@ -62,6 +62,7 @@ permission_query_conditions = {
 	"Patient Appointment": "medic_plus.api.permissions.get_patient_appointment_permission_query",
 	"Patient Encounter": "medic_plus.api.permissions.get_patient_encounter_permission_query",
 	"Inpatient Record": "medic_plus.api.permissions.get_inpatient_record_permission_query",
+	"Patient Medical Record": "medic_plus.api.permissions.get_patient_medical_record_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Practitioner Schedule": "medic_plus.api.permissions.get_practitioner_schedule_permission_query",

@@ -90,6 +90,29 @@ def get_inpatient_record_permission_query(user: str = None) -> str:
 	return f"`tabInpatient Record`.`custom_practice` = {frappe.db.escape(practice)}"
 
 
+def get_patient_medical_record_permission_query(user: str = None) -> str:
+	# Patient Medical Record carries no `custom_practice` of its own — it
+	# inherits scope from the linked Patient. Bridge via a subquery so the
+	# usual `tabX.custom_practice = ...` shape applies.
+	if _is_platform_admin(user):
+		return ""
+	roles = frappe.get_roles(user or frappe.session.user)
+	if "Patient" in roles:
+		patient = _get_patient_name_for_user(user)
+		return (
+			f"`tabPatient Medical Record`.`patient` = {frappe.db.escape(patient)}"
+			if patient else "1=0"
+		)
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return (
+		"`tabPatient Medical Record`.`patient` IN ("
+		f"SELECT `name` FROM `tabPatient` WHERE `custom_practice` = {frappe.db.escape(practice)}"
+		")"
+	)
+
+
 def get_sick_note_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""

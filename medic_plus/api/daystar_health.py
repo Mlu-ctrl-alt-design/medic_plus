@@ -170,6 +170,137 @@ def get_appointments(filters=None) -> list:
     return _format_appointments(rows)
 
 
+_MEDICAL_RECORD_FIELDS = (
+    "name",
+    "patient",
+    "communication_date",
+    "reference_doctype",
+    "reference_name",
+    "subject",
+    "user",
+    "attach",
+)
+_MEDICAL_RECORD_PAGE_DEFAULT = 50
+_MEDICAL_RECORD_PAGE_MAX = 200
+_MEDICAL_RECORD_SUBJECT_MAX = 240
+
+
+def _format_medical_records(rows: list, patient_name_by_id: dict) -> list:
+    """Shape raw Patient Medical Record dicts into SPA-ready rows.
+
+    Truncates ``subject`` to keep the table compact and surfaces a boolean
+    ``has_attach`` rather than the raw file URL (private files cannot be
+    rendered cross-user; the source doc carries the canonical attachment).
+    """
+    out = []
+    for r in rows:
+        subject = (r.get("subject") or "").strip()
+        if len(subject) > _MEDICAL_RECORD_SUBJECT_MAX:
+            subject = subject[: _MEDICAL_RECORD_SUBJECT_MAX - 1] + "…"
+        out.append({
+            "name": r.get("name"),
+            "patient": r.get("patient"),
+            "patient_name": patient_name_by_id.get(r.get("patient")),
+            "communication_date": str(r.get("communication_date") or ""),
+            "reference_doctype": r.get("reference_doctype"),
+            "reference_name": r.get("reference_name"),
+            "subject": subject,
+            "user": r.get("user"),
+            "has_attach": bool(r.get("attach")),
+        })
+    return out
+
+
+@frappe.whitelist()
+def get_medical_records(filters=None, limit_start=0, limit_page_length=None) -> dict:
+    """Return Patient Medical Record rows for the active Practice.
+
+    Returns a dict shaped ``{rows, total, limit_start, limit_page_length}`` so
+    the SPA can render pagination. Patient Medical Record has no
+    ``custom_practice`` field — scope is enforced by joining on Patient. The
+    PQC ``get_patient_medical_record_permission_query`` is the defence
+    in depth; this query restates the same constraint at the API level.
+
+    Filters dict (or JSON string) keys:
+      ``patient`` (single Patient name)
+      ``reference_doctype`` (str or list — Patient Encounter / Lab Test / …)
+      ``date_from`` / ``date_to`` (YYYY-MM-DD; default last 30 days)
+    """
+    if isinstance(filters, str):
+        try:
+            filters = json.loads(filters)
+        except Exception:
+            filters = {}
+    filters = filters or {}
+
+    try:
+        limit_start = int(limit_start or 0)
+    except (TypeError, ValueError):
+        limit_start = 0
+    try:
+        limit_page_length = int(limit_page_length or _MEDICAL_RECORD_PAGE_DEFAULT)
+    except (TypeError, ValueError):
+        limit_page_length = _MEDICAL_RECORD_PAGE_DEFAULT
+    limit_page_length = max(1, min(limit_page_length, _MEDICAL_RECORD_PAGE_MAX))
+
+    practice = get_active_practice()
+    today = date.today()
+    date_from = filters.get("date_from") or str(today - timedelta(days=30))
+    date_to = filters.get("date_to") or str(today)
+
+    practice_patients = frappe.get_all(
+        "Patient",
+        filters={"custom_practice": practice},
+        pluck="name",
+        limit=0,
+    )
+    if not practice_patients:
+        return {"rows": [], "total": 0, "limit_start": limit_start, "limit_page_length": limit_page_length}
+
+    pmr_filters = {
+        "patient": ["in", practice_patients],
+        "communication_date": ["between", [date_from, date_to]],
+    }
+    requested_patient = filters.get("patient")
+    if requested_patient:
+        if requested_patient not in practice_patients:
+            # Caller asked for a Patient outside the active practice — no rows.
+            return {"rows": [], "total": 0, "limit_start": limit_start, "limit_page_length": limit_page_length}
+        pmr_filters["patient"] = requested_patient
+
+    ref_doctype = filters.get("reference_doctype")
+    if ref_doctype:
+        if isinstance(ref_doctype, str):
+            ref_doctype = [ref_doctype]
+        pmr_filters["reference_doctype"] = ["in", ref_doctype]
+
+    total = frappe.db.count("Patient Medical Record", filters=pmr_filters)
+    rows = frappe.get_all(
+        "Patient Medical Record",
+        filters=pmr_filters,
+        fields=list(_MEDICAL_RECORD_FIELDS),
+        order_by="communication_date desc, creation desc",
+        limit_start=limit_start,
+        limit_page_length=limit_page_length,
+    )
+    patient_ids = list({r["patient"] for r in rows if r.get("patient")})
+    patient_name_by_id = {}
+    if patient_ids:
+        for p in frappe.get_all(
+            "Patient",
+            filters={"name": ["in", patient_ids]},
+            fields=["name", "patient_name"],
+        ):
+            patient_name_by_id[p["name"]] = p.get("patient_name")
+
+    return {
+        "rows": _format_medical_records(rows, patient_name_by_id),
+        "total": total,
+        "limit_start": limit_start,
+        "limit_page_length": limit_page_length,
+    }
+
+
 @frappe.whitelist()
 def get_patient_detail(patient: str) -> dict:
     """Return the composite payload for a Patient detail screen.
