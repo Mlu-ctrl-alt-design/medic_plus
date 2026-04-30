@@ -301,6 +301,83 @@ def get_medical_records(filters=None, limit_start=0, limit_page_length=None) -> 
     }
 
 
+# ── SA EMR Phase 1: Allergies + Chronic Conditions + Medical Aid ─────
+
+def _assert_patient_in_active_practice(patient: str) -> str:
+    """Cross-tenant guard. Returns the active practice if the call is allowed.
+
+    Same shape as get_patient_detail's guard — caller's active Practice must
+    own the requested Patient. Raises PermissionError otherwise so the
+    response cannot be used to probe Practice membership.
+    """
+    practice = get_active_practice()
+    patient_practice = frappe.db.get_value("Patient", patient, "custom_practice")
+    if patient_practice != practice:
+        raise frappe.PermissionError("Patient does not belong to your practice.")
+    return practice
+
+
+@frappe.whitelist()
+def get_patient_allergies(patient: str) -> list:
+    """Return Patient Allergy rows for the requested patient (active-practice only)."""
+    _assert_patient_in_active_practice(patient)
+    rows = frappe.get_all(
+        "Patient Allergy",
+        filters={"patient": patient},
+        fields=[
+            "name", "status", "category", "substance", "severity", "criticality",
+            "reaction", "onset_date", "verified_by", "verified_on", "notes",
+        ],
+        order_by="status asc, severity desc, modified desc",
+        limit=200,
+    )
+    return [
+        {**r, "onset_date": str(r["onset_date"] or ""), "verified_on": str(r["verified_on"] or "")}
+        for r in rows
+    ]
+
+
+@frappe.whitelist()
+def get_patient_chronic_conditions(patient: str) -> list:
+    """Return Patient Chronic Condition rows for the requested patient."""
+    _assert_patient_in_active_practice(patient)
+    rows = frappe.get_all(
+        "Patient Chronic Condition",
+        filters={"patient": patient},
+        fields=[
+            "name", "chronic_status", "diagnosis", "icd10_code", "started_on",
+            "resolved_on", "severity", "managing_practitioner", "notes",
+        ],
+        order_by="chronic_status asc, started_on desc",
+        limit=200,
+    )
+    return [
+        {**r, "started_on": str(r["started_on"] or ""), "resolved_on": str(r["resolved_on"] or "")}
+        for r in rows
+    ]
+
+
+@frappe.whitelist()
+def get_patient_medical_aid(patient: str) -> list:
+    """Return active Patient Insurance Policy rows + SA medical-aid extension."""
+    _assert_patient_in_active_practice(patient)
+    rows = frappe.get_all(
+        "Patient Insurance Policy",
+        filters={"patient": patient, "docstatus": ["<", 2]},
+        fields=[
+            "name", "insurance_payor", "insurance_plan", "policy_number",
+            "policy_expiry_date", "custom_sa_scheme", "custom_principal_member_id",
+            "custom_dependent_code", "custom_authorisation_reference",
+        ],
+        order_by="policy_expiry_date desc",
+        limit=20,
+    )
+    return [
+        {**r, "policy_expiry_date": str(r["policy_expiry_date"] or "")}
+        for r in rows
+    ]
+
+
 @frappe.whitelist()
 def get_patient_detail(patient: str) -> dict:
     """Return the composite payload for a Patient detail screen.

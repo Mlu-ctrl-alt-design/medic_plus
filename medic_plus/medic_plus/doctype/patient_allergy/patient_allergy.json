@@ -1,0 +1,176 @@
+{
+ "actions": [],
+ "autoname": "PA-.YYYY.-.#####",
+ "creation": "2026-04-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "custom_practice",
+  "column_break_1",
+  "status",
+  "section_break_substance",
+  "category",
+  "substance",
+  "column_break_2",
+  "severity",
+  "criticality",
+  "section_break_clinical",
+  "reaction",
+  "onset_date",
+  "column_break_3",
+  "verified_by",
+  "verified_on",
+  "section_break_notes",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "custom_practice",
+   "fieldtype": "Link",
+   "label": "Practice",
+   "options": "Practice",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Active\nResolved\nEntered in Error",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_substance",
+   "fieldtype": "Section Break",
+   "label": "Substance"
+  },
+  {
+   "default": "Drug",
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "Drug\nFood\nEnvironmental\nLatex\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "substance",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Substance",
+   "reqd": 1,
+   "description": "e.g. Penicillin, Peanuts, Bee venom"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Mild",
+   "fieldname": "severity",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Severity",
+   "options": "Mild\nModerate\nSevere",
+   "reqd": 1
+  },
+  {
+   "default": "Low",
+   "fieldname": "criticality",
+   "fieldtype": "Select",
+   "label": "Criticality",
+   "options": "Low\nHigh\nUnable to Assess",
+   "description": "FHIR AllergyIntolerance.criticality — risk of life-threatening reaction."
+  },
+  {
+   "fieldname": "section_break_clinical",
+   "fieldtype": "Section Break",
+   "label": "Clinical"
+  },
+  {
+   "fieldname": "reaction",
+   "fieldtype": "Small Text",
+   "label": "Reaction",
+   "description": "Observed clinical signs (urticaria, anaphylaxis, GI upset, etc.)"
+  },
+  {
+   "fieldname": "onset_date",
+   "fieldtype": "Date",
+   "label": "Onset Date"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "verified_by",
+   "fieldtype": "Link",
+   "label": "Verified By",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "verified_on",
+   "fieldtype": "Date",
+   "label": "Verified On"
+  },
+  {
+   "fieldname": "section_break_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Patient Allergy",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

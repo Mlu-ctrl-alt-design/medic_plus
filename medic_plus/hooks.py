@@ -37,6 +37,11 @@ fixtures = [
 			# Warehouse + Stock Entry — practice scoping for dispensary
 			"Warehouse-custom_practice",
 			"Stock Entry-custom_practice",
+			# SA EMR Phase 1 (Compliance core)
+			"Patient Insurance Policy-custom_sa_scheme",
+			"Patient Insurance Policy-custom_principal_member_id",
+			"Patient Insurance Policy-custom_dependent_code",
+			"Patient Insurance Policy-custom_authorisation_reference",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -63,6 +68,11 @@ permission_query_conditions = {
 	"Patient Encounter": "medic_plus.api.permissions.get_patient_encounter_permission_query",
 	"Inpatient Record": "medic_plus.api.permissions.get_inpatient_record_permission_query",
 	"Patient Medical Record": "medic_plus.api.permissions.get_patient_medical_record_permission_query",
+	# SA EMR Phase 1 — clinical-data PQCs that scope via patient.custom_practice
+	"Patient Allergy": "medic_plus.api.permissions.get_patient_allergy_permission_query",
+	"Patient Chronic Condition": "medic_plus.api.permissions.get_patient_chronic_condition_permission_query",
+	"Patient Insurance Policy": "medic_plus.api.permissions.get_patient_insurance_policy_permission_query",
+	"Patient Insurance Coverage": "medic_plus.api.permissions.get_patient_insurance_coverage_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Practitioner Schedule": "medic_plus.api.permissions.get_practitioner_schedule_permission_query",

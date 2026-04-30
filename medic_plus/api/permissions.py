@@ -90,6 +90,47 @@ def get_inpatient_record_permission_query(user: str = None) -> str:
 	return f"`tabInpatient Record`.`custom_practice` = {frappe.db.escape(practice)}"
 
 
+def _scope_via_patient(table: str, user: str) -> str:
+	"""Common scope shape: doctype rows whose `patient` belongs to active practice.
+
+	Used by SA EMR Phase 1 doctypes that link to Patient and have a denormalised
+	`custom_practice` field (Patient Allergy, Patient Chronic Condition) — the
+	subquery is redundant when `custom_practice` is reliable, but acts as
+	defence in depth and keeps the code path identical for doctypes that lack
+	the denormalised field (Patient Insurance Policy / Coverage).
+	"""
+	if _is_platform_admin(user):
+		return ""
+	roles = frappe.get_roles(user or frappe.session.user)
+	if "Patient" in roles:
+		patient = _get_patient_name_for_user(user)
+		return f"`{table}`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return (
+		f"`{table}`.`patient` IN ("
+		f"SELECT `name` FROM `tabPatient` WHERE `custom_practice` = {frappe.db.escape(practice)}"
+		")"
+	)
+
+
+def get_patient_allergy_permission_query(user: str = None) -> str:
+	return _scope_via_patient("tabPatient Allergy", user)
+
+
+def get_patient_chronic_condition_permission_query(user: str = None) -> str:
+	return _scope_via_patient("tabPatient Chronic Condition", user)
+
+
+def get_patient_insurance_policy_permission_query(user: str = None) -> str:
+	return _scope_via_patient("tabPatient Insurance Policy", user)
+
+
+def get_patient_insurance_coverage_permission_query(user: str = None) -> str:
+	return _scope_via_patient("tabPatient Insurance Coverage", user)
+
+
 def get_patient_medical_record_permission_query(user: str = None) -> str:
 	# Patient Medical Record carries no `custom_practice` of its own — it
 	# inherits scope from the linked Patient. Bridge via a subquery so the
