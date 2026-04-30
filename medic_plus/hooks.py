@@ -103,6 +103,8 @@ fixtures = [
 	{"dt": "Code System",       "filters": [["name", "in", ["ICD-10"]]]},
 	{"dt": "Code Value",        "filters": [["code_system", "=", "ICD-10"]]},
 	{"dt": "Medical Aid Scheme"},
+	# Phase 5.11 — Backup Drill Log (append-only audit trail, no delete)
+	{"dt": "Backup Drill Log"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
@@ -191,16 +193,18 @@ doc_events = {
 
 }
 
-# Scheduler — expire stale unmask requests + retry stuck signup provisioning every 15 minutes
 scheduler_events = {
 	"cron": {
 		"*/15 * * * *": [
 			"medic_plus.api.data_access.expire_stale_requests",
 			"medic_plus.api.signup.retry_failed_provisioning",
 		],
+		# 1st of each month at 08:00 — backup-drill reminder
+		"0 8 1 * *": [
+			"medic_plus.api.backup_drill.send_drill_reminder",
+		],
 	},
 	"daily": [
-		# SA EMR Phase 1 — flag patients past the legal retention window.
 		"medic_plus.api.retention.flag_overdue_records",
 	],
 }

@@ -1,0 +1,125 @@
+{
+ "actions": [],
+ "autoname": "BDL-.YYYY.-.#####",
+ "creation": "2026-04-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "drill_date",
+  "backup_file_name",
+  "column_break_1",
+  "backup_size_mb",
+  "restore_elapsed_s",
+  "section_break_result",
+  "smoke_pass",
+  "patient_count_restored",
+  "practice_count_restored",
+  "column_break_2",
+  "run_by",
+  "section_break_notes",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "drill_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Drill Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "backup_file_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Backup File Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "backup_size_mb",
+   "fieldtype": "Float",
+   "label": "Backup Size (MB)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "restore_elapsed_s",
+   "fieldtype": "Int",
+   "label": "Restore Elapsed (seconds)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_result",
+   "fieldtype": "Section Break",
+   "label": "Restore Result"
+  },
+  {
+   "default": "0",
+   "fieldname": "smoke_pass",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Smoke Test Passed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "patient_count_restored",
+   "fieldtype": "Int",
+   "label": "Patient Count Restored"
+  },
+  {
+   "fieldname": "practice_count_restored",
+   "fieldtype": "Int",
+   "label": "Practice Count Restored"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "run_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Run By",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Backup Drill Log",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "write": 0,
+   "delete": 0
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Practice Admin",
+   "delete": 0
+  }
+ ],
+ "sort_field": "drill_date",
+ "sort_order": "DESC",
+ "track_changes": 0
+}
