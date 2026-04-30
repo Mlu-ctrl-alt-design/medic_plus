@@ -293,3 +293,339 @@ class TestEncounterTemplateCrossTenant(IntegrationTestCase):
 		# The condition must exclude Practice A's name
 		if condition:
 			self.assertNotIn(self.practice_a, condition)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.8 — Chronic-disease follow-up template tests
+# ---------------------------------------------------------------------------
+
+CHRONIC_TEMPLATE_NAME = "Chronic Disease Follow-up Template"
+
+
+def _ensure_chronic_template() -> None:
+	"""Ensure the platform Chronic Disease Follow-up template exists (idempotent)."""
+	from medic_plus.api.encounter_templates import CHRONIC_TEMPLATE_NAME as CN
+	_ensure_appointment_type("Chronic Disease Follow-up")
+	if frappe.db.exists("Encounter Template", {"template_name": CN}):
+		return
+	frappe.get_doc({
+		"doctype": "Encounter Template",
+		"template_name": CN,
+		"appointment_type": "Chronic Disease Follow-up",
+		"is_platform_template": 1,
+		"field_defaults": json.dumps({"custom_chief_complaint": "Chronic disease review"}),
+		"required_fields": json.dumps([
+			"custom_blood_pressure_systolic",
+			"custom_blood_pressure_diastolic",
+			"custom_weight_kg",
+			"custom_smoking_status",
+			"custom_alcohol_use",
+			"custom_medication_adherence",
+		]),
+		"auto_orders": json.dumps([
+			{"order_type": "Lab", "order_name": "Fasting Lipogram", "notes": ""},
+			{"order_type": "Lab", "order_name": "Urine Microalbumin", "notes": ""},
+		]),
+		"smart_orders": json.dumps([
+			{"icd10_prefix": "E11", "order_type": "Lab", "order_name": "HbA1c",
+			 "notes": "Glycated haemoglobin"},
+			{"icd10_prefix": "N18", "order_type": "Lab", "order_name": "eGFR",
+			 "notes": "Estimated GFR from Creatinine"},
+			{"icd10_prefix": "N18", "order_type": "Lab", "order_name": "Urea and Creatinine",
+			 "notes": "Renal function"},
+		]),
+	}).insert(ignore_permissions=True)
+
+
+def _make_chronic_condition(patient: str, icd10_code: str, diagnosis_name: str) -> None:
+	if not frappe.db.exists("Diagnosis", diagnosis_name):
+		frappe.get_doc({
+			"doctype": "Diagnosis",
+			"diagnosis": diagnosis_name,
+		}).insert(ignore_permissions=True)
+	frappe.get_doc({
+		"doctype": "Patient Chronic Condition",
+		"patient": patient,
+		"diagnosis": diagnosis_name,
+		"icd10_code": icd10_code,
+		"chronic_status": "Active",
+		"started_on": "2024-01-01",
+	}).insert(ignore_permissions=True)
+
+
+class TestChronicTemplateApply(IntegrationTestCase):
+	"""Chronic template defaults chief_complaint and pre-populates baseline orders."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_chief_complaint_defaulted(self):
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		self.assertEqual(doc.custom_chief_complaint, "Chronic disease review")
+
+	def test_baseline_orders_prepopulated(self):
+		"""Fasting Lipogram and Urine Microalbumin pre-populated for all chronic visits."""
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("Fasting Lipogram", order_names)
+		self.assertIn("Urine Microalbumin", order_names)
+
+	def test_non_chronic_unaffected(self):
+		doc = _make_encounter(self.patient, appointment_type="Consultation")
+		self.assertFalse(doc.get("custom_chief_complaint"))
+
+
+class TestChronicSmartOrders(IntegrationTestCase):
+	"""Smart orders added based on patient's active ICD-10-coded conditions."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+
+	def test_diabetes_patient_gets_hba1c_order(self):
+		"""Patient with E11.x chronic condition gets HbA1c order."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"diab-{s}")
+		_make_chronic_condition(patient, "E11.9", f"Type 2 Diabetes {s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("HbA1c", order_names)
+
+	def test_ckd_patient_gets_egfr_order(self):
+		"""Patient with N18.x chronic condition gets eGFR and Urea orders."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"ckd-{s}")
+		_make_chronic_condition(patient, "N18.3", f"CKD Stage 3 {s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("eGFR", order_names)
+		self.assertIn("Urea and Creatinine", order_names)
+
+	def test_hypertension_only_no_extra_smart_orders(self):
+		"""Patient with I10 (hypertension) only gets baseline orders — no smart extras."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"htn-{s}")
+		_make_chronic_condition(patient, "I10", f"Essential Hypertension {s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertNotIn("HbA1c", order_names)
+		self.assertNotIn("eGFR", order_names)
+		# Baseline orders still present
+		self.assertIn("Fasting Lipogram", order_names)
+
+	def test_patient_no_conditions_gets_baseline_only(self):
+		"""Patient with no chronic conditions gets baseline orders only."""
+		s = _suffix()
+		patient = _make_patient(self.practice, f"nocond-{s}")
+		doc = _make_encounter(patient, appointment_type="Chronic Disease Follow-up")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertNotIn("HbA1c", order_names)
+		self.assertIn("Fasting Lipogram", order_names)
+
+
+class TestChronicHypertensiveUrgency(IntegrationTestCase):
+	"""Non-blocking hypertensive urgency flag set when BP ≥ 180/110."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_urgency_flag_set_when_systolic_above_threshold(self):
+		"""hypertensive_urgency flag set (no exception) when systolic ≥ 180."""
+		from medic_plus.api.encounter_templates import check_hypertensive_urgency
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		doc.custom_blood_pressure_systolic = 185
+		doc.custom_blood_pressure_diastolic = 95
+		check_hypertensive_urgency(doc)
+		self.assertTrue(doc.flags.get("hypertensive_urgency"))
+
+	def test_no_flag_when_bp_normal(self):
+		"""No flag when BP is within normal limits."""
+		from medic_plus.api.encounter_templates import check_hypertensive_urgency
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		doc.custom_blood_pressure_systolic = 130
+		doc.custom_blood_pressure_diastolic = 85
+		check_hypertensive_urgency(doc)
+		self.assertFalse(doc.flags.get("hypertensive_urgency"))
+
+	def test_urgency_does_not_block_submit(self):
+		"""Hypertensive urgency warning does not raise ValidationError."""
+		from medic_plus.api.encounter_templates import validate_template_fields
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		# Populate required fields with urgency-range BP
+		doc.custom_blood_pressure_systolic = 190
+		doc.custom_blood_pressure_diastolic = 115
+		doc.custom_weight_kg = 80.0
+		doc.custom_smoking_status = "Non-smoker"
+		doc.custom_alcohol_use = "None"
+		doc.custom_medication_adherence = "Good"
+		# Should not raise
+		try:
+			validate_template_fields(doc)
+		except frappe.ValidationError:
+			self.fail("validate_template_fields raised ValidationError for urgency-range BP")
+
+
+class TestChronicRequiredFields(IntegrationTestCase):
+	"""before_submit raises ValidationError when chronic required fields missing."""
+
+	def setUp(self):
+		_ensure_chronic_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_submit_without_systolic_raises(self):
+		from frappe.exceptions import ValidationError
+		doc = _make_encounter(self.patient, appointment_type="Chronic Disease Follow-up")
+		with self.assertRaises(ValidationError) as ctx:
+			doc.submit()
+		self.assertIn("systolic", str(ctx.exception).lower())
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.9 — Well-child encounter template tests
+# ---------------------------------------------------------------------------
+
+def _ensure_wellchild_template() -> None:
+	from medic_plus.api.encounter_templates import WELLCHILD_TEMPLATE_NAME as WN
+	_ensure_appointment_type("Well-Child Visit")
+	if frappe.db.exists("Encounter Template", {"template_name": WN}):
+		return
+	frappe.get_doc({
+		"doctype": "Encounter Template",
+		"template_name": WN,
+		"appointment_type": "Well-Child Visit",
+		"is_platform_template": 1,
+		"field_defaults": json.dumps({"custom_chief_complaint": "Well-child visit"}),
+		"required_fields": json.dumps([
+			"custom_weight_kg",
+			"custom_length_height",
+			"custom_developmental_milestones_reviewed",
+			"custom_vision_hearing_reviewed",
+		]),
+		"auto_orders": json.dumps([
+			{"order_type": "Lab", "order_name": "Weight/Length/Head Circumference", "notes": ""},
+		]),
+		"smart_orders": json.dumps([]),
+		"epi_coupling_enabled": 1,
+		"age_guard_max_years": 12,
+	}).insert(ignore_permissions=True)
+
+
+class TestWellChildTemplateApply(IntegrationTestCase):
+	"""Well-child template defaults and basic order pre-population."""
+
+	def setUp(self):
+		_ensure_wellchild_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_chief_complaint_defaulted(self):
+		doc = _make_encounter(self.patient, appointment_type="Well-Child Visit")
+		self.assertEqual(doc.custom_chief_complaint, "Well-child visit")
+
+	def test_measurement_order_prepopulated(self):
+		doc = _make_encounter(self.patient, appointment_type="Well-Child Visit")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("Weight/Length/Head Circumference", order_names)
+
+
+class TestWellChildEpiCoupling(IntegrationTestCase):
+	"""EPI immunisation orders pre-populated for paediatric patients."""
+
+	def setUp(self):
+		_ensure_wellchild_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+
+	def _make_patient_with_dob(self, dob: str, label: str) -> str:
+		first_name = f"ET WC Patient {label}"
+		existing = frappe.db.get_value("Patient", {"first_name": first_name}, "name")
+		if existing:
+			frappe.db.set_value("Patient", existing, "dob", dob)
+			return existing
+		return frappe.get_doc({
+			"doctype": "Patient",
+			"first_name": first_name,
+			"sex": "Female",
+			"dob": dob,
+			"custom_practice": self.practice,
+		}).insert(ignore_permissions=True).name
+
+	def test_six_week_old_gets_immunisation_orders(self):
+		"""6-week-old patient gets Immunisation-type orders from EPI coupling."""
+		import datetime
+		dob = (frappe.utils.getdate() - datetime.timedelta(weeks=6)).isoformat()
+		s = _suffix()
+		patient = self._make_patient_with_dob(dob, s)
+		doc = _make_encounter(patient, appointment_type="Well-Child Visit")
+		orders = doc.get("custom_encounter_orders") or []
+		immun_orders = [o for o in orders if o.order_type == "Immunisation"]
+		self.assertGreaterEqual(
+			len(immun_orders), 1,
+			f"Expected ≥1 Immunisation order for 6-week-old. Got: {[o.order_name for o in orders]}",
+		)
+
+	def test_epi_graceful_degradation_when_module_absent(self):
+		"""If EPI module raises, encounter still inserts without error."""
+		import datetime
+		dob = (frappe.utils.getdate() - datetime.timedelta(weeks=6)).isoformat()
+		s = _suffix()
+		patient = self._make_patient_with_dob(dob, s)
+
+		# Temporarily monkey-patch to simulate missing EPI module
+		import medic_plus.api.encounter_templates as et_mod
+		original = et_mod._get_epi_due_orders
+		et_mod._get_epi_due_orders = lambda patient, dob: (_ for _ in ()).throw(
+			ImportError("EPI module not available")
+		)
+		try:
+			doc = _make_encounter(patient, appointment_type="Well-Child Visit")
+			# Must succeed even though EPI raised
+			self.assertIsNotNone(doc.name)
+		finally:
+			et_mod._get_epi_due_orders = original
+
+	def test_adult_patient_skips_wellchild_template(self):
+		"""Patient older than 12 years does not get well-child template applied."""
+		import datetime
+		dob = (frappe.utils.getdate() - datetime.timedelta(days=365 * 14)).isoformat()
+		s = _suffix()
+		patient = self._make_patient_with_dob(dob, s)
+		doc = _make_encounter(patient, appointment_type="Well-Child Visit")
+		# chief_complaint should NOT be defaulted for adult patient
+		self.assertFalse(doc.get("custom_chief_complaint"))
+
+
+class TestWellChildRequiredFields(IntegrationTestCase):
+	"""before_submit enforces well-child required fields."""
+
+	def setUp(self):
+		_ensure_wellchild_template()
+		import datetime
+		s = _suffix()
+		self.practice = _make_practice(s)
+		dob = (frappe.utils.getdate() - datetime.timedelta(weeks=10)).isoformat()
+		first_name = f"ET WC Req {s}"
+		self.patient = frappe.get_doc({
+			"doctype": "Patient",
+			"first_name": first_name,
+			"sex": "Male",
+			"dob": dob,
+			"custom_practice": self.practice,
+		}).insert(ignore_permissions=True).name
+
+	def test_submit_without_weight_raises(self):
+		from frappe.exceptions import ValidationError
+		doc = _make_encounter(self.patient, appointment_type="Well-Child Visit")
+		with self.assertRaises(ValidationError) as ctx:
+			doc.submit()
+		self.assertIn("weight", str(ctx.exception).lower())

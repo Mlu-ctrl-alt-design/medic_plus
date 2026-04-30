@@ -14,5 +14,41 @@
   "practice": null,
   "required_fields": "[\"custom_gravidity\", \"custom_parity\", \"custom_gestational_age_weeks\", \"custom_fundal_height_cm\", \"custom_fetal_heart_rate\", \"custom_presentation\", \"custom_engagement\", \"custom_hiv_status\", \"custom_urine_dipstick_result\"]",
   "template_name": "Antenatal Visit Template"
+ },
+ {
+  "amended_from": null,
+  "appointment_type": "Chronic Disease Follow-up",
+  "auto_orders": "[{\"order_type\": \"Lab\", \"order_name\": \"Fasting Lipogram\", \"notes\": \"\"}, {\"order_type\": \"Lab\", \"order_name\": \"Urine Microalbumin\", \"notes\": \"\"}]",
+  "docstatus": 0,
+  "doctype": "Encounter Template",
+  "field_defaults": "{\"custom_chief_complaint\": \"Chronic disease review\"}",
+  "is_platform_template": 1,
+  "modified": "2026-04-30 00:00:00.000000",
+  "modified_by": "Administrator",
+  "name": "ET-00002",
+  "owner": "Administrator",
+  "practice": null,
+  "required_fields": "[\"custom_blood_pressure_systolic\", \"custom_blood_pressure_diastolic\", \"custom_weight_kg\", \"custom_smoking_status\", \"custom_alcohol_use\", \"custom_medication_adherence\"]",
+  "smart_orders": "[{\"icd10_prefix\": \"E11\", \"order_type\": \"Lab\", \"order_name\": \"HbA1c\", \"notes\": \"Glycated haemoglobin\"}, {\"icd10_prefix\": \"N18\", \"order_type\": \"Lab\", \"order_name\": \"eGFR\", \"notes\": \"Estimated GFR from Creatinine\"}, {\"icd10_prefix\": \"N18\", \"order_type\": \"Lab\", \"order_name\": \"Urea and Creatinine\", \"notes\": \"Renal function\"}]",
+  "template_name": "Chronic Disease Follow-up Template"
+ },
+ {
+  "amended_from": null,
+  "appointment_type": "Well-Child Visit",
+  "age_guard_max_years": 12,
+  "auto_orders": "[{\"order_type\": \"Lab\", \"order_name\": \"Weight/Length/Head Circumference\", \"notes\": \"\"}]",
+  "docstatus": 0,
+  "doctype": "Encounter Template",
+  "epi_coupling_enabled": 1,
+  "field_defaults": "{\"custom_chief_complaint\": \"Well-child visit\"}",
+  "is_platform_template": 1,
+  "modified": "2026-04-30 00:00:00.000000",
+  "modified_by": "Administrator",
+  "name": "ET-00003",
+  "owner": "Administrator",
+  "practice": null,
+  "required_fields": "[\"custom_weight_kg\", \"custom_length_height\", \"custom_developmental_milestones_reviewed\", \"custom_vision_hearing_reviewed\"]",
+  "smart_orders": "[]",
+  "template_name": "Well-Child Visit Template"
  }
 ]

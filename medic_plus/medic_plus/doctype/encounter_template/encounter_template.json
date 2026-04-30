@@ -15,7 +15,11 @@
   "section_required",
   "required_fields",
   "section_orders",
-  "auto_orders"
+  "auto_orders",
+  "smart_orders",
+  "section_epi",
+  "epi_coupling_enabled",
+  "age_guard_max_years"
  ],
  "fields": [
   {
@@ -85,6 +89,30 @@
    "fieldtype": "JSON",
    "label": "Auto Orders (JSON)",
    "description": "JSON array of {order_type, order_name, notes} objects pre-populated on new encounters"
+  },
+  {
+   "fieldname": "smart_orders",
+   "fieldtype": "JSON",
+   "label": "Smart Orders (JSON)",
+   "description": "JSON array of {icd10_prefix, order_type, order_name, notes} — added when patient has a matching active ICD-10 chronic condition"
+  },
+  {
+   "fieldname": "section_epi",
+   "fieldtype": "Section Break",
+   "label": "EPI / Paediatric"
+  },
+  {
+   "default": "0",
+   "fieldname": "epi_coupling_enabled",
+   "fieldtype": "Check",
+   "label": "Enable EPI Immunisation Coupling"
+  },
+  {
+   "default": "0",
+   "fieldname": "age_guard_max_years",
+   "fieldtype": "Int",
+   "label": "Age Guard — max patient age (years, 0 = disabled)",
+   "description": "If set, template will not apply for patients older than this age"
   }
  ],
  "modified": "2026-04-30 00:00:00.000000",
