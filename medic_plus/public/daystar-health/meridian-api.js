@@ -100,6 +100,13 @@
       err.status = response.status;
       throw err;
     }
+    // Sync rotated csrf_token into window.frappe so frappe-web.bundle's
+    // route_history.deferred_insert (bound to popstate) doesn't 400 on
+    // the next SPA navigation after login.
+    if (payload && payload.csrf_token) {
+      bootstrap.csrfToken = payload.csrf_token;
+      if (window.frappe) window.frappe.csrf_token = payload.csrf_token;
+    }
     return payload;
   }
 
@@ -116,6 +123,8 @@
         Accept: "application/json",
       },
     });
+    bootstrap.csrfToken = "";
+    if (window.frappe) window.frappe.csrf_token = "";
     window.location.href = "/daystar-health";
   }
 
