@@ -70,6 +70,24 @@ function MSidebar({ route, go }) {
 }
 
 function MTopbar({ go, crumbs = [] }) {
+  const api = window.meridianApi || {};
+  const [profile, setProfile] = React.useState(api._profile || null);
+
+  React.useEffect(() => {
+    if (api._profile || !api.isAuthenticated || !api.hasPractice) return;
+    api.call('medic_plus.api.daystar_health.get_my_practitioner_profile')
+      .then((p) => { api._profile = p; setProfile(p); })
+      .catch(() => {});
+  }, []);
+
+  const user = profile?.user || {};
+  const practitioner = profile?.practitioner || {};
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+  const displayName = fullName ? `Dr. ${fullName}` : (user.email || api.sessionUser || 'User');
+  const initialsSource = (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
+  const initials = (initialsSource || (user.email?.[0] || '?')).toUpperCase();
+  const subtitle = practitioner.department || (practitioner.name ? 'Practitioner' : '');
+
   return (
     <div className="topbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
@@ -91,11 +109,15 @@ function MTopbar({ go, crumbs = [] }) {
           <window.MIcons.Bell size={17} />
         </button>
         <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 6px' }} />
-        <button onClick={() => go('profile')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: '4px 8px 4px 4px', borderRadius: 8, cursor: 'pointer' }}>
-          <div className="avatar avatar-sm" style={{ width: 28, height: 28, fontSize: 11 }}>SP</div>
+        <button data-testid="topbar-profile" onClick={() => go('profile')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: '4px 8px 4px 4px', borderRadius: 8, cursor: 'pointer' }}>
+          {user.user_image ? (
+            <img src={user.user_image} alt="" className="avatar avatar-sm" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+          ) : (
+            <div className="avatar avatar-sm" style={{ width: 28, height: 28, fontSize: 11 }}>{initials}</div>
+          )}
           <div style={{ textAlign: 'left', lineHeight: 1.15 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 500 }}>Dr. S. Patel</div>
-            <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>Family Medicine</div>
+            <div data-testid="topbar-profile-name" style={{ fontSize: 12.5, fontWeight: 500 }}>{displayName}</div>
+            {subtitle && <div data-testid="topbar-profile-subtitle" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{subtitle}</div>}
           </div>
           <window.MIcons.ChevronDown size={13} />
         </button>
