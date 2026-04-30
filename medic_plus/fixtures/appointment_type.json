@@ -56,20 +56,23 @@
   "appointment_type": "Antenatal",
   "name": "Antenatal",
   "color": "#6c757d",
-  "default_duration": 30
+  "default_duration": 30,
+  "allow_booking_for": "Practitioner"
  },
  {
   "doctype": "Appointment Type",
   "appointment_type": "Chronic Disease Follow-up",
   "name": "Chronic Disease Follow-up",
   "color": "#6c757d",
-  "default_duration": 20
+  "default_duration": 20,
+  "allow_booking_for": "Practitioner"
  },
  {
   "doctype": "Appointment Type",
   "appointment_type": "Well-Child Visit",
   "name": "Well-Child Visit",
   "color": "#6c757d",
-  "default_duration": 30
+  "default_duration": 30,
+  "allow_booking_for": "Practitioner"
  }
 ]
