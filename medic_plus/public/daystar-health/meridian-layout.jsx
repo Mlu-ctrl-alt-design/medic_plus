@@ -1,7 +1,7 @@
 // Meridian shared layout
 const { useState: mUseState, useMemo: mUseMemo, useEffect: mUseEffect } = React;
 
-function MSidebar({ route, go }) {
+function MSidebar({ route, go, open, onClose }) {
   const items = [
     { key: 'dashboard', icon: 'Home', label: 'Today' },
     { key: 'appointments', icon: 'Calendar', label: 'Appointments' },
@@ -13,17 +13,18 @@ function MSidebar({ route, go }) {
     { key: 'practice', icon: 'Building', label: 'Practice' },
   ];
   const Logo = window.MIcons.Logo;
+  const navTo = (k) => { go(k); if (onClose) onClose(); };
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${open ? ' open' : ''}`}>
       <div className="sidebar-brand">
         <Logo size={22} />
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
           <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>Daystar</span>
           <span style={{ fontSize: 10.5, color: 'var(--text-dim)', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 500 }}>Health</span>
         </div>
-        <div style={{ marginLeft: 'auto', width: 22, height: 22, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--text-dim)' }}>
-          <window.MIcons.ChevronLeft size={14} />
-        </div>
+        <button className="sidebar-close" data-testid="sidebar-close" aria-label="Close menu" onClick={onClose} style={{ marginLeft: 'auto', width: 28, height: 28, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--text-dim)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+          <window.MIcons.X size={16} />
+        </button>
       </div>
 
       <div className="sidebar-nav">
@@ -31,7 +32,7 @@ function MSidebar({ route, go }) {
         {items.slice(0, 2).map(it => {
           const Ic = window.MIcons[it.icon];
           return (
-            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
+            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => navTo(it.key)}>
               <Ic size={17} /><span>{it.label}</span>
               {it.count && <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--accent-soft)', padding: '1px 6px', borderRadius: 4, color: 'var(--accent-text)', fontWeight: 500 }}>{it.count}</span>}
             </button>
@@ -41,7 +42,7 @@ function MSidebar({ route, go }) {
         {items.slice(2, 6).map(it => {
           const Ic = window.MIcons[it.icon];
           return (
-            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
+            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => navTo(it.key)}>
               <Ic size={17} /><span>{it.label}</span>
             </button>
           );
@@ -50,7 +51,7 @@ function MSidebar({ route, go }) {
         {items.slice(6).map(it => {
           const Ic = window.MIcons[it.icon];
           return (
-            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => go(it.key)}>
+            <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => navTo(it.key)}>
               <Ic size={17} /><span>{it.label}</span>
             </button>
           );
@@ -58,7 +59,7 @@ function MSidebar({ route, go }) {
       </div>
 
       <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
-        <button data-testid="nav-profile" className="nav-item" onClick={() => go('profile')}>
+        <button data-testid="nav-profile" className="nav-item" onClick={() => navTo('profile')}>
           <window.MIcons.Settings size={17} /><span>Account</span>
         </button>
         <button data-testid="nav-signout" className="nav-item" onClick={() => window.meridianApi.logout()}>
@@ -69,7 +70,7 @@ function MSidebar({ route, go }) {
   );
 }
 
-function MTopbar({ go, crumbs = [] }) {
+function MTopbar({ go, crumbs = [], onToggleSidebar }) {
   const api = window.meridianApi || {};
   const [profile, setProfile] = React.useState(api._profile || null);
 
@@ -90,7 +91,10 @@ function MTopbar({ go, crumbs = [] }) {
 
   return (
     <div className="topbar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+      <button className="sidebar-toggle" data-testid="sidebar-toggle" aria-label="Open menu" onClick={onToggleSidebar}>
+        <window.MIcons.Menu size={18} />
+      </button>
+      <div className="topbar-crumbs" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden' }}>
         {crumbs.map((c, i) => (
           <React.Fragment key={i}>
             <button onClick={c.go} style={{ background: 'none', border: 'none', color: i === crumbs.length - 1 ? 'var(--text)' : 'var(--text-muted)', fontWeight: i === crumbs.length - 1 ? 500 : 400, fontSize: 13 }}>{c.label}</button>
@@ -98,28 +102,28 @@ function MTopbar({ go, crumbs = [] }) {
           </React.Fragment>
         ))}
       </div>
-      <div className="search" style={{ marginLeft: 24, width: 380 }}>
+      <div className="topbar-search search">
         <window.MIcons.Search size={15} />
         <input placeholder="Search patients, MRN, appointments…" />
         <kbd>⌘K</kbd>
       </div>
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button className="btn btn-secondary btn-sm"><window.MIcons.Plus size={14} /> New visit</button>
+      <div className="topbar-actions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button className="btn btn-secondary btn-sm topbar-new-visit"><window.MIcons.Plus size={14} /> <span className="topbar-new-visit-label">New visit</span></button>
         <button className="btn btn-ghost btn-sm" style={{ width: 36, padding: 0 }}>
           <window.MIcons.Bell size={17} />
         </button>
-        <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 6px' }} />
-        <button data-testid="topbar-profile" onClick={() => go('profile')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: '4px 8px 4px 4px', borderRadius: 8, cursor: 'pointer' }}>
+        <div className="topbar-divider" style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 6px' }} />
+        <button data-testid="topbar-profile" onClick={() => go('profile')} className="topbar-profile-btn" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: '4px 8px 4px 4px', borderRadius: 8, cursor: 'pointer' }}>
           {user.user_image ? (
             <img src={user.user_image} alt="" className="avatar avatar-sm" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
           ) : (
             <div className="avatar avatar-sm" style={{ width: 28, height: 28, fontSize: 11 }}>{initials}</div>
           )}
-          <div style={{ textAlign: 'left', lineHeight: 1.15 }}>
+          <div className="topbar-profile-text" style={{ textAlign: 'left', lineHeight: 1.15 }}>
             <div data-testid="topbar-profile-name" style={{ fontSize: 12.5, fontWeight: 500 }}>{displayName}</div>
             {subtitle && <div data-testid="topbar-profile-subtitle" style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{subtitle}</div>}
           </div>
-          <window.MIcons.ChevronDown size={13} />
+          <window.MIcons.ChevronDown size={13} className="topbar-profile-chevron" />
         </button>
       </div>
     </div>

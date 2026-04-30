@@ -598,3 +598,88 @@ input, select, textarea { font-family: inherit; }
   z-index: 1000;
   animation: fadeIn 0.2s ease;
 }
+
+/* ── Responsive ──────────────────────────────────────────────────────
+   Hard rule: every clickable element in the SPA must keep its label
+   on a single line. Buttons that don't use the .btn class also get
+   covered here (e.g. inline-styled topbar profile button).         */
+.app-shell button,
+.app-shell .btn { white-space: nowrap; }
+
+/* Sidebar drawer affordances — visible on mobile only via media queries */
+.sidebar-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+}
+.sidebar-toggle:hover { background: var(--bg-subtle); color: var(--text); }
+.sidebar-close { display: none; }
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 19;
+}
+
+@media (max-width: 1024px) {
+  .topbar-search { width: 220px; }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop.show { display: block; }
+  .sidebar-toggle { display: inline-flex; }
+  .sidebar-close { display: grid; }
+
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-search { width: auto; flex: 1; min-width: 0; max-width: none; }
+  .topbar-search kbd { display: none; }
+  .topbar-new-visit-label { display: none; }
+  .topbar-profile-text { display: none; }
+  .topbar-profile-chevron { display: none; }
+  .topbar-divider { display: none; }
+
+  .page { padding: 16px; }
+
+  /* Inline two-col grids → single col. React serializes inline styles
+     as kebab-case, so the attribute substring matches reliably. */
+  .app-shell [style*="grid-template-columns: 1fr 1fr"],
+  .app-shell [style*="grid-template-columns:1fr 1fr"],
+  .app-shell [style*="grid-template-columns: 220px 1fr"],
+  .app-shell [style*="grid-template-columns:220px 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables: let the card scroll horizontally rather than line-wrap. */
+  .card:has(> .table),
+  .card-pad:has(> .table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table { min-width: 560px; }
+
+  /* Toolbars / filter rows — let them wrap instead of overflowing. */
+  .toolbar, .filters { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .topbar { gap: 4px; padding: 0 8px; }
+  .topbar-crumbs { font-size: 12px; }
+  .stat-card, .card-pad { padding: 14px; }
+}

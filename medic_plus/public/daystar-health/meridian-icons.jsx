@@ -27,4 +27,5 @@ window.MIcons = {
   ClipBoard: (p) => <MIcon {...p}><rect x="6" y="4" width="12" height="17" rx="2" /><rect x="9" y="2" width="6" height="3" rx="1" /><path d="M9 11 H15 M9 14 H15 M9 17 H13" /></MIcon>,
   Beaker: (p) => <MIcon {...p}><path d="M9 3 V10 L4 19 C3.5 20 4 21 5 21 H19 C20 21 20.5 20 20 19 L15 10 V3" /><path d="M8 3 H16" /><path d="M6 16 H18" /></MIcon>,
   Activity: (p) => <MIcon {...p}><path d="M3 12 H7 L9 6 L13 18 L15 12 L17 14 H21" /></MIcon>,
+  Menu: (p) => <MIcon {...p}><path d="M4 7 H20 M4 12 H20 M4 17 H20" /></MIcon>,
 };

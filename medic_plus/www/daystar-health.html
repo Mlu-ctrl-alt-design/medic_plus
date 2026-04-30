@@ -82,6 +82,7 @@ function App() {
   const [routeState, setRouteState] = useState(initialRouteState);
   const { route, arg: routeArg } = routeState;
   const [tweaks, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.body.dataset.theme = tweaks.theme;
@@ -129,9 +130,10 @@ function App() {
 
   return (
     <div className="app-shell">
-      <window.MSidebar route={route} go={go} />
+      <window.MSidebar route={route} go={go} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className={`sidebar-backdrop${sidebarOpen ? ' show' : ''}`} onClick={() => setSidebarOpen(false)} />
       <div className="main">
-        <window.MTopbar go={go} crumbs={crumbs} />
+        <window.MTopbar go={go} crumbs={crumbs} onToggleSidebar={() => setSidebarOpen(true)} />
         {route === 'dashboard' && <window.MDashboardScreen go={go} />}
         {route === 'patients' && <window.MPatientsScreen go={go} />}
         {route === 'patient' && <window.MPatientScreen patientId={routeArg} go={go} />}
