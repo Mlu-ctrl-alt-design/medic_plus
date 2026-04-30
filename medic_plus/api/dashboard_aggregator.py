@@ -24,6 +24,8 @@ _OUTSTANDING_LAB_STATUSES = ("Open", "Started")
 
 def build_dashboard(*, practice: str, user: str) -> dict:
     """Compose the Daystar Health dashboard payload for a given Practice."""
+    from medic_plus.api.perf import track_call
+    track_call("build_dashboard")
     user_doc = frappe.db.get_value(
         "User", user, ["first_name", "last_name"], as_dict=True
     ) or frappe._dict(first_name="", last_name="")

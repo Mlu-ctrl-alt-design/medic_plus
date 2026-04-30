@@ -25,6 +25,8 @@ def _get_practice_filter() -> dict:
 @require_feature("inpatient_module")
 def get_inpatient_summary() -> dict:
     """Return headline stats for the inpatient dashboard."""
+    from medic_plus.api.perf import track_call
+    track_call("get_inpatient_summary")
     base = _get_practice_filter()
 
     current_inpatients = frappe.db.count(

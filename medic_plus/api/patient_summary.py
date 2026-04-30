@@ -23,6 +23,8 @@ def build_patient_summary(*, patient_name: str, practice: str) -> dict:
     invoked, ``patient_name`` is known to belong to ``practice``. We don't
     re-check here so the deep module stays focused on shaping the payload.
     """
+    from medic_plus.api.perf import track_call
+    track_call("build_patient_summary")
     patient_row = frappe.db.get_value(
         "Patient",
         patient_name,

@@ -226,6 +226,8 @@ def get_medical_records(filters=None, limit_start=0, limit_page_length=None) -> 
       ``reference_doctype`` (str or list — Patient Encounter / Lab Test / …)
       ``date_from`` / ``date_to`` (YYYY-MM-DD; default last 30 days)
     """
+    from medic_plus.api.perf import track_call
+    track_call("get_medical_records")
     if isinstance(filters, str):
         try:
             filters = json.loads(filters)
@@ -365,6 +367,8 @@ def search_icd10(query: str = "", limit: int = 25) -> list:
 	is whitelisted for any authenticated practice user; auth is enforced by
 	the caller's session (no allow_guest).
 	"""
+	from medic_plus.api.perf import track_call
+	track_call("search_icd10")
 	try:
 		limit = int(limit)
 	except (TypeError, ValueError):
