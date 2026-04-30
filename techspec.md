@@ -4,6 +4,119 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-30 — Phase 1A (Issue #24): SA-PMI Patient Identity
+
+### Scope
+
+Multi-identifier patient registration with SA ID checksum validation, POPIA consent gate, fuzzy duplicate detection, and SPA registration form upgrade. Implements the SA Patient Master Index (SA-PMI) identity layer on top of the existing Frappe Healthcare Patient doctype.
+
+### DocType Created
+
+#### Patient Identifier (child table of Patient)
+- **Purpose:** Stores one or more identity documents per patient. Exactly one row may carry `is_primary = 1`.
+- **Fields:** `id_type` (Select: SAID / Passport / Refugee / Asylum / BirthCert / NHID / Other), `id_value` (Data, reqd), `is_primary` (Check), `country` (Link → Country, optional), `expiry_date` (Date, optional).
+- **Naming:** `istable=1` — child records use Frappe's implicit numeric `idx`.
+- **File:** `medic_plus/medic_plus/doctype/patient_identifier/`
+
+### Custom Fields Added to Patient (Fixtures)
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `custom_identifiers` | Table → Patient Identifier | Child table of identifier rows |
+| `custom_popia_consent_special` | Check | POPIA Section 27 consent for SA ID / race / language collection |
+| `custom_nhid` | Data (indexed) | NHID slot — HPRS integration deferred to a later phase |
+| `custom_race` | Select | African / Coloured / Indian or Asian / White / Other / Prefer not to say |
+| `custom_home_language` | Select | SA 11 official languages + Other |
+| `custom_preferred_language` | Select | SA 11 official languages + Other |
+
+All exported via `fixtures/custom_field.json`; field names in the `hooks.py` filter list.
+
+### New Python Modules
+
+#### `medic_plus/api/sa_id.py`
+- `validate_said(id_number)` — raises `frappe.ValidationError` if the 13-digit SA ID fails the SA Dept of Home Affairs checksum:
+  1. Sum digits at 0-indexed positions 0, 2, 4, 6, 8, 10 → A
+  2. Concatenate digits at positions 1, 3, 5, 7, 9, 11 → N; compute N × 2; sum individual digits → B
+  3. `check_digit = (10 − (A + B) % 10) % 10` must equal `id_number[12]`
+- `parse_said(id_number)` — returns `{dob: "YYYY-MM-DD", sex: "Male"|"Female"}`. Year century: YY ≤ current two-digit year → 2000+YY, else 1900+YY. Sex: sequence digits 6–9 ≥ 5000 → Male.
+
+**Note:** The issue specification cites `8501015009087` as checksum-valid. The standard algorithm yields check digit 6 for that DOB/sequence combination; `8501015009086` is the canonical test ID used in the test suite. The discrepancy is documented in `test_patient_pmi.py`.
+
+#### `medic_plus/api/patient_identity.py`
+- `find_duplicate_patients(patient_name, practice, dob=None, id_value=None)` — `@frappe.whitelist()`. Returns a list of potential duplicate patient dicts. Non-blocking (never raises). Scoring:
+  - Exact `id_value` match (any id_type) → always returned.
+  - Soundex match on first token of `patient_name` + DOB within ± 1 day → candidate.
+  - Levenshtein distance ≤ 2 on lower-cased `patient_name` + DOB within ± 1 day → candidate.
+- Soundex and Levenshtein are vendored (pure Python, no external deps).
+
+### Document Lifecycle Hooks
+
+`Patient.validate` → `medic_plus.api.doc_events.validate_patient_identifiers`:
+1. **POPIA gate:** if any row has `id_type = "SAID"` and `custom_popia_consent_special = 0` → `ValidationError`.
+2. **SA ID checksum:** for each SAID row, calls `validate_said()`.
+3. **DOB/sex derivation:** after validation, `parse_said()` populates `doc.dob` and `doc.sex` if not already set.
+4. **Primary constraint:** `sum(is_primary for row in identifiers) > 1` → `ValidationError`.
+
+### Permission Query Condition
+
+`Patient Identifier` PQC (`get_patient_identifier_permission_query`):
+- Platform admin → unrestricted (`""`).
+- Patient role → `parent = <patient_name_for_user>`.
+- Practice staff → `parent IN (SELECT name FROM tabPatient WHERE custom_practice = <practice>)`.
+
+Registered in `hooks.py`; CustomDocPerm rows for Practice Admin (read/write/create/delete), Doctor (read/write/create), Receptionist (read/write/create) exported in `fixtures/custom_docperm.json`.
+
+### Endpoints
+
+| Method | Auth | Purpose |
+|--------|------|---------|
+| `medic_plus.api.patient_identity.find_duplicate_patients` | authenticated | Fuzzy-match candidates, non-blocking |
+| `medic_plus.api.practice_resolver.get_active_practice` | authenticated | Returns the session user's practice (now `@frappe.whitelist()`) |
+
+### SPA: meridian-patients.jsx
+
+Added **Register Patient** side-drawer to the Patients list screen:
+- "Register Patient" button (top-right of patients page header); disabled until practice resolves.
+- Drawer sections: Demographics (first/last name, sex, DOB, email, mobile), Identifier (id_type picker + id_value input), POPIA consent checkbox (shown only when `id_type = "SAID"`), Language & Background (race, home_language, preferred_language — optional).
+- Non-blocking duplicate warning banner shown on name/DOB/ID blur.
+- Client-side POPIA gate: blocks submission with an inline error if consent is missing for SAID.
+- On success: closes drawer and navigates to the new patient's detail screen.
+
+### Tests
+
+#### Python (`medic_plus/api/test_patient_pmi.py`) — 12 test methods across 5 classes
+
+| Class | Behaviors |
+|-------|-----------|
+| `TestSAIDTracerBullet` | Identifier row persists; DOB/sex derived from SA ID; PQC denies cross-practice receptionist |
+| `TestSAIDChecksumValidation` | Bad check digit rejected; 12-digit ID rejected; valid ID accepted |
+| `TestPOPIAConsentGate` | SAID without consent raises; Passport without consent allowed |
+| `TestPrimaryIdentifierConstraint` | Two primaries raises; multiple identifiers one-primary accepted |
+| `TestFuzzyDuplicateDetection` | Exact identifier match returned; Soundex + DOB proximity returned |
+
+#### Playwright (`medic_plus/tests/ui/test_patient_pmi_ui.py`) — 6 test methods
+
+Register Patient button visible; drawer opens; SAID shows POPIA checkbox; Passport hides it; race/language fields rendered; SAID-without-consent shows inline error.
+
+### Design Decisions
+
+| Decision | Reason |
+|----------|--------|
+| Soundex + Levenshtein vendored (pure Python) | No external packages; Frappe bench envs do not guarantee `jellyfish` or `python-Levenshtein` |
+| POPIA consent gated at validate(), not before_insert() | `validate` fires before Frappe's `_validate()` mandatory check, so `doc.dob`/`doc.sex` set here persist |
+| Child table PQC uses parent-subquery (not denormalized `custom_practice`) | Patient Identifier is always accessed through the parent Patient; subquery is a one-hop join the DB can optimise |
+| `custom_nhid` is a slot only | HPRS national lookup integration is explicitly out-of-scope; the field reserves the column for the future phase |
+| SAID check digit 7 vs 6 discrepancy | Issue #24 cites `8501015009087` as checksum-valid; the algorithm (odd-sum + doubled-even-concat) yields 6, not 7. Test suite uses `8501015009086`. |
+
+### Out of Scope (Deferred)
+
+- Biometric capture (Phase 5+)
+- HPRS national patient lookup via NHID (field is a slot only)
+- Patient demographic change request workflow (Phase 3 with patient portal)
+- Telemedicine consent capture (Phase 4)
+
+---
+
 ## 2026-04-29 — Phase 1J (Issue #8): Daystar Health profile — wired + password change
 
 ### Scope
