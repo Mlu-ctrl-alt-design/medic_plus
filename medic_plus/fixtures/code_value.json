@@ -236,5 +236,1314 @@
   "code_system": "ICD-10-ZA",
   "code_value": "Z23",
   "display": "Encounter for immunisation"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "A-ATC",
+  "code_system": "ATC",
+  "code_value": "A",
+  "display": "Alimentary tract and metabolism"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "B-ATC",
+  "code_system": "ATC",
+  "code_value": "B",
+  "display": "Blood and blood forming organs"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "C-ATC",
+  "code_system": "ATC",
+  "code_value": "C",
+  "display": "Cardiovascular system"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "D-ATC",
+  "code_system": "ATC",
+  "code_value": "D",
+  "display": "Dermatologicals"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "G-ATC",
+  "code_system": "ATC",
+  "code_value": "G",
+  "display": "Genito-urinary system and sex hormones"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "H-ATC",
+  "code_system": "ATC",
+  "code_value": "H",
+  "display": "Systemic hormonal preparations, excluding sex hormones and insulins"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J-ATC",
+  "code_system": "ATC",
+  "code_value": "J",
+  "display": "Antiinfectives for systemic use"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "L-ATC",
+  "code_system": "ATC",
+  "code_value": "L",
+  "display": "Antineoplastic and immunomodulating agents"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "M-ATC",
+  "code_system": "ATC",
+  "code_value": "M",
+  "display": "Musculo-skeletal system"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "N-ATC",
+  "code_system": "ATC",
+  "code_value": "N",
+  "display": "Nervous system"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "P-ATC",
+  "code_system": "ATC",
+  "code_value": "P",
+  "display": "Antiparasitic products, insecticides and repellents"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "R-ATC",
+  "code_system": "ATC",
+  "code_value": "R",
+  "display": "Respiratory system"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "S-ATC",
+  "code_system": "ATC",
+  "code_value": "S",
+  "display": "Sensory organs"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "V-ATC",
+  "code_system": "ATC",
+  "code_value": "V",
+  "display": "Various"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01CA-ATC",
+  "code_system": "ATC",
+  "code_value": "J01CA",
+  "display": "Penicillins with extended spectrum"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01CR-ATC",
+  "code_system": "ATC",
+  "code_value": "J01CR",
+  "display": "Combinations of penicillins, incl. beta-lactamase inhibitors"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01DB-ATC",
+  "code_system": "ATC",
+  "code_value": "J01DB",
+  "display": "First-generation cephalosporins"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01DC-ATC",
+  "code_system": "ATC",
+  "code_value": "J01DC",
+  "display": "Second-generation cephalosporins"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01DD-ATC",
+  "code_system": "ATC",
+  "code_value": "J01DD",
+  "display": "Third-generation cephalosporins"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01FA-ATC",
+  "code_system": "ATC",
+  "code_value": "J01FA",
+  "display": "Macrolides"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01MA-ATC",
+  "code_system": "ATC",
+  "code_value": "J01MA",
+  "display": "Fluoroquinolones"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J01XX-ATC",
+  "code_system": "ATC",
+  "code_value": "J01XX",
+  "display": "Other antibacterials"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J05AB-ATC",
+  "code_system": "ATC",
+  "code_value": "J05AB",
+  "display": "Nucleosides and nucleotides excl. reverse transcriptase inhibitors"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J05AF-ATC",
+  "code_system": "ATC",
+  "code_value": "J05AF",
+  "display": "Nucleoside and nucleotide reverse transcriptase inhibitors"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "J05AR-ATC",
+  "code_system": "ATC",
+  "code_value": "J05AR",
+  "display": "Antivirals for treatment of HIV infections, combinations"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "M01AE-ATC",
+  "code_system": "ATC",
+  "code_value": "M01AE",
+  "display": "Propionic acid derivatives (NSAIDs incl. ibuprofen)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "M01AB-ATC",
+  "code_system": "ATC",
+  "code_value": "M01AB",
+  "display": "Acetic acid derivatives (NSAIDs incl. diclofenac)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "N02BE-ATC",
+  "code_system": "ATC",
+  "code_value": "N02BE",
+  "display": "Anilides (paracetamol)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "N02AA-ATC",
+  "code_system": "ATC",
+  "code_value": "N02AA",
+  "display": "Natural opium alkaloids (morphine, codeine)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "N02AB-ATC",
+  "code_system": "ATC",
+  "code_value": "N02AB",
+  "display": "Phenylpiperidine derivatives (pethidine)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "N05BA-ATC",
+  "code_system": "ATC",
+  "code_value": "N05BA",
+  "display": "Benzodiazepine derivatives (anxiolytics)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "N05CD-ATC",
+  "code_system": "ATC",
+  "code_value": "N05CD",
+  "display": "Benzodiazepine derivatives (hypnotics)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "N06AB-ATC",
+  "code_system": "ATC",
+  "code_value": "N06AB",
+  "display": "Selective serotonin reuptake inhibitors (SSRIs)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "C09AA-ATC",
+  "code_system": "ATC",
+  "code_value": "C09AA",
+  "display": "ACE inhibitors, plain"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "C09CA-ATC",
+  "code_system": "ATC",
+  "code_value": "C09CA",
+  "display": "Angiotensin II receptor blockers (ARBs)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "C07AB-ATC",
+  "code_system": "ATC",
+  "code_value": "C07AB",
+  "display": "Beta blocking agents, selective"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "C08CA-ATC",
+  "code_system": "ATC",
+  "code_value": "C08CA",
+  "display": "Dihydropyridine derivatives (calcium channel blockers)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "C03CA-ATC",
+  "code_system": "ATC",
+  "code_value": "C03CA",
+  "display": "Sulfonamides, plain (loop diuretics)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "C10AA-ATC",
+  "code_system": "ATC",
+  "code_value": "C10AA",
+  "display": "HMG CoA reductase inhibitors (statins)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "R03AC-ATC",
+  "code_system": "ATC",
+  "code_value": "R03AC",
+  "display": "Selective beta-2-adrenoreceptor agonists (inhalers)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "R03BA-ATC",
+  "code_system": "ATC",
+  "code_value": "R03BA",
+  "display": "Glucocorticoids (inhaled)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "R03BB-ATC",
+  "code_system": "ATC",
+  "code_value": "R03BB",
+  "display": "Anticholinergics (inhaled)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "R06AX-ATC",
+  "code_system": "ATC",
+  "code_value": "R06AX",
+  "display": "Other antihistamines for systemic use (loratadine, cetirizine)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "A10BA-ATC",
+  "code_system": "ATC",
+  "code_value": "A10BA",
+  "display": "Biguanides (metformin)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "A10BB-ATC",
+  "code_system": "ATC",
+  "code_value": "A10BB",
+  "display": "Sulfonylureas"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "A10AB-ATC",
+  "code_system": "ATC",
+  "code_value": "A10AB",
+  "display": "Insulins, fast-acting"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "A02BC-ATC",
+  "code_system": "ATC",
+  "code_value": "A02BC",
+  "display": "Proton pump inhibitors"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "H02AB-ATC",
+  "code_system": "ATC",
+  "code_value": "H02AB",
+  "display": "Glucocorticoids (systemic)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mg-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mg",
+  "display": "milligram"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "g-UCUM",
+  "code_system": "UCUM",
+  "code_value": "g",
+  "display": "gram"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "kg-UCUM",
+  "code_system": "UCUM",
+  "code_value": "kg",
+  "display": "kilogram"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "ug-UCUM",
+  "code_system": "UCUM",
+  "code_value": "ug",
+  "display": "microgram"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "ng-UCUM",
+  "code_system": "UCUM",
+  "code_value": "ng",
+  "display": "nanogram"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "L",
+  "display": "litre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mL",
+  "display": "millilitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "uL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "uL",
+  "display": "microlitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mmol-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mmol",
+  "display": "millimole"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mmol/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mmol/L",
+  "display": "millimoles per litre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "umol/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "umol/L",
+  "display": "micromoles per litre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mg/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mg/L",
+  "display": "milligrams per litre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mg/dL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mg/dL",
+  "display": "milligrams per decilitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "g/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "g/L",
+  "display": "grams per litre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "g/dL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "g/dL",
+  "display": "grams per decilitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "U/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "U/L",
+  "display": "units per litre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "IU/mL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "IU/mL",
+  "display": "international units per millilitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "/uL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "/uL",
+  "display": "per microlitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "10*9/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "10*9/L",
+  "display": "10^9 per litre (cell counts)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "10*12/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "10*12/L",
+  "display": "10^12 per litre (red cell counts)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "%-UCUM",
+  "code_system": "UCUM",
+  "code_value": "%",
+  "display": "percent"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mm[Hg]-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mm[Hg]",
+  "display": "millimetres of mercury (blood pressure)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "/min-UCUM",
+  "code_system": "UCUM",
+  "code_value": "/min",
+  "display": "per minute (heart rate, respiratory rate)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "Cel-UCUM",
+  "code_system": "UCUM",
+  "code_value": "Cel",
+  "display": "degree Celsius"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "kg/m2-UCUM",
+  "code_system": "UCUM",
+  "code_value": "kg/m2",
+  "display": "kilograms per square metre (BMI)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mEq/L-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mEq/L",
+  "display": "milliequivalents per litre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "ng/mL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "ng/mL",
+  "display": "nanograms per millilitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "pg/mL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "pg/mL",
+  "display": "picograms per millilitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "[arb'U]/mL-UCUM",
+  "code_system": "UCUM",
+  "code_value": "[arb'U]/mL",
+  "display": "arbitrary units per millilitre"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "h-UCUM",
+  "code_system": "UCUM",
+  "code_value": "h",
+  "display": "hour"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "d-UCUM",
+  "code_system": "UCUM",
+  "code_value": "d",
+  "display": "day"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "wk-UCUM",
+  "code_system": "UCUM",
+  "code_value": "wk",
+  "display": "week"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "mo-UCUM",
+  "code_system": "UCUM",
+  "code_value": "mo",
+  "display": "month"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "a-UCUM",
+  "code_system": "UCUM",
+  "code_value": "a",
+  "display": "year (annum)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "718-7-LOINC",
+  "code_system": "LOINC",
+  "code_value": "718-7",
+  "display": "Hemoglobin [Mass/volume] in Blood"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "4544-3-LOINC",
+  "code_system": "LOINC",
+  "code_value": "4544-3",
+  "display": "Hematocrit [Volume Fraction] of Blood"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "789-8-LOINC",
+  "code_system": "LOINC",
+  "code_value": "789-8",
+  "display": "Erythrocytes [#/volume] in Blood"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "777-3-LOINC",
+  "code_system": "LOINC",
+  "code_value": "777-3",
+  "display": "Platelets [#/volume] in Blood"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "6690-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "6690-2",
+  "display": "Leukocytes [#/volume] in Blood"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2345-7-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2345-7",
+  "display": "Glucose [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "4548-4-LOINC",
+  "code_system": "LOINC",
+  "code_value": "4548-4",
+  "display": "Hemoglobin A1c/Hemoglobin.total in Blood"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2160-0-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2160-0",
+  "display": "Creatinine [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "33914-3-LOINC",
+  "code_system": "LOINC",
+  "code_value": "33914-3",
+  "display": "Glomerular filtration rate/1.73 sq M.predicted"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "3094-0-LOINC",
+  "code_system": "LOINC",
+  "code_value": "3094-0",
+  "display": "Urea nitrogen [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2823-3-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2823-3",
+  "display": "Potassium [Moles/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2951-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2951-2",
+  "display": "Sodium [Moles/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2075-0-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2075-0",
+  "display": "Chloride [Moles/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2028-9-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2028-9",
+  "display": "Carbon dioxide, total [Moles/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "17861-6-LOINC",
+  "code_system": "LOINC",
+  "code_value": "17861-6",
+  "display": "Calcium [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2885-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2885-2",
+  "display": "Protein [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "1751-7-LOINC",
+  "code_system": "LOINC",
+  "code_value": "1751-7",
+  "display": "Albumin [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "1968-7-LOINC",
+  "code_system": "LOINC",
+  "code_value": "1968-7",
+  "display": "Bilirubin.total [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "1742-6-LOINC",
+  "code_system": "LOINC",
+  "code_value": "1742-6",
+  "display": "Alanine aminotransferase [Enzymatic activity/volume] in Serum"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "1920-8-LOINC",
+  "code_system": "LOINC",
+  "code_value": "1920-8",
+  "display": "Aspartate aminotransferase [Enzymatic activity/volume] in Serum"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "6768-6-LOINC",
+  "code_system": "LOINC",
+  "code_value": "6768-6",
+  "display": "Alkaline phosphatase [Enzymatic activity/volume] in Serum"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2324-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2324-2",
+  "display": "Gamma glutamyl transferase [Enzymatic activity/volume] in Serum"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2093-3-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2093-3",
+  "display": "Cholesterol [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2085-9-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2085-9",
+  "display": "HDL Cholesterol [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2089-1-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2089-1",
+  "display": "LDL Cholesterol [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "2571-8-LOINC",
+  "code_system": "LOINC",
+  "code_value": "2571-8",
+  "display": "Triglyceride [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "3016-3-LOINC",
+  "code_system": "LOINC",
+  "code_value": "3016-3",
+  "display": "Thyrotropin (TSH) [Units/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "3024-7-LOINC",
+  "code_system": "LOINC",
+  "code_value": "3024-7",
+  "display": "Thyroxine (T4) free [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "75241-0-LOINC",
+  "code_system": "LOINC",
+  "code_value": "75241-0",
+  "display": "Pregnancy/birth control regimen"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "31201-1-LOINC",
+  "code_system": "LOINC",
+  "code_value": "31201-1",
+  "display": "Pregnancy test [Presence] in Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5811-5-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5811-5",
+  "display": "Specific gravity of Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5778-6-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5778-6",
+  "display": "Color of Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5803-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5803-2",
+  "display": "pH of Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5792-7-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5792-7",
+  "display": "Glucose [Mass/volume] in Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5804-0-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5804-0",
+  "display": "Protein [Mass/volume] in Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5794-3-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5794-3",
+  "display": "Hemoglobin [Presence] in Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5802-4-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5802-4",
+  "display": "Nitrite [Presence] in Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5799-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5799-2",
+  "display": "Leukocyte esterase [Presence] in Urine"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "76486-0-LOINC",
+  "code_system": "LOINC",
+  "code_value": "76486-0",
+  "display": "HIV-1 RNA [#/volume] in Plasma by NAA"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "19101-5-LOINC",
+  "code_system": "LOINC",
+  "code_value": "19101-5",
+  "display": "HIV-1 Ab+Ag [Presence] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "11556-8-LOINC",
+  "code_system": "LOINC",
+  "code_value": "11556-8",
+  "display": "CD4+ T cells [#/volume] in Blood"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "32623-1-LOINC",
+  "code_system": "LOINC",
+  "code_value": "32623-1",
+  "display": "Platelet aggregation"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5902-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5902-2",
+  "display": "Prothrombin time (PT)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "3173-2-LOINC",
+  "code_system": "LOINC",
+  "code_value": "3173-2",
+  "display": "aPTT in Platelet poor plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5894-1-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5894-1",
+  "display": "Prothrombin time INR"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "48643-1-LOINC",
+  "code_system": "LOINC",
+  "code_value": "48643-1",
+  "display": "Cardiac troponin I [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "33762-6-LOINC",
+  "code_system": "LOINC",
+  "code_value": "33762-6",
+  "display": "NT-proBNP [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "1988-5-LOINC",
+  "code_system": "LOINC",
+  "code_value": "1988-5",
+  "display": "C reactive protein [Mass/volume] in Serum or Plasma"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "4537-7-LOINC",
+  "code_system": "LOINC",
+  "code_value": "4537-7",
+  "display": "Erythrocyte sedimentation rate"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "5788-5-LOINC",
+  "code_system": "LOINC",
+  "code_value": "5788-5",
+  "display": "Microscopic observation [Identifier] in Urine sediment"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "719008-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "719008",
+  "display": "Amoxicillin 500mg capsule"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "719024-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "719024",
+  "display": "Amoxicillin 250mg/5ml suspension"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "706159-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "706159",
+  "display": "Co-amoxiclav 875/125mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "719210-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "719210",
+  "display": "Cefuroxime 500mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "719300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "719300",
+  "display": "Azithromycin 500mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "719318-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "719318",
+  "display": "Ciprofloxacin 500mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "719340-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "719340",
+  "display": "Doxycycline 100mg capsule"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "719120-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "719120",
+  "display": "Metronidazole 400mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "722350-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "722350",
+  "display": "Paracetamol 500mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "722351-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "722351",
+  "display": "Paracetamol 120mg/5ml syrup"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "722500-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "722500",
+  "display": "Ibuprofen 400mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "722520-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "722520",
+  "display": "Diclofenac 50mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "722620-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "722620",
+  "display": "Tramadol 50mg capsule"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "722700-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "722700",
+  "display": "Codeine phosphate 30mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740100",
+  "display": "Enalapril 10mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740101-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740101",
+  "display": "Enalapril 20mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740200",
+  "display": "Losartan 50mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740300",
+  "display": "Amlodipine 5mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740301-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740301",
+  "display": "Amlodipine 10mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740400-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740400",
+  "display": "Atenolol 50mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740500-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740500",
+  "display": "Bisoprolol 5mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740600-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740600",
+  "display": "Hydrochlorothiazide 25mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740700-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740700",
+  "display": "Furosemide 40mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740800-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740800",
+  "display": "Atorvastatin 20mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740801-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740801",
+  "display": "Atorvastatin 40mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "740900-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "740900",
+  "display": "Simvastatin 20mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "750100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "750100",
+  "display": "Metformin 500mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "750101-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "750101",
+  "display": "Metformin 850mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "750200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "750200",
+  "display": "Glimepiride 2mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "750300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "750300",
+  "display": "Insulin glargine 100U/ml cartridge"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "750400-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "750400",
+  "display": "Insulin aspart 100U/ml cartridge"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "760100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "760100",
+  "display": "Salbutamol 100mcg inhaler"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "760200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "760200",
+  "display": "Budesonide 200mcg inhaler"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "760300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "760300",
+  "display": "Beclomethasone 250mcg inhaler"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "770100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "770100",
+  "display": "Loratadine 10mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "770200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "770200",
+  "display": "Cetirizine 10mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "780100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "780100",
+  "display": "Omeprazole 20mg capsule"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "780200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "780200",
+  "display": "Pantoprazole 40mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "780300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "780300",
+  "display": "Ranitidine 150mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "790100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "790100",
+  "display": "Fluoxetine 20mg capsule"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "790200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "790200",
+  "display": "Sertraline 50mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "790300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "790300",
+  "display": "Citalopram 20mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "790400-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "790400",
+  "display": "Amitriptyline 25mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "790500-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "790500",
+  "display": "Diazepam 5mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "800100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "800100",
+  "display": "Tenofovir disoproxil/lamivudine/dolutegravir (TLD) tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "800200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "800200",
+  "display": "Efavirenz 600mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "800300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "800300",
+  "display": "Lamivudine 150mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "810100-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "810100",
+  "display": "Isoniazid 300mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "810200-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "810200",
+  "display": "Rifampicin/isoniazid/pyrazinamide/ethambutol fixed-dose"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "810300-NAPPI",
+  "code_system": "NAPPI",
+  "code_value": "810300",
+  "display": "Pyrazinamide 500mg tablet"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "38341003-SNOMED-CT-ZA-stub",
+  "code_system": "SNOMED-CT-ZA-stub",
+  "code_value": "38341003",
+  "display": "Hypertensive disorder (stub)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "44054006-SNOMED-CT-ZA-stub",
+  "code_system": "SNOMED-CT-ZA-stub",
+  "code_value": "44054006",
+  "display": "Type 2 diabetes mellitus (stub)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "195967001-SNOMED-CT-ZA-stub",
+  "code_system": "SNOMED-CT-ZA-stub",
+  "code_value": "195967001",
+  "display": "Asthma (stub)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "13645005-SNOMED-CT-ZA-stub",
+  "code_system": "SNOMED-CT-ZA-stub",
+  "code_value": "13645005",
+  "display": "Chronic obstructive lung disease (stub)"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "84757009-SNOMED-CT-ZA-stub",
+  "code_system": "SNOMED-CT-ZA-stub",
+  "code_value": "84757009",
+  "display": "Epilepsy (stub)"
  }
 ]

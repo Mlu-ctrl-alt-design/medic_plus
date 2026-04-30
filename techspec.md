@@ -4,6 +4,83 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-04-30 — Phase 1B (Issue #25): Terminology stack
+
+### Scope
+
+Six FHIR-canonical Code Systems registered with curated seed catalogues, idempotent bench import commands, per-system whitelisted search endpoints, and a generalised SPA picker. Underpins downstream phases (claims, FHIR export, drug-allergy matching).
+
+### Code Systems Registered (fixture)
+
+| System | URI | Seed rows | Notes |
+|--------|-----|-----------|-------|
+| `ICD-10-ZA` | `http://hl7.org/fhir/sid/icd-10-za` | 34 | SA-canonical diagnosis codes — repointed from old `ICD-10` system in patch `migrate_icd10_to_icd10_za` |
+| `NAPPI` | `https://www.nappi.co.za` | 50 | Synthetic SA medicine codes — production replaces via `bench import-nappi` (NAPPI directory licence required) |
+| `LOINC` | `http://loinc.org` | 50 | Common SA primary-care lab analytes (CBC, U&E, lipids, HbA1c, HIV viral load, CD4, etc.) |
+| `UCUM` | `http://unitsofmeasure.org` | 34 | Common units for FHIR Quantity datatype — vitals, lab results |
+| `ATC` | `http://www.whocc.no/atc` | 48 | 14 anatomical groups + 34 curated drug classes — drives Phase 1D drug-allergy class matching |
+| `SNOMED-CT-ZA-stub` | `http://snomed.info/sct/za` | 5 | Placeholder only — full catalogue gated on IHTSDO Affiliate licence (Phase 5.6 / #38) |
+
+### Bench Commands (`medic_plus/commands/__init__.py`)
+
+Six thin click wrappers over `medic_plus.api.terminology_import.import_<system>(csv_path)`:
+
+```
+bench --site SITE import-icd10  path/to/codes.csv
+bench --site SITE import-nappi  path/to/codes.csv
+bench --site SITE import-loinc  path/to/codes.csv
+bench --site SITE import-ucum   path/to/codes.csv
+bench --site SITE import-atc    path/to/codes.csv
+bench --site SITE import-snomed path/to/codes.csv
+```
+
+CSV format: `code,display` header + N rows. Missing/blank `code` rows are skipped.
+
+### Importer (`medic_plus/api/terminology_import.py`)
+
+Single private `_import_csv(system, uri, csv_path)` helper handles all six systems. Idempotent: row name follows Code Value's controller autoname (`{code}-{system}`), so re-running an unchanged CSV is a no-op; a CSV with a new `display` for an existing code updates in place.
+
+### Whitelisted Search Endpoints (`medic_plus/api/daystar_health.py`)
+
+| Endpoint | System scoped to |
+|----------|-----------------|
+| `search_icd10` | ICD-10-ZA (was ICD-10 — Phase 1B repoint) |
+| `search_nappi` | NAPPI |
+| `search_loinc` | LOINC |
+| `search_ucum` | UCUM |
+| `search_atc` | ATC |
+| `search_snomed` | SNOMED-CT-ZA-stub |
+
+All share `_search_code_values(system, query, limit)` private helper. Return shape: `[{ name, code, display }]`. Query matches case-insensitively on code-prefix OR display-substring. Limit clamped to [1, 100], default 25.
+
+### SPA: Generalised picker
+
+`meridian-code-picker.jsx` exports `MCodePicker` (generic, takes `endpoint` + `placeholder` + `emptyText` + `testid`) plus `MNappiPicker` and `MLoincPicker` thin wrappers. The existing `MIcd10Picker` is rewritten as a thin wrapper over `MCodePicker` so call-sites in `meridian-patient.jsx` (Conditions tab) keep working unchanged.
+
+### Migration
+
+`migrate_icd10_to_icd10_za` (post_model_sync): `UPDATE tabCode Value SET code_system='ICD-10-ZA' WHERE code_system='ICD-10'`. Idempotent; re-running on a migrated DB is a no-op.
+
+Patch `add_custom_practice_indexes` was tightened with a `_column_exists` guard so child tables (Patient Identifier, etc.) that inherit scoping from their parent don't trip the blind ALTER TABLE.
+
+### Tests (8 IntegrationTestCase, all green)
+
+| Class | Behaviour |
+|-------|-----------|
+| `TestIcd10ImportTracer` | First import creates 50 rows; reimport idempotent (created=0, updated=50); changed display refreshes in place |
+| `TestMultiSystemImporters` | NAPPI importer end-to-end; cross-system disambiguation (same literal code in two systems → two distinct rows) |
+| `TestPerSystemSearchEndpoints` | `search_nappi` returns only NAPPI rows; `search_loinc` only LOINC; `search_icd10` regression — now returns only ICD-10-ZA |
+
+### Out of Scope (Deferred)
+
+- Full SNOMED CT-ZA catalogue import (gated on IHTSDO Affiliate licence — Phase 5.6 / #38)
+- Production NAPPI catalogue (current 50-row seed is synthetic — replace via licence-bound bench import)
+- Full ICD-10-ZA Master Industry Tariff catalogue (current 34-row seed is the SA-relevant subset for Phase 1; full ~25k-row import via `bench import-icd10` in Phase 4 billing)
+- LOINC ZA-specific extensions (NHLS local codes)
+- Picker UX integration into Phase 1D prescriptions (NAPPI) / Phase 2 lab orders (LOINC) — this slice ships the components, not the call-sites
+
+---
+
 ## 2026-04-30 — Phase 1A (Issue #24): SA-PMI Patient Identity
 
 ### Scope

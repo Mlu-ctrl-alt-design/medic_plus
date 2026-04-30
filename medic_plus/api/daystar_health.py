@@ -436,6 +436,27 @@ def search_atc(query: str = "", limit: int = 25) -> list:
 
 
 @frappe.whitelist()
+def search_ucum(query: str = "", limit: int = 25) -> list:
+	"""Search UCUM unit codes — used by FHIR Quantity datatypes."""
+	from medic_plus.api.perf import track_call
+	track_call("search_ucum")
+	return _search_code_values(system="UCUM", query=query, limit=limit)
+
+
+@frappe.whitelist()
+def search_snomed(query: str = "", limit: int = 25) -> list:
+	"""Search SNOMED-CT-ZA-stub.
+
+	The full SNOMED CT-ZA catalogue is gated on IHTSDO Affiliate licence
+	procurement (Phase 5.6 / issue #38) — this endpoint queries the small
+	placeholder seed for development.
+	"""
+	from medic_plus.api.perf import track_call
+	track_call("search_snomed")
+	return _search_code_values(system="SNOMED-CT-ZA-stub", query=query, limit=limit)
+
+
+@frappe.whitelist()
 def get_patient_medical_aid(patient: str) -> list:
     """Return active Patient Insurance Policy rows + SA medical-aid extension."""
     _assert_patient_in_active_practice(patient)
