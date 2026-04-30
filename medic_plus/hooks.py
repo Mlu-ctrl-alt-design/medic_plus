@@ -147,6 +147,10 @@ scheduler_events = {
 			"medic_plus.api.signup.retry_failed_provisioning",
 		],
 	},
+	"daily": [
+		# SA EMR Phase 1 — flag patients past the legal retention window.
+		"medic_plus.api.retention.flag_overdue_records",
+	],
 }
 
 # v16: extend base DocType classes with practice-aware mixins
