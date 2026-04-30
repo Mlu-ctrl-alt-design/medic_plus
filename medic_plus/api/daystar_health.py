@@ -11,6 +11,9 @@ Heavy logic lives in the deep modules (dashboard_aggregator,
 patient_summary, …) so it can be tested in isolation.
 """
 
+import json
+from datetime import date, timedelta
+
 import frappe
 
 from medic_plus.api.dashboard_aggregator import build_dashboard
@@ -85,6 +88,86 @@ def get_my_practitioner_profile() -> dict:
         "practice": practice,
         "two_factor_authentication": twofa_enabled,
     }
+
+
+_APPOINTMENT_FIELDS = (
+    "name",
+    "appointment_date",
+    "appointment_time",
+    "patient",
+    "patient_name",
+    "practitioner",
+    "practitioner_name",
+    "appointment_type",
+    "status",
+)
+
+_DEFAULT_STATUSES = ["Scheduled", "Open"]
+
+
+def _format_appointments(rows: list) -> list:
+    """Shape raw Patient Appointment dicts into SPA-ready dicts.
+
+    Pure transformation — no DB calls, no session access. Tested in isolation.
+    """
+    return [
+        {
+            "name": r.get("name"),
+            "appointment_date": str(r.get("appointment_date") or ""),
+            "appointment_time": str(r.get("appointment_time") or ""),
+            "patient": r.get("patient"),
+            "patient_name": r.get("patient_name"),
+            "practitioner": r.get("practitioner"),
+            "practitioner_name": r.get("practitioner_name"),
+            "appointment_type": r.get("appointment_type"),
+            "status": r.get("status"),
+        }
+        for r in rows
+    ]
+
+
+@frappe.whitelist()
+def get_appointments(filters=None) -> list:
+    """Return Patient Appointments for the logged-in user's active Practice.
+
+    Default window: today → +7 days. Default statuses: Scheduled and Open.
+    Accepts an optional ``filters`` dict (or JSON string) with keys:
+      ``date_from``, ``date_to``, ``status`` (str or list), ``practitioner``.
+    Returns at most 200 rows ordered by appointment_date / appointment_time asc.
+    """
+    if isinstance(filters, str):
+        try:
+            filters = json.loads(filters)
+        except Exception:
+            filters = {}
+    filters = filters or {}
+
+    practice = get_active_practice()
+    today = date.today()
+    date_from = filters.get("date_from") or str(today)
+    date_to = filters.get("date_to") or str(today + timedelta(days=7))
+
+    status_filter = filters.get("status") or _DEFAULT_STATUSES
+    if isinstance(status_filter, str):
+        status_filter = [status_filter]
+
+    doctype_filters = {
+        "custom_practice": practice,
+        "appointment_date": ["between", [date_from, date_to]],
+        "status": ["in", status_filter],
+    }
+    practitioner = filters.get("practitioner")
+    if practitioner:
+        doctype_filters["practitioner"] = practitioner
+
+    rows = frappe.get_all(
+        "Patient Appointment",
+        filters=doctype_filters,
+        fields=list(_APPOINTMENT_FIELDS),
+        order_by="appointment_date asc, appointment_time asc",
+        limit=200,
+    )
+    return _format_appointments(rows)
 
 
 @frappe.whitelist()

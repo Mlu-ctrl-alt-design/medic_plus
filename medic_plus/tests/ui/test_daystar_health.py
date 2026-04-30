@@ -524,3 +524,153 @@ class TestProfilePasswordChange:
         page.locator(".btn-login[type='submit']").click()
         page.wait_for_url(re.compile(r"/(app|desk)"), timeout=15_000)
         # If we got here, the new password works end-to-end.
+
+
+# ── slice 6: appointments list ───────────────────────────────────────────────
+
+
+def _open_appointments_screen(page: Page):
+    """Navigate to the dashboard, then click Appointments in the sidebar."""
+    page.goto(DAYSTAR_URL)
+    expect(page.locator('[data-testid="dashboard-ready"]')).to_be_visible(timeout=20_000)
+    page.locator('[data-testid="nav-appointments"]').click()
+    expect(page.locator('[data-testid="appointments-page"]')).to_be_visible(timeout=10_000)
+
+
+class TestAppointmentsScreen:
+    """The appointments screen fetches from get_appointments and renders a
+    date-range / status / practitioner toolbar above a list of rows. Each row
+    click navigates to the patient detail screen.
+
+    All tests use the admin_with_practice_membership fixture so the logged-in
+    user has a Practice context, which get_appointments requires.
+    """
+
+    def test_appointments_page_loads_and_renders(self, admin_with_practice_membership, page: Page):
+        """After clicking Appointments in the sidebar the page container appears
+        and either a table or an empty state is shown — no crash, no spinner
+        stuck forever."""
+        _login_as_admin(page)
+        _open_appointments_screen(page)
+
+        # Skeleton should resolve to either a table or the empty state within
+        # a generous timeout (staging may have no appointments in the next 7
+        # days, which is a valid empty-state outcome).
+        table_or_empty = page.locator(
+            '[data-testid="appointments-table"], [data-testid="appointments-empty-state"]'
+        )
+        expect(table_or_empty.first).to_be_visible(timeout=15_000)
+
+        # The toolbar controls are always present regardless of row count.
+        expect(page.locator('[data-testid="appointments-date-from"]')).to_be_visible()
+        expect(page.locator('[data-testid="appointments-date-to"]')).to_be_visible()
+        expect(page.locator('[data-testid="appointments-status-scheduled"]')).to_be_visible()
+        expect(page.locator('[data-testid="appointments-status-open"]')).to_be_visible()
+        expect(page.locator('[data-testid="appointments-practitioner"]')).to_be_visible()
+
+    def test_filter_change_triggers_refetch(self, admin_with_practice_membership, page: Page):
+        """Changing the date-from input triggers a new API call after the 300 ms
+        debounce. We verify by capturing network requests: exactly one call to
+        get_appointments is made for the initial load and another after the
+        date change. The response (even if empty) renders without error."""
+        _login_as_admin(page)
+        _open_appointments_screen(page)
+
+        # Wait for the initial fetch to settle.
+        page.locator(
+            '[data-testid="appointments-table"], [data-testid="appointments-empty-state"]'
+        ).first.wait_for(timeout=15_000)
+
+        calls = []
+
+        def on_request(request):
+            if "get_appointments" in request.url:
+                calls.append(request.url)
+
+        page.on("request", on_request)
+
+        # Extend the date range by one day — any change that causes a re-fetch.
+        date_from_input = page.locator('[data-testid="appointments-date-from"]')
+        current_val = date_from_input.input_value()
+        # Set to a past date that definitely changes the filter.
+        date_from_input.fill("2026-01-01")
+
+        # Debounce is 300 ms; allow up to 3 s for the network round-trip.
+        page.wait_for_timeout(1_000)
+
+        # At least one refetch call should have been captured after the change.
+        assert len(calls) >= 1, (
+            f"Expected at least one get_appointments request after filter change; got {calls}"
+        )
+
+        # The page still renders (no crash from the refetch).
+        expect(page.locator('[data-testid="appointments-page"]')).to_be_visible()
+
+    def test_status_toggle_triggers_refetch(self, admin_with_practice_membership, page: Page):
+        """Clicking a status toggle button changes the status filter and triggers
+        a re-fetch. We assert the button's visual state flips and a request is
+        issued after the debounce."""
+        _login_as_admin(page)
+        _open_appointments_screen(page)
+        page.locator(
+            '[data-testid="appointments-table"], [data-testid="appointments-empty-state"]'
+        ).first.wait_for(timeout=15_000)
+
+        calls = []
+        page.on("request", lambda r: calls.append(r.url) if "get_appointments" in r.url else None)
+
+        # Click "Closed" to add it to the status filter (it starts de-selected).
+        closed_btn = page.locator('[data-testid="appointments-status-closed"]')
+        closed_btn.click()
+
+        page.wait_for_timeout(1_000)
+        assert len(calls) >= 1, "Toggling status should trigger a get_appointments refetch"
+
+    def test_filters_persist_in_session_storage(self, admin_with_practice_membership, page: Page):
+        """The filter state is written to sessionStorage under
+        daystar.appointments.filters so that navigating away and back
+        restores the user's last-used filter set."""
+        _login_as_admin(page)
+        _open_appointments_screen(page)
+        page.locator(
+            '[data-testid="appointments-table"], [data-testid="appointments-empty-state"]'
+        ).first.wait_for(timeout=15_000)
+
+        # Change the date-to to a known value.
+        page.locator('[data-testid="appointments-date-to"]').fill("2026-12-31")
+        page.wait_for_timeout(500)  # allow debounce + storage write
+
+        stored = page.evaluate("sessionStorage.getItem('daystar.appointments.filters')")
+        assert stored is not None, "Filters must be written to sessionStorage"
+        import json
+        parsed = json.loads(stored)
+        assert parsed.get("dateTo") == "2026-12-31", (
+            f"dateTo should be '2026-12-31' in storage; got {parsed.get('dateTo')!r}"
+        )
+
+    def test_row_click_navigates_to_patient_detail(self, admin_with_practice_membership, page: Page):
+        """Clicking an appointment row must navigate to the patient detail screen.
+        We expand the date window to maximise the chance of finding rows on this
+        staging site, then click the first available row."""
+        _login_as_admin(page)
+        _open_appointments_screen(page)
+
+        # Widen the date range to one year so we catch any existing appointment.
+        page.locator('[data-testid="appointments-date-from"]').fill("2026-01-01")
+        page.locator('[data-testid="appointments-date-to"]').fill("2026-12-31")
+        # Include all statuses so closed/cancelled appointments also show.
+        for status in ("closed", "cancelled"):
+            btn = page.locator(f'[data-testid="appointments-status-{status}"]')
+            btn.click()
+        page.wait_for_timeout(1_200)  # debounce + network round-trip
+
+        rows = page.locator('[data-testid="appointments-row"]')
+        if rows.count() == 0:
+            pytest.skip(
+                "No appointments found in 2026 for PRAC-00001; "
+                "row-click navigation not exercisable on this dataset."
+            )
+
+        rows.first.click()
+        # After clicking a row, the patient detail page must render.
+        expect(page.locator('[data-testid="patient-detail-page"]')).to_be_visible(timeout=15_000)

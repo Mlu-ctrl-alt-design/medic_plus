@@ -464,3 +464,245 @@ class TestPatientSummaryFormatHelper(unittest.TestCase):
         self.assertEqual(payload["visits"][19]["id"], "V-019")
         self.assertEqual(payload["vitals"][0]["id"], "VS-000")
         self.assertEqual(payload["vitals"][11]["id"], "VS-011")
+
+
+class TestFormatAppointmentsHelper(unittest.TestCase):
+    """Behavior tests for daystar_health._format_appointments.
+
+    Pure data-shaping helper: accepts already-fetched rows, returns
+    SPA-ready dicts. No DB, no session. Tests cover field projection,
+    date/time serialisation, and cross-tenant isolation (the helper
+    never adds back the custom_practice field so it cannot leak tenancy
+    info to the front-end).
+    """
+
+    def _import(self):
+        from medic_plus.api import daystar_health
+        return daystar_health
+
+    def _sample_row(self, **overrides):
+        base = {
+            "name": "PA-00001",
+            "appointment_date": "2026-05-01",
+            "appointment_time": "09:00:00",
+            "patient": "PAT-00001",
+            "patient_name": "Alice Nkosi",
+            "practitioner": "HLC-PRAC-2026-00001",
+            "practitioner_name": "Dr. Aiyana Patel",
+            "appointment_type": "Follow-up",
+            "status": "Scheduled",
+            "custom_practice": "PRAC-00001",
+        }
+        base.update(overrides)
+        return base
+
+    def test_returns_documented_keys_for_single_row(self):
+        """Each shaped row must carry exactly the eight fields the SPA table
+        columns map to. Extra DB fields (custom_practice, etc.) must be
+        stripped so the payload can't leak tenancy context to the front-end."""
+        m = self._import()
+        result = m._format_appointments([self._sample_row()])
+        self.assertEqual(len(result), 1)
+        row = result[0]
+        expected_keys = {
+            "name", "appointment_date", "appointment_time",
+            "patient", "patient_name",
+            "practitioner", "practitioner_name",
+            "appointment_type", "status",
+        }
+        self.assertEqual(set(row.keys()), expected_keys)
+        self.assertNotIn("custom_practice", row,
+                         "custom_practice must not leak into the SPA payload")
+
+    def test_appointment_date_serialised_as_string(self):
+        """The SPA renders appointment_date directly as text. The helper must
+        coerce the value to str so Python date objects don't cause JSON
+        serialisation errors and the table shows the ISO date string."""
+        import datetime
+        m = self._import()
+        result = m._format_appointments([self._sample_row(appointment_date=datetime.date(2026, 5, 1))])
+        self.assertEqual(result[0]["appointment_date"], "2026-05-01")
+
+    def test_appointment_time_serialised_as_string(self):
+        """appointment_time comes from Frappe as a timedelta. The helper coerces
+        it to a str so the SPA's formatTime helper can split on ':' safely."""
+        import datetime
+        m = self._import()
+        td = datetime.timedelta(hours=9, minutes=30)
+        result = m._format_appointments([self._sample_row(appointment_time=td)])
+        self.assertIsInstance(result[0]["appointment_time"], str)
+        self.assertIn("9", result[0]["appointment_time"])
+
+    def test_empty_input_returns_empty_list(self):
+        """An empty row set produces an empty list — not None, not an error."""
+        m = self._import()
+        result = m._format_appointments([])
+        self.assertEqual(result, [])
+
+    def test_multiple_rows_preserved_in_order(self):
+        """The helper must not reorder rows — the caller (frappe.get_all with
+        order_by) is responsible for ordering. The helper only shapes."""
+        m = self._import()
+        rows = [self._sample_row(name=f"PA-{i:05d}", patient_name=f"Patient {i}") for i in range(5)]
+        result = m._format_appointments(rows)
+        self.assertEqual([r["name"] for r in result], [f"PA-{i:05d}" for i in range(5)])
+
+    def test_none_values_coerced_to_empty_string_for_date_time(self):
+        """When appointment_date or appointment_time is None (unscheduled slot),
+        the helper coerces to '' so the front-end gets a predictable empty
+        string rather than null/None which would crash the table renderer."""
+        m = self._import()
+        result = m._format_appointments([self._sample_row(appointment_date=None, appointment_time=None)])
+        self.assertEqual(result[0]["appointment_date"], "")
+        self.assertEqual(result[0]["appointment_time"], "")
+
+
+class TestGetAppointmentsEndpoint(unittest.TestCase):
+    """Behavior tests for the whitelisted daystar_health.get_appointments endpoint.
+
+    The endpoint is a thin orchestrator: resolve practice → build filters →
+    frappe.get_all → _format_appointments → return. We test the contract:
+    reject callers without a Practice, honour date/status defaults, pass the
+    practitioner filter through, and never expose another Practice's data.
+    """
+
+    def _import(self):
+        from medic_plus.api import daystar_health
+        return daystar_health
+
+    def _fake_row(self, **overrides):
+        base = {
+            "name": "PA-00001",
+            "appointment_date": "2026-04-30",
+            "appointment_time": "10:00:00",
+            "patient": "PAT-00001",
+            "patient_name": "Bob Zulu",
+            "practitioner": "HLC-PRAC-2026-00001",
+            "practitioner_name": "Dr. Aiyana Patel",
+            "appointment_type": "Consultation",
+            "status": "Scheduled",
+        }
+        base.update(overrides)
+        return base
+
+    def test_rejects_user_with_no_practice(self):
+        """A caller without a Practice Member row must never reach the DB.
+        The resolver raises PermissionError and the endpoint surfaces it
+        unchanged — same no-practice path as every other Daystar endpoint."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   side_effect=frappe.PermissionError("no practice")):
+            with self.assertRaises(frappe.PermissionError):
+                m.get_appointments()
+
+    def test_returns_list_for_practice_user(self):
+        """A Practice Member receives a list of appointment dicts. The list
+        may be empty (no appointments in the window) or populated. We assert
+        the return type and that the shaped keys are present."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.get_all",
+                   return_value=[self._fake_row()]) as ga:
+            result = m.get_appointments()
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["patient"], "PAT-00001")
+        # get_all was called with the practice filter — defence in depth beyond PQC.
+        call_kwargs = ga.call_args.kwargs if ga.call_args.kwargs else ga.call_args[1]
+        filters_used = call_kwargs.get("filters", {})
+        self.assertEqual(filters_used.get("custom_practice"), "PRAC-00001")
+
+    def test_default_status_filter_is_scheduled_and_open(self):
+        """When no status filter is supplied, the endpoint restricts to
+        Scheduled and Open appointments — the most useful default for a
+        live schedule view."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.get_all",
+                   return_value=[]) as ga:
+            m.get_appointments()
+        filters_used = ga.call_args.kwargs.get("filters", {}) if ga.call_args.kwargs else ga.call_args[1].get("filters", {})
+        status_clause = filters_used.get("status")
+        self.assertIsNotNone(status_clause, "status filter must always be set")
+        status_list = status_clause[1] if isinstance(status_clause, list) else status_clause
+        self.assertIn("Scheduled", status_list)
+        self.assertIn("Open", status_list)
+
+    def test_custom_status_filter_overrides_default(self):
+        """When the caller supplies a status list, the endpoint uses it verbatim.
+        This lets the SPA's status toggle buttons refetch with any combination."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.get_all",
+                   return_value=[]) as ga:
+            m.get_appointments(filters={"status": ["Closed", "Cancelled"]})
+        filters_used = ga.call_args.kwargs.get("filters", {}) if ga.call_args.kwargs else ga.call_args[1].get("filters", {})
+        status_clause = filters_used.get("status")
+        status_list = status_clause[1] if isinstance(status_clause, list) else status_clause
+        self.assertIn("Closed", status_list)
+        self.assertIn("Cancelled", status_list)
+        self.assertNotIn("Scheduled", status_list)
+
+    def test_practitioner_filter_forwarded_when_supplied(self):
+        """When the caller supplies a practitioner name, the endpoint adds it
+        to the Frappe filters so only that practitioner's appointments are
+        returned — used by the practitioner dropdown in the toolbar."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.get_all",
+                   return_value=[]) as ga:
+            m.get_appointments(filters={"practitioner": "HLC-PRAC-2026-00001"})
+        filters_used = ga.call_args.kwargs.get("filters", {}) if ga.call_args.kwargs else ga.call_args[1].get("filters", {})
+        self.assertEqual(filters_used.get("practitioner"), "HLC-PRAC-2026-00001")
+
+    def test_practitioner_filter_absent_when_not_supplied(self):
+        """When no practitioner filter is supplied, the Frappe filters must not
+        include a practitioner key — it would otherwise match only records with
+        practitioner=None, which is wrong."""
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.get_all",
+                   return_value=[]) as ga:
+            m.get_appointments()
+        filters_used = ga.call_args.kwargs.get("filters", {}) if ga.call_args.kwargs else ga.call_args[1].get("filters", {})
+        self.assertNotIn("practitioner", filters_used)
+
+    def test_accepts_json_string_filters(self):
+        """The Frappe whitelist layer sometimes delivers POST body values as
+        JSON strings rather than parsed dicts. The endpoint accepts both forms
+        so callers can safely pass filters as a JSON-encoded string."""
+        import json
+        m = self._import()
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value="PRAC-00001"), \
+             patch("medic_plus.api.daystar_health.frappe.get_all",
+                   return_value=[]):
+            result = m.get_appointments(filters=json.dumps({"status": ["Open"]}))
+        self.assertIsInstance(result, list)
+
+    def test_cross_tenant_isolation_via_practice_filter(self):
+        """The endpoint always scopes the query to the caller's Practice.
+        Even if another Practice's appointments exist in the DB, the
+        custom_practice filter ensures they are unreachable.
+
+        We test this via the PQC contract: get_all is called with
+        custom_practice = PRAC-00001, never with PRAC-00002. The PQC
+        is a second line of defence; the explicit filter is first."""
+        m = self._import()
+        practice_a = "PRAC-00001"
+        practice_b_row = self._fake_row(name="PA-99999", patient="PAT-99999")
+        # Simulate: DB returns only practice-A rows (as it would with both the
+        # explicit filter AND the PQC active). The endpoint must never loosen that.
+        with patch("medic_plus.api.daystar_health.get_active_practice",
+                   return_value=practice_a), \
+             patch("medic_plus.api.daystar_health.frappe.get_all",
+                   return_value=[self._fake_row()]) as ga:
+            result = m.get_appointments()
+        filters_used = ga.call_args.kwargs.get("filters", {}) if ga.call_args.kwargs else ga.call_args[1].get("filters", {})
+        self.assertEqual(filters_used["custom_practice"], practice_a,
+                         "Endpoint must always scope to the caller's Practice")
