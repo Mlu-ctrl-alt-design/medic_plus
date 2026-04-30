@@ -139,6 +139,68 @@ def build_patient_summary(*, patient_name: str, practice: str) -> dict:
         )
     ]
 
+    allergies = [
+        {
+            "id": r.name,
+            "status": r.status,
+            "category": r.category,
+            "substance": r.substance,
+            "severity": r.severity,
+            "criticality": r.criticality,
+            "reaction": r.reaction or "",
+            "onset_date": format_date(r.onset_date) if r.onset_date else "",
+        }
+        for r in frappe.db.get_all(
+            "Patient Allergy",
+            filters={"patient": patient_name},
+            fields=["name", "status", "category", "substance", "severity",
+                    "criticality", "reaction", "onset_date"],
+            order_by="status asc, severity desc, modified desc",
+            limit_page_length=_ALLERGIES_CAP,
+        )
+    ]
+
+    chronic_conditions = [
+        {
+            "id": r.name,
+            "diagnosis": r.diagnosis,
+            "icd10_code": r.icd10_code or "",
+            "chronic_status": r.chronic_status,
+            "started_on": format_date(r.started_on) if r.started_on else "",
+            "resolved_on": format_date(r.resolved_on) if r.resolved_on else "",
+            "severity": r.severity or "",
+        }
+        for r in frappe.db.get_all(
+            "Patient Chronic Condition",
+            filters={"patient": patient_name},
+            fields=["name", "diagnosis", "icd10_code", "chronic_status",
+                    "started_on", "resolved_on", "severity"],
+            order_by="chronic_status asc, started_on desc",
+            limit_page_length=_CHRONIC_CAP,
+        )
+    ]
+
+    medical_aid = [
+        {
+            "id": r.name,
+            "scheme": r.custom_sa_scheme or r.insurance_payor or "",
+            "plan": r.insurance_plan or "",
+            "policy_number": r.policy_number or "",
+            "principal_member_id": r.custom_principal_member_id or "",
+            "dependent_code": r.custom_dependent_code or "",
+            "expiry_date": format_date(r.policy_expiry_date) if r.policy_expiry_date else "",
+        }
+        for r in frappe.db.get_all(
+            "Patient Insurance Policy",
+            filters={"patient": patient_name, "docstatus": ["<", 2]},
+            fields=["name", "insurance_payor", "insurance_plan", "policy_number",
+                    "policy_expiry_date", "custom_sa_scheme",
+                    "custom_principal_member_id", "custom_dependent_code"],
+            order_by="policy_expiry_date desc",
+            limit_page_length=_MEDICAL_AID_CAP,
+        )
+    ]
+
     return _format_patient_summary(
         patient_row=patient_row,
         visits=visits,
@@ -146,6 +208,9 @@ def build_patient_summary(*, patient_name: str, practice: str) -> dict:
         medications=medications,
         labs=labs,
         notes=notes,
+        allergies=allergies,
+        chronic_conditions=chronic_conditions,
+        medical_aid=medical_aid,
         full_record_links=_full_record_links(patient_name, practice),
     )
 
@@ -181,6 +246,9 @@ _VITALS_CAP = 12
 _MEDICATIONS_CAP = 20
 _LABS_CAP = 20
 _NOTES_CAP = 20
+_ALLERGIES_CAP = 50
+_CHRONIC_CAP = 50
+_MEDICAL_AID_CAP = 5
 
 
 def _format_patient_summary(
@@ -191,6 +259,9 @@ def _format_patient_summary(
     medications: list,
     labs: list,
     notes: list,
+    allergies: list | None = None,
+    chronic_conditions: list | None = None,
+    medical_aid: list | None = None,
     full_record_links: dict | None = None,
 ) -> dict:
     patient = {k: patient_row.get(k) for k in _PATIENT_PUBLIC_FIELDS if k in patient_row}
@@ -201,5 +272,8 @@ def _format_patient_summary(
         "medications": list(medications)[:_MEDICATIONS_CAP],
         "labs": list(labs)[:_LABS_CAP],
         "notes": list(notes)[:_NOTES_CAP],
+        "allergies": list(allergies or [])[:_ALLERGIES_CAP],
+        "chronic_conditions": list(chronic_conditions or [])[:_CHRONIC_CAP],
+        "medical_aid": list(medical_aid or [])[:_MEDICAL_AID_CAP],
         "full_record_links": full_record_links or {},
     }

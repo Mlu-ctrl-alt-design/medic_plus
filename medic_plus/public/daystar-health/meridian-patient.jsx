@@ -4,6 +4,8 @@
 
 const PATIENT_TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'allergies', label: 'Allergies' },
+  { id: 'conditions', label: 'Conditions' },
   { id: 'visits', label: 'Visits' },
   { id: 'vitals', label: 'Vitals' },
   { id: 'medications', label: 'Medications' },
@@ -36,6 +38,10 @@ function MPatientScreen({ go, patientId }) {
   const data = state.data;
   const p = data.patient || {};
   const links = data.full_record_links || {};
+  const allergies = data.allergies || [];
+  const chronic = data.chronic_conditions || [];
+  const medicalAid = data.medical_aid || [];
+  const severeAllergy = allergies.find((a) => a.status === 'Active' && a.severity === 'Severe');
 
   return (
     <div className="page fade-in" data-testid="patient-detail-page">
@@ -54,6 +60,14 @@ function MPatientScreen({ go, patientId }) {
         <span className={`badge ${p.status === 'Active' ? 'badge-success' : 'badge-neutral'}`}>{p.status || '—'}</span>
       </div>
 
+      {severeAllergy && (
+        <div data-testid="patient-severe-allergy-banner" style={{ marginBottom: 16, padding: '10px 14px', background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 8, color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <window.MIcons.Heart size={14} />
+          <span style={{ fontWeight: 600 }}>SEVERE ALLERGY:</span>
+          <span>{severeAllergy.substance}{severeAllergy.reaction ? ` — ${severeAllergy.reaction}` : ''}</span>
+        </div>
+      )}
+
       <div className="tabs" data-testid="patient-tabs" style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
         {PATIENT_TABS.map(t => (
           <button
@@ -68,6 +82,8 @@ function MPatientScreen({ go, patientId }) {
       </div>
 
       {tab === 'overview' && <OverviewTab data={data} />}
+      {tab === 'allergies' && <AllergiesTab allergies={allergies} />}
+      {tab === 'conditions' && <ConditionsTab conditions={chronic} />}
       {tab === 'visits' && <VisitsTab visits={data.visits || []} link={links.visits} />}
       {tab === 'vitals' && <VitalsTab vitals={data.vitals || []} link={links.vitals} />}
       {tab === 'medications' && <MedicationsTab meds={data.medications || []} link={links.medications} />}
@@ -308,6 +324,79 @@ function EmptyTab({ name }) {
   return (
     <div data-testid="patient-tab-empty" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
       No {name} recorded for this patient yet.
+    </div>
+  );
+}
+
+function AllergiesTab({ allergies }) {
+  const sevColor = (s) => s === 'Severe' ? '#b91c1c' : s === 'Moderate' ? '#b45309' : 'var(--text-muted)';
+  return (
+    <div className="card" data-testid="patient-tab-content-allergies">
+      <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Allergies & sensitivities</div>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{allergies.length} total</span>
+      </div>
+      {allergies.length === 0 ? <EmptyTab name="allergies" /> : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 110 }}>Status</th>
+              <th>Substance</th>
+              <th style={{ width: 90 }}>Category</th>
+              <th style={{ width: 90 }}>Severity</th>
+              <th>Reaction</th>
+              <th style={{ width: 110 }}>Onset</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allergies.map((a) => (
+              <tr key={a.id} data-testid="allergy-row">
+                <td><span className={`badge ${a.status === 'Active' ? 'badge-warning' : 'badge-neutral'}`}>{a.status}</span></td>
+                <td style={{ fontWeight: 500 }}>{a.substance}</td>
+                <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{a.category}</td>
+                <td style={{ fontWeight: 500, color: sevColor(a.severity) }}>{a.severity}</td>
+                <td style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{a.reaction || '—'}</td>
+                <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{a.onset_date || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function ConditionsTab({ conditions }) {
+  return (
+    <div className="card" data-testid="patient-tab-content-conditions">
+      <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Chronic conditions</div>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{conditions.length} total</span>
+      </div>
+      {conditions.length === 0 ? <EmptyTab name="chronic conditions" /> : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 130 }}>Status</th>
+              <th>Diagnosis</th>
+              <th style={{ width: 110 }}>ICD-10</th>
+              <th style={{ width: 110 }}>Started</th>
+              <th style={{ width: 110 }}>Severity</th>
+            </tr>
+          </thead>
+          <tbody>
+            {conditions.map((c) => (
+              <tr key={c.id} data-testid="condition-row">
+                <td><span className={`badge ${c.chronic_status === 'Active' ? 'badge-warning' : c.chronic_status === 'Resolved' ? 'badge-success' : 'badge-neutral'}`}>{c.chronic_status}</span></td>
+                <td style={{ fontWeight: 500 }}>{c.diagnosis}</td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.icd10_code || '—'}</td>
+                <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{c.started_on || '—'}</td>
+                <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.severity || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
