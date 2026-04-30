@@ -359,16 +359,8 @@ def get_patient_chronic_conditions(patient: str) -> list:
     ]
 
 
-@frappe.whitelist()
-def search_icd10(query: str = "", limit: int = 25) -> list:
-	"""Search the ICD-10 Code System by code prefix or display substring.
-
-	No tenancy — Code Values are platform-wide reference data. The endpoint
-	is whitelisted for any authenticated practice user; auth is enforced by
-	the caller's session (no allow_guest).
-	"""
-	from medic_plus.api.perf import track_call
-	track_call("search_icd10")
+def _search_code_values(*, system: str, query: str, limit) -> list:
+	"""Internal: prefix/substring search inside a single Code System."""
 	try:
 		limit = int(limit)
 	except (TypeError, ValueError):
@@ -376,17 +368,14 @@ def search_icd10(query: str = "", limit: int = 25) -> list:
 	limit = max(1, min(limit, 100))
 
 	q = (query or "").strip()
-	filters = {"code_system": "ICD-10"}
 	if q:
-		# Match either an exact code prefix (case-insensitive) OR display
-		# substring. Frappe's `like` filter accepts SQL wildcards.
 		from frappe.query_builder import DocType
 		from frappe.query_builder.functions import Lower
 		cv = DocType("Code Value")
 		rows = (
 			frappe.qb.from_(cv)
 			.select(cv.name, cv.code_value, cv.display)
-			.where(cv.code_system == "ICD-10")
+			.where(cv.code_system == system)
 			.where(
 				Lower(cv.code_value).like(f"{q.lower()}%")
 				| Lower(cv.display).like(f"%{q.lower()}%")
@@ -398,7 +387,7 @@ def search_icd10(query: str = "", limit: int = 25) -> list:
 	else:
 		rows = frappe.get_all(
 			"Code Value",
-			filters=filters,
+			filters={"code_system": system},
 			fields=["name", "code_value", "display"],
 			order_by="code_value asc",
 			limit=limit,
@@ -407,6 +396,43 @@ def search_icd10(query: str = "", limit: int = 25) -> list:
 		{"name": r["name"], "code": r["code_value"], "display": r["display"] or ""}
 		for r in rows
 	]
+
+
+@frappe.whitelist()
+def search_icd10(query: str = "", limit: int = 25) -> list:
+	"""Search ICD-10-ZA codes by code prefix or display substring.
+
+	No tenancy — Code Values are platform-wide reference data. The endpoint
+	is whitelisted for any authenticated practice user; auth is enforced by
+	the caller's session (no allow_guest).
+	"""
+	from medic_plus.api.perf import track_call
+	track_call("search_icd10")
+	return _search_code_values(system="ICD-10-ZA", query=query, limit=limit)
+
+
+@frappe.whitelist()
+def search_nappi(query: str = "", limit: int = 25) -> list:
+	"""Search NAPPI (SA pharmaceutical product) codes."""
+	from medic_plus.api.perf import track_call
+	track_call("search_nappi")
+	return _search_code_values(system="NAPPI", query=query, limit=limit)
+
+
+@frappe.whitelist()
+def search_loinc(query: str = "", limit: int = 25) -> list:
+	"""Search LOINC (lab observation) codes."""
+	from medic_plus.api.perf import track_call
+	track_call("search_loinc")
+	return _search_code_values(system="LOINC", query=query, limit=limit)
+
+
+@frappe.whitelist()
+def search_atc(query: str = "", limit: int = 25) -> list:
+	"""Search ATC (drug class) codes — used for drug-class allergy matching."""
+	from medic_plus.api.perf import track_call
+	track_call("search_atc")
+	return _search_code_values(system="ATC", query=query, limit=limit)
 
 
 @frappe.whitelist()

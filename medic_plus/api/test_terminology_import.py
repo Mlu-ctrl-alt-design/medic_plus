@@ -145,3 +145,62 @@ class TestMultiSystemImporters(IntegrationTestCase):
 			os.unlink(shared_code_csv)
 		self.assertTrue(frappe.db.exists("Code Value", "TSTX2.999-ICD-10-ZA"))
 		self.assertTrue(frappe.db.exists("Code Value", "TSTX2.999-NAPPI"))
+
+
+class TestPerSystemSearchEndpoints(IntegrationTestCase):
+	"""Each whitelisted search endpoint scopes to one Code System.
+
+	The SPA pickers (ICD-10, NAPPI, LOINC) call distinct endpoints so a
+	user searching for "100" in the LOINC picker never sees an ICD-10
+	hit. We test the public endpoint shape via a direct call (the
+	whitelist decorator is irrelevant in-process).
+	"""
+
+	def setUp(self):
+		# Cleanup synthetic test rows
+		for stale in frappe.get_all(
+			"Code Value",
+			filters={"code_value": ["like", "ZTST%"]},
+			pluck="name",
+		):
+			frappe.delete_doc("Code Value", stale, ignore_permissions=True, force=True)
+		# Seed one row in each of the four systems with the SAME code prefix
+		# so a wrong-system query would surface them.
+		for system in ("ICD-10-ZA", "NAPPI", "LOINC", "ATC"):
+			frappe.get_doc({
+				"doctype": "Code Value",
+				"code_system": system,
+				"code_value": f"ZTST{system}",
+				"display": f"sample for {system}",
+			}).insert(ignore_permissions=True)
+
+	def test_search_nappi_returns_only_nappi_rows(self):
+		from medic_plus.api.daystar_health import search_nappi
+		rows = search_nappi(query="ZTST", limit=10)
+		systems = {
+			frappe.db.get_value("Code Value", r["name"], "code_system")
+			for r in rows
+		}
+		self.assertTrue(rows, "expected ZTST seed rows")
+		self.assertEqual(systems, {"NAPPI"})
+
+	def test_search_loinc_returns_only_loinc_rows(self):
+		from medic_plus.api.daystar_health import search_loinc
+		rows = search_loinc(query="ZTST", limit=10)
+		systems = {
+			frappe.db.get_value("Code Value", r["name"], "code_system")
+			for r in rows
+		}
+		self.assertEqual(systems, {"LOINC"})
+
+	def test_search_icd10_now_targets_icd10_za(self):
+		# Regression: search_icd10 used to filter on the deprecated "ICD-10"
+		# system. Phase 1B repoints it at ICD-10-ZA — the SA-canonical
+		# system the SPA picker now drives.
+		from medic_plus.api.daystar_health import search_icd10
+		rows = search_icd10(query="ZTST", limit=10)
+		systems = {
+			frappe.db.get_value("Code Value", r["name"], "code_system")
+			for r in rows
+		}
+		self.assertEqual(systems, {"ICD-10-ZA"})

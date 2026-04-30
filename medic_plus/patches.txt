@@ -8,3 +8,4 @@ medic_plus.patches.v1_0.set_daystar_medical_branding
 medic_plus.patches.v0_2_0.cleanup_orphan_registrations
 medic_plus.patches.v0_2_0.drop_registration_request_doctype
 medic_plus.patches.v0_4_0.add_custom_practice_indexes
+medic_plus.patches.v0_4_0.migrate_icd10_to_icd10_za

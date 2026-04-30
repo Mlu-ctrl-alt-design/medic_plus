@@ -1,36 +1,240 @@
 [
- {"doctype": "Code Value", "name": "MP-CV-ICD10-A09",   "code_system": "ICD-10", "code_value": "A09",   "display": "Diarrhoea and gastroenteritis of presumed infectious origin"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-B34.9", "code_system": "ICD-10", "code_value": "B34.9", "display": "Viral infection, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-E10.9", "code_system": "ICD-10", "code_value": "E10.9", "display": "Type 1 diabetes mellitus without complications"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-E11.9", "code_system": "ICD-10", "code_value": "E11.9", "display": "Type 2 diabetes mellitus without complications"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-E66.9", "code_system": "ICD-10", "code_value": "E66.9", "display": "Obesity, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-E78.5", "code_system": "ICD-10", "code_value": "E78.5", "display": "Hyperlipidaemia, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-F32.9", "code_system": "ICD-10", "code_value": "F32.9", "display": "Major depressive disorder, single episode, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-F41.1", "code_system": "ICD-10", "code_value": "F41.1", "display": "Generalised anxiety disorder"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-G43.9", "code_system": "ICD-10", "code_value": "G43.9", "display": "Migraine, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-H10.9", "code_system": "ICD-10", "code_value": "H10.9", "display": "Conjunctivitis, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-H66.9", "code_system": "ICD-10", "code_value": "H66.9", "display": "Otitis media, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-I10",   "code_system": "ICD-10", "code_value": "I10",   "display": "Essential (primary) hypertension"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-I20.9", "code_system": "ICD-10", "code_value": "I20.9", "display": "Angina pectoris, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-I25.9", "code_system": "ICD-10", "code_value": "I25.9", "display": "Chronic ischaemic heart disease, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-I50.9", "code_system": "ICD-10", "code_value": "I50.9", "display": "Heart failure, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-J06.9", "code_system": "ICD-10", "code_value": "J06.9", "display": "Acute upper respiratory infection, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-J18.9", "code_system": "ICD-10", "code_value": "J18.9", "display": "Pneumonia, unspecified organism"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-J20.9", "code_system": "ICD-10", "code_value": "J20.9", "display": "Acute bronchitis, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-J45.9", "code_system": "ICD-10", "code_value": "J45.9", "display": "Asthma, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-K21.0", "code_system": "ICD-10", "code_value": "K21.0", "display": "Gastro-oesophageal reflux disease with oesophagitis"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-K59.0", "code_system": "ICD-10", "code_value": "K59.0", "display": "Constipation"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-L20.9", "code_system": "ICD-10", "code_value": "L20.9", "display": "Atopic dermatitis, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-M54.5", "code_system": "ICD-10", "code_value": "M54.5", "display": "Low back pain"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-M79.7", "code_system": "ICD-10", "code_value": "M79.7", "display": "Fibromyalgia"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-N39.0", "code_system": "ICD-10", "code_value": "N39.0", "display": "Urinary tract infection, site not specified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-O80",   "code_system": "ICD-10", "code_value": "O80",   "display": "Single spontaneous delivery"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-R05",   "code_system": "ICD-10", "code_value": "R05",   "display": "Cough"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-R07.4", "code_system": "ICD-10", "code_value": "R07.4", "display": "Chest pain, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-R10.4", "code_system": "ICD-10", "code_value": "R10.4", "display": "Other and unspecified abdominal pain"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-R11",   "code_system": "ICD-10", "code_value": "R11",   "display": "Nausea and vomiting"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-R50.9", "code_system": "ICD-10", "code_value": "R50.9", "display": "Fever, unspecified"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-R51",   "code_system": "ICD-10", "code_value": "R51",   "display": "Headache"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-Z00.0", "code_system": "ICD-10", "code_value": "Z00.0", "display": "General medical examination"},
- {"doctype": "Code Value", "name": "MP-CV-ICD10-Z23",   "code_system": "ICD-10", "code_value": "Z23",   "display": "Encounter for immunisation"}
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-A09",
+  "code_system": "ICD-10-ZA",
+  "code_value": "A09",
+  "display": "Diarrhoea and gastroenteritis of presumed infectious origin"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-B34.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "B34.9",
+  "display": "Viral infection, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-E10.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "E10.9",
+  "display": "Type 1 diabetes mellitus without complications"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-E11.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "E11.9",
+  "display": "Type 2 diabetes mellitus without complications"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-E66.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "E66.9",
+  "display": "Obesity, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-E78.5",
+  "code_system": "ICD-10-ZA",
+  "code_value": "E78.5",
+  "display": "Hyperlipidaemia, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-F32.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "F32.9",
+  "display": "Major depressive disorder, single episode, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-F41.1",
+  "code_system": "ICD-10-ZA",
+  "code_value": "F41.1",
+  "display": "Generalised anxiety disorder"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-G43.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "G43.9",
+  "display": "Migraine, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-H10.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "H10.9",
+  "display": "Conjunctivitis, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-H66.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "H66.9",
+  "display": "Otitis media, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-I10",
+  "code_system": "ICD-10-ZA",
+  "code_value": "I10",
+  "display": "Essential (primary) hypertension"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-I20.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "I20.9",
+  "display": "Angina pectoris, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-I25.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "I25.9",
+  "display": "Chronic ischaemic heart disease, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-I50.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "I50.9",
+  "display": "Heart failure, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-J06.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "J06.9",
+  "display": "Acute upper respiratory infection, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-J18.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "J18.9",
+  "display": "Pneumonia, unspecified organism"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-J20.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "J20.9",
+  "display": "Acute bronchitis, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-J45.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "J45.9",
+  "display": "Asthma, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-K21.0",
+  "code_system": "ICD-10-ZA",
+  "code_value": "K21.0",
+  "display": "Gastro-oesophageal reflux disease with oesophagitis"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-K59.0",
+  "code_system": "ICD-10-ZA",
+  "code_value": "K59.0",
+  "display": "Constipation"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-L20.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "L20.9",
+  "display": "Atopic dermatitis, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-M54.5",
+  "code_system": "ICD-10-ZA",
+  "code_value": "M54.5",
+  "display": "Low back pain"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-M79.7",
+  "code_system": "ICD-10-ZA",
+  "code_value": "M79.7",
+  "display": "Fibromyalgia"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-N39.0",
+  "code_system": "ICD-10-ZA",
+  "code_value": "N39.0",
+  "display": "Urinary tract infection, site not specified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-O80",
+  "code_system": "ICD-10-ZA",
+  "code_value": "O80",
+  "display": "Single spontaneous delivery"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-R05",
+  "code_system": "ICD-10-ZA",
+  "code_value": "R05",
+  "display": "Cough"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-R07.4",
+  "code_system": "ICD-10-ZA",
+  "code_value": "R07.4",
+  "display": "Chest pain, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-R10.4",
+  "code_system": "ICD-10-ZA",
+  "code_value": "R10.4",
+  "display": "Other and unspecified abdominal pain"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-R11",
+  "code_system": "ICD-10-ZA",
+  "code_value": "R11",
+  "display": "Nausea and vomiting"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-R50.9",
+  "code_system": "ICD-10-ZA",
+  "code_value": "R50.9",
+  "display": "Fever, unspecified"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-R51",
+  "code_system": "ICD-10-ZA",
+  "code_value": "R51",
+  "display": "Headache"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-Z00.0",
+  "code_system": "ICD-10-ZA",
+  "code_value": "Z00.0",
+  "display": "General medical examination"
+ },
+ {
+  "doctype": "Code Value",
+  "name": "MP-CV-ICD10-Z23",
+  "code_system": "ICD-10-ZA",
+  "code_value": "Z23",
+  "display": "Encounter for immunisation"
+ }
 ]
