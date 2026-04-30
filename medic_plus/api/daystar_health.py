@@ -358,6 +358,54 @@ def get_patient_chronic_conditions(patient: str) -> list:
 
 
 @frappe.whitelist()
+def search_icd10(query: str = "", limit: int = 25) -> list:
+	"""Search the ICD-10 Code System by code prefix or display substring.
+
+	No tenancy — Code Values are platform-wide reference data. The endpoint
+	is whitelisted for any authenticated practice user; auth is enforced by
+	the caller's session (no allow_guest).
+	"""
+	try:
+		limit = int(limit)
+	except (TypeError, ValueError):
+		limit = 25
+	limit = max(1, min(limit, 100))
+
+	q = (query or "").strip()
+	filters = {"code_system": "ICD-10"}
+	if q:
+		# Match either an exact code prefix (case-insensitive) OR display
+		# substring. Frappe's `like` filter accepts SQL wildcards.
+		from frappe.query_builder import DocType
+		from frappe.query_builder.functions import Lower
+		cv = DocType("Code Value")
+		rows = (
+			frappe.qb.from_(cv)
+			.select(cv.name, cv.code_value, cv.display)
+			.where(cv.code_system == "ICD-10")
+			.where(
+				Lower(cv.code_value).like(f"{q.lower()}%")
+				| Lower(cv.display).like(f"%{q.lower()}%")
+			)
+			.orderby(cv.code_value)
+			.limit(limit)
+			.run(as_dict=True)
+		)
+	else:
+		rows = frappe.get_all(
+			"Code Value",
+			filters=filters,
+			fields=["name", "code_value", "display"],
+			order_by="code_value asc",
+			limit=limit,
+		)
+	return [
+		{"name": r["name"], "code": r["code_value"], "display": r["display"] or ""}
+		for r in rows
+	]
+
+
+@frappe.whitelist()
 def get_patient_medical_aid(patient: str) -> list:
     """Return active Patient Insurance Policy rows + SA medical-aid extension."""
     _assert_patient_in_active_practice(patient)

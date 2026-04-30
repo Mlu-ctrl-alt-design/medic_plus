@@ -56,6 +56,10 @@ fixtures = [
 		"Payment Reminder - 30 Days Overdue",
 		"Payment Reminder - 60 Days Overdue",
 	]]]},
+	# SA EMR Phase 1 — code sets + scheme directory
+	{"dt": "Code System",       "filters": [["name", "in", ["ICD-10"]]]},
+	{"dt": "Code Value",        "filters": [["code_system", "=", "ICD-10"]]},
+	{"dt": "Medical Aid Scheme"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
