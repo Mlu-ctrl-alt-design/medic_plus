@@ -542,6 +542,22 @@ Production fixes surfaced by the E2E test:
 
 ---
 
+## 2026-04-30 — SA EMR Phase 1: Compliance core (#18)
+
+Closes the legal-floor gap so the Daystar Health SPA can host real SA practice data. Six commits on `develop` (e51975c → d2b967a):
+
+- New doctypes: `Patient Allergy` (FHIR-aligned criticality), `Patient Chronic Condition` (Link → Diagnosis), `Medical Aid Scheme` (CMS directory), `Record Archive Queue`. Each clinical doctype denormalises `custom_practice` from Patient on insert for fast PQC subqueries.
+- 4 new Permission Query Conditions scope via `patient.custom_practice` + 1 PQC for `Patient Medical Record`. 12 Custom DocPerm rows (3 Practice roles × 4 doctypes — Receptionist read-only on chronic conditions).
+- 4 SA medical-aid Custom Fields on `Patient Insurance Policy`: `custom_sa_scheme`, `custom_principal_member_id`, `custom_dependent_code`, `custom_authorisation_reference`.
+- Whitelisted endpoints: `get_patient_allergies`, `get_patient_chronic_conditions`, `get_patient_medical_aid`, `search_icd10` — all assert patient ∈ active practice.
+- `build_patient_summary` hydrates allergies (cap 50), chronic conditions (cap 50), medical aid (cap 5).
+- Reference data fixtures: 1 `Code System` (ICD-10, FHIR uri), 34 curated WHO ICD-10 codes (HTN, T1/T2DM, asthma, URTI/UTI, depression/GAD, etc.), 10 SA schemes (Discovery, Bonitas, Momentum, Bestmed, Medshield, Profmed, Polmed, GEMS, Fedhealth, Keyhealth).
+- Daily scheduler `medic_plus.api.retention.flag_overdue_records` — HPCSA Booklet 9 / NHA §17 (6-year retention, paediatric to age 21, idempotent via Record Archive Queue).
+- SPA: Allergies + Conditions tabs in patient drawer, severe-allergy banner, Medical Aid card on Overview, reusable `MIcd10Picker` (250 ms debounced).
+- Tests: 10 `IntegrationTestCase` (PQC shape, cross-practice blocks, happy-path reads, denormalisation, summary hydration), 4 retention tests (TDD), 4 Playwright (banner + tabs + ICD-10).
+
+---
+
 ## Roadmap
 
 - [ ] Prescription print format — Jinja, per-practice letterhead ✅ Done (Phase 1D)

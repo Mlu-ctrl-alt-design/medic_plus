@@ -133,6 +133,17 @@ MIT
 
 ## Changelog
 
+### 2026-04-30 — SA EMR Phase 1 (Issue #18): Compliance core
+- Closes the legal-floor gap so the SPA can host real SA practice data. Six commits on `develop` (e51975c → d2b967a).
+- New doctypes: `Patient Allergy` (FHIR-aligned criticality), `Patient Chronic Condition`, `Medical Aid Scheme`, `Record Archive Queue`. Each clinical doctype denormalises `custom_practice` from Patient on insert.
+- 4 new Permission Query Conditions scope clinical data via `patient.custom_practice` + 1 PQC for `Patient Medical Record`. 12 Custom DocPerm rows.
+- 4 SA medical-aid Custom Fields on `Patient Insurance Policy` (CMS scheme link, principal member ID, dependent code, authorisation reference).
+- Whitelisted endpoints: `get_patient_allergies`, `get_patient_chronic_conditions`, `get_patient_medical_aid`, `search_icd10`. `build_patient_summary` hydrates allergies / chronic / medical aid.
+- Reference data: ICD-10 Code System + 34 curated WHO codes + 10 SA medical-aid schemes (Discovery, Bonitas, Momentum, Bestmed, Medshield, Profmed, Polmed, GEMS, Fedhealth, Keyhealth).
+- Daily scheduler `flag_overdue_records` — HPCSA Booklet 9 / NHA §17 (6-year retention, paediatric to age 21, idempotent).
+- SPA: Allergies + Conditions tabs, severe-allergy banner, Medical Aid card on Overview, reusable `MIcd10Picker`.
+- Tests: 10 IntegrationTestCase + 4 retention (TDD) + 4 Playwright. All green.
+
 ### 2026-04-29 — Phase 1J (Issue #8): Daystar Health profile + password change (final SPA slice)
 - Final slice of 5 wiring the `/daystar-health` SPA. Replaces the hardcoded provider profile with the logged-in user's real data and wires password change to Frappe's standard endpoint.
 - New endpoint `medic_plus.api.daystar_health.get_my_practitioner_profile` — joins User (name / email / phone / image) with Healthcare Practitioner (department / HPCSA / practice number) via the Practice Member row, plus a top-level `two_factor_authentication` boolean from `frappe.utils.user.user_has_2fa`.
