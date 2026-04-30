@@ -18,6 +18,7 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
   });
   const [patients, setPatients] = React.useState([]);
   const [practitioners, setPractitioners] = React.useState([]);
+  const [appointmentTypes, setAppointmentTypes] = React.useState([]);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState(null);
 
@@ -30,6 +31,14 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
     api.resource('Healthcare Practitioner', { fields: JSON.stringify(['name', 'practitioner_name']), order_by: 'practitioner_name asc', limit_page_length: 200 })
       .then((rows) => setPractitioners((rows && rows.data) || []))
       .catch(() => setPractitioners([]));
+    api.resource('Appointment Type', { fields: JSON.stringify(['name']), order_by: 'name asc', limit_page_length: 200 })
+      .then((rows) => {
+        const list = (rows && rows.data) || [];
+        setAppointmentTypes(list);
+        // Pre-select a sensible default so the field is never blank.
+        setForm((f) => f.appointment_type || !list.length ? f : { ...f, appointment_type: list[0].name });
+      })
+      .catch(() => setAppointmentTypes([]));
   }, [open]);
 
   React.useEffect(() => {
@@ -39,8 +48,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
-    if (!form.patient || !form.practitioner || !form.appointment_date || !form.appointment_time) {
-      setError('Patient, practitioner, date and time are all required.');
+    if (!form.patient || !form.practitioner || !form.appointment_date || !form.appointment_time || !form.appointment_type) {
+      setError('Patient, practitioner, date, time and appointment type are all required.');
       return;
     }
     setSubmitting(true);
@@ -150,7 +159,12 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
           <input type="number" min="5" step="5" value={form.duration} onChange={(e) => update('duration', e.target.value)} className="input" />
         </Field>
         <Field label="Type">
-          <input type="text" placeholder="Consultation, follow-up…" value={form.appointment_type} onChange={(e) => update('appointment_type', e.target.value)} className="input" />
+          <select data-testid="new-visit-type" value={form.appointment_type} onChange={(e) => update('appointment_type', e.target.value)} className="input">
+            <option value="">Select type…</option>
+            {appointmentTypes.map((t) => (
+              <option key={t.name} value={t.name}>{t.name}</option>
+            ))}
+          </select>
         </Field>
       </div>
       <div style={{ marginTop: 14 }}>
