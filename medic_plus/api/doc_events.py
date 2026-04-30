@@ -115,6 +115,47 @@ def update_checklist_on_first_invoice(doc, method=None):
 		on_billing_configured(practice)
 
 
+def validate_patient_identifiers(doc, method=None):
+    """Validate Patient Identifier child rows and derive DOB/sex from SA ID.
+
+    Called from the Patient 'validate' doc event so it runs before mandatory
+    field checks fire on the native Healthcare Patient.validate().
+    """
+    from medic_plus.api.sa_id import validate_said, parse_said
+
+    identifiers = doc.get("custom_identifiers") or []
+    if not identifiers:
+        return
+
+    has_said = any(r.id_type == "SAID" for r in identifiers)
+    if has_said and not doc.get("custom_popia_consent_special"):
+        frappe.throw(
+            frappe._(
+                "POPIA consent for special personal information is required "
+                "when providing an SA ID number."
+            ),
+            frappe.ValidationError,
+        )
+
+    primary_count = 0
+    for row in identifiers:
+        if row.id_type == "SAID":
+            validate_said(row.id_value)
+            parsed = parse_said(row.id_value)
+            if not doc.dob:
+                doc.dob = parsed["dob"]
+            if not doc.sex:
+                doc.sex = parsed["sex"]
+        if int(row.get("is_primary") or 0):
+            primary_count += 1
+
+    if primary_count > 1:
+        frappe.throw(
+            frappe._("Only one identifier may be marked as primary."),
+            frappe.ValidationError,
+        )
+
+
 def sync_practice_doctors(doc, method=None):
 	"""Keep Practice Member (role=Doctor) in sync with the Practice.doctors child table.
 

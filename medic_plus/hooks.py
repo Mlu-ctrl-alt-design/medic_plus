@@ -42,6 +42,13 @@ fixtures = [
 			"Patient Insurance Policy-custom_principal_member_id",
 			"Patient Insurance Policy-custom_dependent_code",
 			"Patient Insurance Policy-custom_authorisation_reference",
+			# Phase 1A — SA-PMI Patient Identity
+			"Patient-custom_identifiers",
+			"Patient-custom_race",
+			"Patient-custom_home_language",
+			"Patient-custom_preferred_language",
+			"Patient-custom_popia_consent_special",
+			"Patient-custom_nhid",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -77,6 +84,8 @@ permission_query_conditions = {
 	"Patient Chronic Condition": "medic_plus.api.permissions.get_patient_chronic_condition_permission_query",
 	"Patient Insurance Policy": "medic_plus.api.permissions.get_patient_insurance_policy_permission_query",
 	"Patient Insurance Coverage": "medic_plus.api.permissions.get_patient_insurance_coverage_permission_query",
+	# Phase 1A — SA-PMI Patient Identity
+	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Practitioner Schedule": "medic_plus.api.permissions.get_practitioner_schedule_permission_query",
@@ -98,6 +107,7 @@ doc_events = {
 	# Auto-set practice on all healthcare document creates
 	"Patient": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
+		"validate": "medic_plus.api.doc_events.validate_patient_identifiers",
 	},
 	"Patient Appointment": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",

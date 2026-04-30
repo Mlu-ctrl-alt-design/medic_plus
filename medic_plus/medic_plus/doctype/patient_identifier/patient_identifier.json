@@ -1,0 +1,93 @@
+{
+ "actions": [],
+ "creation": "2026-04-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "id_type",
+  "id_value",
+  "is_primary",
+  "column_break_1",
+  "country",
+  "expiry_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "id_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "ID Type",
+   "options": "SAID\nPassport\nRefugee\nAsylum\nBirthCert\nNHID\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "id_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "ID Number",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_primary",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Primary"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "label": "Expiry Date"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Patient Identifier",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Practice Admin",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Practice Doctor",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "role": "Practice Receptionist"
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

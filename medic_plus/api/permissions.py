@@ -273,6 +273,32 @@ def get_clinical_access_log_permission_query(user: str = None) -> str:
 	return f"`tabClinical Access Log`.`practice` = {frappe.db.escape(practice)}"
 
 
+def get_patient_identifier_permission_query(user: str = None) -> str:
+	"""PQC for Patient Identifier child table — scopes via parent Patient's practice.
+
+	Patient Identifier rows are child records of Patient. Access is gated via the
+	parent Patient's custom_practice so that cross-tenant reads are denied even
+	when querying /api/resource/Patient Identifier directly.
+	"""
+	if _is_platform_admin(user):
+		return ""
+	roles = frappe.get_roles(user or frappe.session.user)
+	if "Patient" in roles:
+		patient = _get_patient_name_for_user(user)
+		return (
+			f"`tabPatient Identifier`.`parent` = {frappe.db.escape(patient)}"
+			if patient else "1=0"
+		)
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return (
+		"`tabPatient Identifier`.`parent` IN ("
+		f"SELECT `name` FROM `tabPatient` WHERE `custom_practice` = {frappe.db.escape(practice)}"
+		")"
+	)
+
+
 def get_sales_invoice_permission_query(user: str = None) -> str:
 	return _get_company_filter(user, "Sales Invoice")
 

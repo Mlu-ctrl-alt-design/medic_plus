@@ -1086,5 +1086,79 @@
   "fieldtype": "Data",
   "label": "Authorisation Reference",
   "name": "Patient Insurance Policy-custom_authorisation_reference"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Patient",
+  "fieldname": "custom_identifiers",
+  "fieldtype": "Table",
+  "label": "Identifiers",
+  "options": "Patient Identifier",
+  "insert_after": "status",
+  "module": "Medic Plus",
+  "name": "Patient-custom_identifiers",
+  "modified": "2026-04-30 00:00:00.000000"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Patient",
+  "fieldname": "custom_popia_consent_special",
+  "fieldtype": "Check",
+  "label": "POPIA Consent — Special Personal Information",
+  "description": "Patient consents to collection and processing of special personal information (SA ID, race, language) under POPIA Section 27.",
+  "insert_after": "custom_identifiers",
+  "module": "Medic Plus",
+  "name": "Patient-custom_popia_consent_special",
+  "modified": "2026-04-30 00:00:00.000000"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Patient",
+  "fieldname": "custom_nhid",
+  "fieldtype": "Data",
+  "label": "NHID",
+  "description": "National Health Insurance identifier (slot — HPRS integration deferred).",
+  "insert_after": "custom_popia_consent_special",
+  "search_index": 1,
+  "module": "Medic Plus",
+  "name": "Patient-custom_nhid",
+  "modified": "2026-04-30 00:00:00.000000"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Patient",
+  "fieldname": "custom_race",
+  "fieldtype": "Select",
+  "label": "Race",
+  "description": "Collected under POPIA — requires special-PI consent.",
+  "options": "\nAfrican\nColoured\nIndian or Asian\nWhite\nOther\nPrefer not to say",
+  "insert_after": "custom_nhid",
+  "module": "Medic Plus",
+  "name": "Patient-custom_race",
+  "modified": "2026-04-30 00:00:00.000000"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Patient",
+  "fieldname": "custom_home_language",
+  "fieldtype": "Select",
+  "label": "Home Language",
+  "options": "\nAfrikaans\nEnglish\nisiNdebele\nisiXhosa\nisiZulu\nSesotho sa Leboa\nSesotho\nSetswana\nsiSwati\nTshivenda\nXitsonga\nOther",
+  "insert_after": "custom_race",
+  "module": "Medic Plus",
+  "name": "Patient-custom_home_language",
+  "modified": "2026-04-30 00:00:00.000000"
+ },
+ {
+  "doctype": "Custom Field",
+  "dt": "Patient",
+  "fieldname": "custom_preferred_language",
+  "fieldtype": "Select",
+  "label": "Preferred Language",
+  "options": "\nAfrikaans\nEnglish\nisiNdebele\nisiXhosa\nisiZulu\nSesotho sa Leboa\nSesotho\nSetswana\nsiSwati\nTshivenda\nXitsonga\nOther",
+  "insert_after": "custom_home_language",
+  "module": "Medic Plus",
+  "name": "Patient-custom_preferred_language",
+  "modified": "2026-04-30 00:00:00.000000"
  }
 ]
