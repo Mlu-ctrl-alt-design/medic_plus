@@ -487,3 +487,145 @@ class TestChronicRequiredFields(IntegrationTestCase):
 		with self.assertRaises(ValidationError) as ctx:
 			doc.submit()
 		self.assertIn("systolic", str(ctx.exception).lower())
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.9 — Well-child encounter template tests
+# ---------------------------------------------------------------------------
+
+def _ensure_wellchild_template() -> None:
+	from medic_plus.api.encounter_templates import WELLCHILD_TEMPLATE_NAME as WN
+	_ensure_appointment_type("Well-Child Visit")
+	if frappe.db.exists("Encounter Template", {"template_name": WN}):
+		return
+	frappe.get_doc({
+		"doctype": "Encounter Template",
+		"template_name": WN,
+		"appointment_type": "Well-Child Visit",
+		"is_platform_template": 1,
+		"field_defaults": json.dumps({"custom_chief_complaint": "Well-child visit"}),
+		"required_fields": json.dumps([
+			"custom_weight_kg",
+			"custom_length_height",
+			"custom_developmental_milestones_reviewed",
+			"custom_vision_hearing_reviewed",
+		]),
+		"auto_orders": json.dumps([
+			{"order_type": "Lab", "order_name": "Weight/Length/Head Circumference", "notes": ""},
+		]),
+		"smart_orders": json.dumps([]),
+		"epi_coupling_enabled": 1,
+		"age_guard_max_years": 12,
+	}).insert(ignore_permissions=True)
+
+
+class TestWellChildTemplateApply(IntegrationTestCase):
+	"""Well-child template defaults and basic order pre-population."""
+
+	def setUp(self):
+		_ensure_wellchild_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+		self.patient = _make_patient(self.practice, s)
+
+	def test_chief_complaint_defaulted(self):
+		doc = _make_encounter(self.patient, appointment_type="Well-Child Visit")
+		self.assertEqual(doc.custom_chief_complaint, "Well-child visit")
+
+	def test_measurement_order_prepopulated(self):
+		doc = _make_encounter(self.patient, appointment_type="Well-Child Visit")
+		order_names = [o.order_name for o in (doc.get("custom_encounter_orders") or [])]
+		self.assertIn("Weight/Length/Head Circumference", order_names)
+
+
+class TestWellChildEpiCoupling(IntegrationTestCase):
+	"""EPI immunisation orders pre-populated for paediatric patients."""
+
+	def setUp(self):
+		_ensure_wellchild_template()
+		s = _suffix()
+		self.practice = _make_practice(s)
+
+	def _make_patient_with_dob(self, dob: str, label: str) -> str:
+		first_name = f"ET WC Patient {label}"
+		existing = frappe.db.get_value("Patient", {"first_name": first_name}, "name")
+		if existing:
+			frappe.db.set_value("Patient", existing, "dob", dob)
+			return existing
+		return frappe.get_doc({
+			"doctype": "Patient",
+			"first_name": first_name,
+			"sex": "Female",
+			"dob": dob,
+			"custom_practice": self.practice,
+		}).insert(ignore_permissions=True).name
+
+	def test_six_week_old_gets_immunisation_orders(self):
+		"""6-week-old patient gets Immunisation-type orders from EPI coupling."""
+		import datetime
+		dob = (frappe.utils.getdate() - datetime.timedelta(weeks=6)).isoformat()
+		s = _suffix()
+		patient = self._make_patient_with_dob(dob, s)
+		doc = _make_encounter(patient, appointment_type="Well-Child Visit")
+		orders = doc.get("custom_encounter_orders") or []
+		immun_orders = [o for o in orders if o.order_type == "Immunisation"]
+		self.assertGreaterEqual(
+			len(immun_orders), 1,
+			f"Expected ≥1 Immunisation order for 6-week-old. Got: {[o.order_name for o in orders]}",
+		)
+
+	def test_epi_graceful_degradation_when_module_absent(self):
+		"""If EPI module raises, encounter still inserts without error."""
+		import datetime
+		dob = (frappe.utils.getdate() - datetime.timedelta(weeks=6)).isoformat()
+		s = _suffix()
+		patient = self._make_patient_with_dob(dob, s)
+
+		# Temporarily monkey-patch to simulate missing EPI module
+		import medic_plus.api.encounter_templates as et_mod
+		original = et_mod._get_epi_due_orders
+		et_mod._get_epi_due_orders = lambda patient, dob: (_ for _ in ()).throw(
+			ImportError("EPI module not available")
+		)
+		try:
+			doc = _make_encounter(patient, appointment_type="Well-Child Visit")
+			# Must succeed even though EPI raised
+			self.assertIsNotNone(doc.name)
+		finally:
+			et_mod._get_epi_due_orders = original
+
+	def test_adult_patient_skips_wellchild_template(self):
+		"""Patient older than 12 years does not get well-child template applied."""
+		import datetime
+		dob = (frappe.utils.getdate() - datetime.timedelta(days=365 * 14)).isoformat()
+		s = _suffix()
+		patient = self._make_patient_with_dob(dob, s)
+		doc = _make_encounter(patient, appointment_type="Well-Child Visit")
+		# chief_complaint should NOT be defaulted for adult patient
+		self.assertFalse(doc.get("custom_chief_complaint"))
+
+
+class TestWellChildRequiredFields(IntegrationTestCase):
+	"""before_submit enforces well-child required fields."""
+
+	def setUp(self):
+		_ensure_wellchild_template()
+		import datetime
+		s = _suffix()
+		self.practice = _make_practice(s)
+		dob = (frappe.utils.getdate() - datetime.timedelta(weeks=10)).isoformat()
+		first_name = f"ET WC Req {s}"
+		self.patient = frappe.get_doc({
+			"doctype": "Patient",
+			"first_name": first_name,
+			"sex": "Male",
+			"dob": dob,
+			"custom_practice": self.practice,
+		}).insert(ignore_permissions=True).name
+
+	def test_submit_without_weight_raises(self):
+		from frappe.exceptions import ValidationError
+		doc = _make_encounter(self.patient, appointment_type="Well-Child Visit")
+		with self.assertRaises(ValidationError) as ctx:
+			doc.submit()
+		self.assertIn("weight", str(ctx.exception).lower())

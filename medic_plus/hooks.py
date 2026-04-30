@@ -74,6 +74,15 @@ fixtures = [
 			"Patient Encounter-custom_smoking_status",
 			"Patient Encounter-custom_alcohol_use",
 			"Patient Encounter-custom_medication_adherence",
+			# Phase 5.9 — Well-child template fields
+			"Patient Encounter-custom_section_wellchild",
+			"Patient Encounter-custom_length_height",
+			"Patient Encounter-custom_head_circumference",
+			"Patient Encounter-custom_column_break_wellchild",
+			"Patient Encounter-custom_developmental_milestones_reviewed",
+			"Patient Encounter-custom_vision_hearing_reviewed",
+			"Patient Encounter-custom_nutrition_assessment",
+
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
