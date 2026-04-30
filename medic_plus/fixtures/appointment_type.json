@@ -50,5 +50,26 @@
   "modified": "2026-04-09 16:29:48.919244",
   "name": "Emergency",
   "price_list": null
+ },
+ {
+  "doctype": "Appointment Type",
+  "appointment_type": "Antenatal",
+  "name": "Antenatal",
+  "color": "#6c757d",
+  "default_duration": 30
+ },
+ {
+  "doctype": "Appointment Type",
+  "appointment_type": "Chronic Disease Follow-up",
+  "name": "Chronic Disease Follow-up",
+  "color": "#6c757d",
+  "default_duration": 20
+ },
+ {
+  "doctype": "Appointment Type",
+  "appointment_type": "Well-Child Visit",
+  "name": "Well-Child Visit",
+  "color": "#6c757d",
+  "default_duration": 30
  }
 ]

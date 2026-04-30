@@ -23,6 +23,18 @@ def set_practice_on_insert(doc, method=None):
 			doc.custom_practice = practice
 
 
+def apply_encounter_template(doc, method=None):
+	"""Apply an Encounter Template's defaults to a new Patient Encounter."""
+	from medic_plus.api.encounter_templates import apply_template
+	apply_template(doc)
+
+
+def validate_encounter_template_fields(doc, method=None):
+	"""Enforce Encounter Template required fields before submit."""
+	from medic_plus.api.encounter_templates import validate_template_fields
+	validate_template_fields(doc)
+
+
 def provision_dispensary_on_update(doc, method=None):
 	"""Auto-provision a Dispensary warehouse when a doctor enables dispensing."""
 	if not doc.get("custom_is_dispensing_doctor"):

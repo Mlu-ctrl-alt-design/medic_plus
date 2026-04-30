@@ -49,6 +49,21 @@ fixtures = [
 			"Patient-custom_preferred_language",
 			"Patient-custom_popia_consent_special",
 			"Patient-custom_nhid",
+			# Phase 5.7 — Encounter Templates (chief complaint + orders table + antenatal fields)
+			"Patient Encounter-custom_chief_complaint",
+			"Patient Encounter-custom_encounter_orders",
+			"Patient Encounter-custom_section_antenatal",
+			"Patient Encounter-custom_gravidity",
+			"Patient Encounter-custom_parity",
+			"Patient Encounter-custom_gestational_age_weeks",
+			"Patient Encounter-custom_column_break_antenatal",
+			"Patient Encounter-custom_fundal_height_cm",
+			"Patient Encounter-custom_fetal_heart_rate",
+			"Patient Encounter-custom_presentation",
+			"Patient Encounter-custom_engagement",
+			"Patient Encounter-custom_urine_dipstick_result",
+			"Patient Encounter-custom_hiv_status",
+			"Patient Encounter-custom_next_visit_date",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -57,7 +72,9 @@ fixtures = [
 	{"dt": "Workspace",       "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Page",            "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Client Script",   "filters": [["module", "=", "Medic Plus"]]},
-	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency"]]]},
+	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency", "Antenatal", "Chronic Disease Follow-up", "Well-Child Visit"]]]},
+	# Phase 5.7 — Encounter Templates (platform-level templates)
+	{"dt": "Encounter Template", "filters": [["is_platform_template", "=", 1]]},
 	{"dt": "Notification",    "filters": [["name", "in", [
 		"Payment Reminder - 7 Days Overdue",
 		"Payment Reminder - 30 Days Overdue",
@@ -86,6 +103,8 @@ permission_query_conditions = {
 	"Patient Insurance Coverage": "medic_plus.api.permissions.get_patient_insurance_coverage_permission_query",
 	# Phase 1A — SA-PMI Patient Identity
 	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
+	# Phase 5.7 — Encounter Templates
+	"Encounter Template": "medic_plus.api.permissions.get_encounter_template_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
 	"Practitioner Schedule": "medic_plus.api.permissions.get_practitioner_schedule_permission_query",
@@ -113,7 +132,11 @@ doc_events = {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
 	},
 	"Patient Encounter": {
-		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
+		"before_insert": [
+			"medic_plus.api.doc_events.set_practice_on_insert",
+			"medic_plus.api.doc_events.apply_encounter_template",
+		],
+		"before_submit": "medic_plus.api.doc_events.validate_encounter_template_fields",
 	},
 	"Inpatient Record": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
