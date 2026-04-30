@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Daystar Health</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/medic_plus/daystar-health/styles.css" />
+<link rel="stylesheet" href="/assets/medic_plus/daystar-health/meridian.css" />
+</head>
+<body data-theme="light" data-density="comfortable">
+<div id="root"></div>
+
+<script>
+window.__DAYSTAR_HEALTH__ = {
+  csrfToken: {{ csrf_token | tojson }},
+  sessionUser: {{ session_user | tojson }},
+  hasPractice: {{ has_practice | tojson }}
+};
+</script>
+<script src="/assets/medic_plus/daystar-health/meridian-api.js"></script>
+
+{% raw %}
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<!-- Reuse base components from Daystar (Sparkline, Icons, etc.) -->
+<script type="text/babel" src="/assets/medic_plus/daystar-health/parent-data.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/parent-icons.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/parent-dashboard.jsx"></script>
+
+<!-- Daystar Health-specific -->
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-data.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-icons.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-layout.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-auth.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-dashboard.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-patients.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-patient.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-appointments.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-medical-records.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-icd10-picker.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-new-visit.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-profile.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/tweaks-panel.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULTS = {
+  "theme": "light",
+  "density": "comfortable"
+};
+
+const VALID_ROUTES = ['dashboard','patients','profile','appointments','records','labs','medications','billing','practice','login','recover','no-practice'];
+const VALID_DRAWERS = ['patient','newVisit'];
+
+function readUrl() {
+  const params = new URLSearchParams(window.location.search);
+  let route = params.get('screen');
+  let drawer = params.get('drawer');
+  let id = params.get('id');
+  // Legacy: ?screen=patient&id=X → render dashboard with patient drawer.
+  if (route === 'patient') { drawer = 'patient'; route = 'dashboard'; }
+  if (!route || !VALID_ROUTES.includes(route)) route = null;
+  if (drawer && !VALID_DRAWERS.includes(drawer)) drawer = null;
+  return { route, drawer, id };
+}
+
+function initialRouteState() {
+  const api = window.meridianApi || {};
+  if (!api.isAuthenticated) return { route: 'login', drawer: null, drawerArg: null };
+  if (!api.hasPractice) return { route: 'no-practice', drawer: null, drawerArg: null };
+  const u = readUrl();
+  return {
+    route: u.route || 'dashboard',
+    drawer: u.drawer || null,
+    drawerArg: u.drawer === 'patient' ? u.id : null,
+  };
+}
+
+function syncUrl({ route, drawer, drawerArg }, replace) {
+  const params = new URLSearchParams();
+  if (route && route !== 'dashboard') params.set('screen', route);
+  if (drawer) {
+    params.set('drawer', drawer);
+    if (drawer === 'patient' && drawerArg) params.set('id', drawerArg);
+  }
+  const qs = params.toString();
+  const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+  const fn = replace ? 'replaceState' : 'pushState';
+  window.history[fn]({ route, drawer, drawerArg }, '', url);
+}
+
+function App() {
+  const [appState, setAppState] = useState(initialRouteState);
+  const { route, drawer, drawerArg } = appState;
+  const [tweaks, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [appointmentsRefreshKey, setAppointmentsRefreshKey] = useState(0);
+
+  useEffect(() => {
+    document.body.dataset.theme = tweaks.theme;
+    document.body.dataset.density = tweaks.density;
+  }, [tweaks.theme, tweaks.density]);
+
+  // On first paint, normalize the URL to match the resolved state.
+  useEffect(() => { syncUrl(appState, true); }, []);
+
+  // Browser back/forward — re-read the URL.
+  useEffect(() => {
+    const handler = () => {
+      const u = readUrl();
+      setAppState({
+        route: u.route || 'dashboard',
+        drawer: u.drawer || null,
+        drawerArg: u.drawer === 'patient' ? u.id : null,
+      });
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, []);
+
+  const go = (r, arg = null) => {
+    // Patient + newVisit are drawer overlays, not screens.
+    if (r === 'patient') {
+      const next = { ...appState, drawer: 'patient', drawerArg: arg };
+      setAppState(next);
+      syncUrl(next, false);
+      return;
+    }
+    if (r === 'newVisit') {
+      const next = { ...appState, drawer: 'newVisit', drawerArg: null };
+      setAppState(next);
+      syncUrl(next, false);
+      return;
+    }
+    const next = { route: r, drawer: null, drawerArg: null };
+    setAppState(next);
+    syncUrl(next, false);
+    window.scrollTo(0, 0);
+  };
+
+  const closeDrawer = () => {
+    const next = { ...appState, drawer: null, drawerArg: null };
+    setAppState(next);
+    syncUrl(next, false);
+  };
+
+  if (route === 'login') return <><window.MLoginScreen go={go} /><Tweaks tweaks={tweaks} setTweak={setTweak} /></>;
+  if (route === 'recover') return <><window.MRecoverScreen go={go} /><Tweaks tweaks={tweaks} setTweak={setTweak} /></>;
+  if (route === 'no-practice') return <><window.MNoPracticeScreen /><Tweaks tweaks={tweaks} setTweak={setTweak} /></>;
+
+  const titles = {
+    dashboard: 'Today', patients: 'Patients', appointments: 'Appointments',
+    records: 'Medical Records', labs: 'Labs & Imaging', medications: 'Prescriptions',
+    billing: 'Billing & Claims', practice: 'Practice', profile: 'Account'
+  };
+  let crumbs = [{ label: 'Daystar Health', go: () => go('dashboard') }];
+  if (titles[route]) crumbs.push({ label: titles[route] });
+
+  return (
+    <div className="app-shell">
+      <window.MSidebar route={route} go={go} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className={`sidebar-backdrop${sidebarOpen ? ' show' : ''}`} onClick={() => setSidebarOpen(false)} />
+      <div className="main">
+        <window.MTopbar go={go} crumbs={crumbs} onToggleSidebar={() => setSidebarOpen(true)} onNewVisit={() => go('newVisit')} />
+        {route === 'dashboard' && <window.MDashboardScreen go={go} />}
+        {route === 'patients' && <window.MPatientsScreen go={go} />}
+        {route === 'appointments' && <window.MAppointmentsScreen go={go} key={appointmentsRefreshKey} />}
+        {route === 'records' && <window.MMedicalRecordsScreen go={go} />}
+        {route === 'profile' && <window.MProfileScreen go={go} />}
+        {!['dashboard', 'patients', 'appointments', 'records', 'profile'].includes(route) && (
+          <Placeholder name={titles[route] || route} />
+        )}
+      </div>
+      <window.MDrawer
+        open={drawer === 'patient'}
+        onClose={closeDrawer}
+        title={drawerArg ? `Patient · ${drawerArg}` : 'Patient'}
+      >
+        {drawer === 'patient' && drawerArg && (
+          <window.MPatientScreen patientId={drawerArg} go={go} />
+        )}
+      </window.MDrawer>
+      <window.MNewVisitDrawer
+        open={drawer === 'newVisit'}
+        onClose={closeDrawer}
+        onCreated={() => setAppointmentsRefreshKey((k) => k + 1)}
+      />
+      <Tweaks tweaks={tweaks} setTweak={setTweak} />
+    </div>
+  );
+}
+
+function Placeholder({ name }) {
+  return (
+    <div className="page fade-in">
+      <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>{name}</h1>
+      <div className="card card-pad" style={{ marginTop: 16, textAlign: 'center', padding: 60 }}>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>This section is part of the same product but isn't part of the 6-screen scope.</div>
+      </div>
+    </div>
+  );
+}
+
+function Tweaks({ tweaks, setTweak }) {
+  const TweaksPanel = window.TweaksPanel;
+  const TweakSection = window.TweakSection;
+  const TweakRadio = window.TweakRadio;
+  if (!TweaksPanel) return null;
+  return (
+    <TweaksPanel title="Tweaks">
+      <TweakSection label="Appearance" />
+      <TweakRadio label="Theme" value={tweaks.theme} options={['light','dark']} onChange={v => setTweak('theme', v)} />
+      <TweakRadio label="Density" value={tweaks.density} options={['comfortable','compact']} onChange={v => setTweak('density', v)} />
+    </TweaksPanel>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>{% endraw %}

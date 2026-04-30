@@ -1,0 +1,15 @@
+[
+ {
+  "doctype": "Code System",
+  "name": "ICD-10",
+  "code_system": "ICD-10",
+  "uri": "http://hl7.org/fhir/sid/icd-10",
+  "description": "International Classification of Diseases, 10th Revision (WHO). SA-edition extensions are loaded separately via the bench import-icd10-sa management command (Phase 4).",
+  "is_fhir_defined": 1,
+  "experimental": 0,
+  "custom": 0,
+  "immutable": 0,
+  "complete": 0,
+  "disabled": 0
+ }
+]

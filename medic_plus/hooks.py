@@ -8,11 +8,12 @@ app_license = "mit"
 required_apps = ["frappe/healthcare"]
 
 # Website assets — included on all public website pages
-web_include_js = ["/assets/medic_plus/js/register_links.js"]
+web_include_js = ["/assets/medic_plus/js/signup_link.js"]
 
 # Fixtures — synced on bench migrate
 fixtures = [
 	{"dt": "Role", "filters": [["role_name", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist", "Patient"]]]},
+	{"dt": "Custom DocPerm", "filters": [["role", "in", ["Practice Admin", "Practice Doctor", "Practice Receptionist"]]]},
 	{
 		"dt": "Custom Field",
 		"filters": [["name", "in", [
@@ -28,12 +29,26 @@ fixtures = [
 			"Healthcare Practitioner-custom_is_dispensing_doctor",
 			"Healthcare Practitioner-custom_column_break_signature",
 			"Healthcare Practitioner-custom_practitioner_signature",
+			"Healthcare Practitioner-custom_section_associated_practices",
+			"Healthcare Practitioner-associated_practices_html",
 			# Item — SA medicine fields
 			"Item-custom_schedule",
 			"Item-custom_nappi_code",
 			# Warehouse + Stock Entry — practice scoping for dispensary
 			"Warehouse-custom_practice",
 			"Stock Entry-custom_practice",
+			# SA EMR Phase 1 (Compliance core)
+			"Patient Insurance Policy-custom_sa_scheme",
+			"Patient Insurance Policy-custom_principal_member_id",
+			"Patient Insurance Policy-custom_dependent_code",
+			"Patient Insurance Policy-custom_authorisation_reference",
+			# Phase 1A — SA-PMI Patient Identity
+			"Patient-custom_identifiers",
+			"Patient-custom_race",
+			"Patient-custom_home_language",
+			"Patient-custom_preferred_language",
+			"Patient-custom_popia_consent_special",
+			"Patient-custom_nhid",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -48,6 +63,10 @@ fixtures = [
 		"Payment Reminder - 30 Days Overdue",
 		"Payment Reminder - 60 Days Overdue",
 	]]]},
+	# SA EMR Phase 1 — code sets + scheme directory
+	{"dt": "Code System",       "filters": [["name", "in", ["ICD-10"]]]},
+	{"dt": "Code Value",        "filters": [["code_system", "=", "ICD-10"]]},
+	{"dt": "Medical Aid Scheme"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
@@ -59,8 +78,17 @@ permission_query_conditions = {
 	"Patient Appointment": "medic_plus.api.permissions.get_patient_appointment_permission_query",
 	"Patient Encounter": "medic_plus.api.permissions.get_patient_encounter_permission_query",
 	"Inpatient Record": "medic_plus.api.permissions.get_inpatient_record_permission_query",
+	"Patient Medical Record": "medic_plus.api.permissions.get_patient_medical_record_permission_query",
+	# SA EMR Phase 1 — clinical-data PQCs that scope via patient.custom_practice
+	"Patient Allergy": "medic_plus.api.permissions.get_patient_allergy_permission_query",
+	"Patient Chronic Condition": "medic_plus.api.permissions.get_patient_chronic_condition_permission_query",
+	"Patient Insurance Policy": "medic_plus.api.permissions.get_patient_insurance_policy_permission_query",
+	"Patient Insurance Coverage": "medic_plus.api.permissions.get_patient_insurance_coverage_permission_query",
+	# Phase 1A — SA-PMI Patient Identity
+	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
 	"Healthcare Practitioner": "medic_plus.api.permissions.get_healthcare_practitioner_permission_query",
+	"Practitioner Schedule": "medic_plus.api.permissions.get_practitioner_schedule_permission_query",
 	"Stock Entry": "medic_plus.api.permissions.get_stock_entry_permission_query",
 	"Warehouse": "medic_plus.api.permissions.get_warehouse_permission_query",
 	# Data masking / consent
@@ -79,6 +107,7 @@ doc_events = {
 	# Auto-set practice on all healthcare document creates
 	"Patient": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
+		"validate": "medic_plus.api.doc_events.validate_patient_identifiers",
 	},
 	"Patient Appointment": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
@@ -98,8 +127,14 @@ doc_events = {
 	},
 	# Practice Setup Checklist — steps 1–6
 	"Practice": {
-		"after_insert": "medic_plus.api.billing.start_trial_for_practice",
-		"on_update": "medic_plus.api.doc_events.update_checklist_on_practice_save",
+		"after_insert": [
+			"medic_plus.api.billing.start_trial_for_practice",
+			"medic_plus.api.doc_events.sync_practice_doctors",
+		],
+		"on_update": [
+			"medic_plus.api.doc_events.update_checklist_on_practice_save",
+			"medic_plus.api.doc_events.sync_practice_doctors",
+		],
 	},
 	"Practice Member": {
 		"after_insert": "medic_plus.api.doc_events.update_checklist_on_member_status",
@@ -114,13 +149,18 @@ doc_events = {
 
 }
 
-# Scheduler — expire stale unmask requests every 15 minutes
+# Scheduler — expire stale unmask requests + retry stuck signup provisioning every 15 minutes
 scheduler_events = {
 	"cron": {
 		"*/15 * * * *": [
 			"medic_plus.api.data_access.expire_stale_requests",
+			"medic_plus.api.signup.retry_failed_provisioning",
 		],
 	},
+	"daily": [
+		# SA EMR Phase 1 — flag patients past the legal retention window.
+		"medic_plus.api.retention.flag_overdue_records",
+	],
 }
 
 # v16: extend base DocType classes with practice-aware mixins

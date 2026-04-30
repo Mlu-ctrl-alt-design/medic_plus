@@ -1,5 +1,6 @@
+import frappe
 from frappe.model.document import Document
 
 
-class RegistrationRequest(Document):
+class RecordArchiveQueue(Document):
 	pass

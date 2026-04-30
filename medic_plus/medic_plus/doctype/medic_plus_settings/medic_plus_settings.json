@@ -8,7 +8,12 @@
   "section_break_paystack",
   "paystack_secret_key",
   "paystack_public_key",
-  "paystack_webhook_secret"
+  "paystack_webhook_secret",
+  "section_break_yoco",
+  "yoco_secret_key",
+  "yoco_public_key",
+  "yoco_webhook_secret",
+  "yoco_signup_fee_cents"
  ],
  "fields": [
   {
@@ -32,6 +37,35 @@
    "fieldtype": "Password",
    "label": "Webhook Signature Secret",
    "description": "Used to verify webhook POST signatures from Paystack"
+  },
+  {
+   "fieldname": "section_break_yoco",
+   "fieldtype": "Section Break",
+   "label": "Yoco Configuration (Doctor Signup Paywall)"
+  },
+  {
+   "fieldname": "yoco_secret_key",
+   "fieldtype": "Password",
+   "label": "Yoco Secret Key",
+   "description": "From Yoco Online Payments dashboard"
+  },
+  {
+   "fieldname": "yoco_public_key",
+   "fieldtype": "Data",
+   "label": "Yoco Public Key"
+  },
+  {
+   "fieldname": "yoco_webhook_secret",
+   "fieldtype": "Password",
+   "label": "Yoco Webhook Signing Secret",
+   "description": "Used to verify webhook signatures"
+  },
+  {
+   "default": "49900",
+   "fieldname": "yoco_signup_fee_cents",
+   "fieldtype": "Int",
+   "label": "Signup Fee (cents ZAR)",
+   "description": "Amount charged at doctor signup, in ZAR cents. e.g. 49900 = R499.00"
   }
  ],
  "is_single": 1,

@@ -24,7 +24,9 @@
   "logo",
   "color",
   "column_break_3",
-  "owner_practitioner"
+  "owner_practitioner",
+  "section_break_doctors",
+  "doctors"
  ],
  "fields": [
   {
@@ -136,6 +138,17 @@
    "fieldtype": "Link",
    "label": "Owner / Primary Doctor",
    "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "section_break_doctors",
+   "fieldtype": "Section Break",
+   "label": "Doctors"
+  },
+  {
+   "fieldname": "doctors",
+   "fieldtype": "Table",
+   "label": "Doctors",
+   "options": "Practice Doctor"
   }
  ],
  "links": [],

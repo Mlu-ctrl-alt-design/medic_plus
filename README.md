@@ -133,6 +133,57 @@ MIT
 
 ## Changelog
 
+### 2026-04-29 — Phase 1J (Issue #8): Daystar Health profile + password change (final SPA slice)
+- Final slice of 5 wiring the `/daystar-health` SPA. Replaces the hardcoded provider profile with the logged-in user's real data and wires password change to Frappe's standard endpoint.
+- New endpoint `medic_plus.api.daystar_health.get_my_practitioner_profile` — joins User (name / email / phone / image) with Healthcare Practitioner (department / HPCSA / practice number) via the Practice Member row, plus a top-level `two_factor_authentication` boolean from `frappe.utils.user.user_has_2fa`.
+- Profile tab is **read-only** — fields render as styled disabled boxes; no Save button. Footer note directs users to their practice administrator for changes.
+- Security tab posts current/new/confirm to `frappe.core.doctype.user.user.update_password`. Inline success/error feedback. 2FA state shown read-only with pointer to Frappe Desk for setup.
+- Notifications tab removed from the profile sidebar — no schema backing (per Q8 design decision).
+- Sidebar "Sign out" button was a route-change-only no-op; now calls `meridianApi.logout()` to actually end the session.
+- Tests: 2 new Python (no-practice rejection + payload contract) + 2 new Playwright (read-only rendering + password change round-trip with a throwaway Practice user).
+- **SPA wiring Phase 1 complete** (#4 → #5 → #6 → #7 → #8). Outstanding: #12 (Custom DocPerm fixtures for Practice roles).
+
+### 2026-04-29 — Phase 1I (Issue #7): Daystar Health patient detail wired to composite endpoint
+- Slice 4 of 5 wiring the `/daystar-health` SPA. Patient detail screen now hydrates all six tabs (Overview / Visits / Vitals / Medications / Labs / Notes) from a single composite call.
+- New deep module `api/patient_summary` — `build_patient_summary(patient_name, practice)` orchestrator + pure `_format_patient_summary(...)` helper that applies per-tab caps (20 / 12 for vitals) and the POPIA whitelist (only `name / patient_name / dob / sex / mobile / email / status` make it into the patient block; `custom_sa_id_number` is unreachable).
+- New whitelisted endpoint `medic_plus.api.daystar_health.get_patient_detail(patient)` — looks up the patient's `custom_practice` and raises `frappe.PermissionError` for cross-tenant requests, then returns the composite. Same error class as no-practice so callers cannot probe Practice membership.
+- Tests: 4 Python (POPIA, per-tab caps, no-practice rejection, cross-tenant rejection) + 2 Playwright (detail loads all 6 tab containers; response body asserted POPIA-clean).
+- Surfaced Issue #12: Practice Admin / Doctor / Receptionist roles don't have read permission on Patient via Custom DocPerm — workaround in place (Physician role on selfserve.test).
+
+### 2026-04-29 — Phase 1H (Issue #6): Daystar Health patients list wired to REST resource API
+- Slice 3 of 5 wiring the `/daystar-health` SPA. Patients screen now hydrates from `/api/resource/Patient` instead of `MH_DATA` mocks.
+- Server-side pagination (real `limit_start/limit_page_length/total`), 300ms-debounced search across `patient_name/mobile/email` via `or_filters`, sortable headers (`patient_name`, `dob`), page-size selector (25/50/100) persisted in `sessionStorage`. Skeleton + error + empty-state UI.
+- No new backend endpoint — PQC (`get_patient_permission_query`) handles tenant scoping for free.
+- Per design decisions: dropped risk/status/provider filter chips, MRN column, risk badge, status pill, conditions/allergies columns, last-seen column (covered later via patient detail), checkboxes/bulk actions, Export/Register buttons. Sidebar nav now has `data-testid={`nav-${key}`}` on every button for deterministic Playwright navigation.
+- Tests: 2 Python PQC contract tests (Doctor restricted to Practice; orphan gets `1=0`) + 5 Playwright tests (list render, search round-trip, prev/next pagination, page-size persistence, empty state).
+
+### 2026-04-29 — Phase 1G (Issue #5): Daystar Health dashboard wired to live Practice data
+- Slice 2 of 5 wiring the `/daystar-health` SPA. Dashboard now hydrates from a real composite endpoint instead of `MH_DATA` mocks.
+- New deep module `api/dashboard_aggregator` — `build_dashboard(practice, user)` orchestrator + pure `_format_dashboard(...)` helper for testable shaping rules (greeting personalisation, week-volume always 7 days, recent-patients cap of 6, today-appointment status breakdown using the real Healthcare statuses).
+- New whitelisted endpoint `medic_plus.api.daystar_health.get_dashboard` — thin orchestrator. Surfaces `frappe.PermissionError` from `practice_resolver` unchanged so the SPA can render the no-practice card.
+- Dashboard screen rewrite in `meridian-dashboard.jsx`: skeletons during load, error toast + inline error card on failure, three KPI tiles (today's appointments / active patients / outstanding labs), today's schedule, week-volume chart, recent-patients table.
+- Per design decision: dropped "Pending refills" KPI, "Needs attention" panel, MRN/Risk/Status columns, Day/Week/Month toggle, "New appointment" button. "View full schedule" links to Frappe Desk Patient Appointment list scoped to today + Practice.
+- Outstanding labs KPI uses a JOIN through `Patient.custom_practice` since `Lab Test` has no `custom_practice` field — avoided schema migration.
+- Tests: 4 format-helper unit tests + 2 endpoint contract tests + 1 Playwright dashboard render test (uses a temporary Practice Member row for Administrator with role=Admin to bypass the Doctor→Practitioner validation).
+
+### 2026-04-29 — Phase 1F (Issue #4): Daystar Health SPA — auth flow wired to Frappe
+- Slice 1 of 5 wiring the `/daystar-health` SPA to real Frappe APIs.
+- New `practice_resolver.get_active_practice(user)` deep module — returns the user's active Practice or raises `frappe.PermissionError` for Guest / no-membership users. Reusable across all later Daystar Health endpoints.
+- New page bootstrap `www/daystar_health.py` exposes `csrf_token`, `session_user`, and `has_practice` to the SPA template; new `meridian-api.js` helper centralises CSRF + JSON conventions for every later screen (`call`, `resource`, `login`, `recoverPassword`, `logout`).
+- Replaced mock auth in `meridian-auth.jsx` with real `/api/method/login` and `frappe.core.doctype.user.user.reset_password` calls. New `MNoPracticeScreen` for authenticated users without a Practice Member row, with sign-out wired to `/api/method/logout`.
+- SPA first-render routing reads the bootstrap and chooses login / no-practice / dashboard at mount time — no more login-screen flicker for already-authenticated users.
+- Tests: 3 Python unit tests for `practice_resolver` + 5 Playwright tests covering anonymous, invalid creds, post-login routing, already-logged-in skip, and sign-out.
+- Bug fix: renamed `daystar-health.py` → `daystar_health.py` so Frappe's website controller resolver finds it (resolver maps hyphenated `.html` to underscored `.py`).
+
+### 2026-04-22 — Phase 6: Doctor Self-Registration (OTP + Yoco)
+- New 3-step `/signup` funnel: details → email OTP → Yoco checkout. Replaces `/register` and `/register/doctor` (deleted).
+- Yoco webhook auto-provisions on `payment.succeeded` (no admin approval). Idempotent re-fires; failures flip the PRR to `Provisioning Failed` with the traceback recorded.
+- Post-payment activation uses a signed one-time URL (12-hr TTL, SHA-256 hashed in Redis), surfaced via email and consumed at `/signup/complete` to set the password and auto-log in.
+- 15-min scheduler (`retry_failed_provisioning`) re-runs any PRR stuck Paid-but-not-Provisioned older than 5 min.
+- Admin `onboard_doctor` refactored to call the same `provision_doctor` as the paid path, so both produce identical tenants (Company + Practice + Practitioner + Practice Member + POS Profile + Folder + optional Warehouse + Setup Checklist).
+- Migration patches: clean orphan Users from the legacy `Registration Request` flow (skipping System Users), then drop the DocType + table.
+- Dev-only `_test_mark_paid` endpoint for hermetic Playwright E2E (gated on `developer_mode`).
+
 ### 2026-04-08 — Phase 3: Platform Owner Workspace
 - Custom Workspace "Medic Plus Platform" — Administrator/Healthcare Administrator only
 - 6 Number Cards: Total/Active Practices, Total Patients, Today's/This Month's Appointments, Sick Notes Issued

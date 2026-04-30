@@ -138,24 +138,35 @@ def create_pos_profile(practice_name: str, company: str) -> str | None:
 		"Account", {"company": company, "account_name": "Cash"}, "name"
 	)
 
-	profile = frappe.get_doc({
-		"doctype": "POS Profile",
-		"pos_profile_name": f"{practice_name} - POS",
-		"company": company,
-		"currency": "ZAR",
-		"write_off_account": write_off_account,
-		"write_off_cost_center": write_off_cost_center,
-		"write_off_limit": 0,
-		"payments": [
-			{
-				"mode_of_payment": "Cash",
-				"account": cash_account or "",
-				"default": 1,
-			}
-		] if cash_account else [],
-	})
-	profile.insert(ignore_permissions=True)
-	return profile.name
+	# Best-effort: POS Profile has a long list of mandatory fields (warehouse,
+	# payments, etc.) whose presence depends on the ERPNext setup state of the
+	# newly-created company. If any prerequisite is missing, log and move on —
+	# the practice can still function without a POS Profile.
+	try:
+		profile = frappe.get_doc({
+			"doctype": "POS Profile",
+			"name": f"{practice_name} - POS",
+			"company": company,
+			"currency": "ZAR",
+			"write_off_account": write_off_account,
+			"write_off_cost_center": write_off_cost_center,
+			"write_off_limit": 0,
+			"payments": [
+				{
+					"mode_of_payment": "Cash",
+					"account": cash_account or "",
+					"default": 1,
+				}
+			] if cash_account else [],
+		})
+		profile.insert(ignore_permissions=True)
+		return profile.name
+	except Exception as e:
+		frappe.log_error(
+			f"POS Profile provisioning skipped for {company}: {e}",
+			"POS Profile Provisioning",
+		)
+		return None
 
 
 def create_practice_folder(practice_name: str) -> str:

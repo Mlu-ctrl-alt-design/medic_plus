@@ -205,14 +205,17 @@ Your doctor will be in touch regarding your next appointment.</p>
 	# ------------------------------------------------------------------
 
 	def _prevent_duplicate(self):
-		# Duplicate check by email within same practice
+		# Duplicate check by email within same practice (email field may not exist on all records)
+		email = getattr(self, "email", None)
+		if not email:
+			return
 		existing = frappe.db.exists(
 			"Practice Member",
-			{"practice": self.practice, "email": self.email, "name": ("!=", self.name or "")},
+			{"practice": self.practice, "email": email, "name": ("!=", self.name or "")},
 		)
 		if existing:
 			frappe.throw(
-				_("A member with email {0} already exists in this practice.").format(self.email),
+				_("A member with email {0} already exists in this practice.").format(email),
 				title=_("Duplicate Member"),
 			)
 
