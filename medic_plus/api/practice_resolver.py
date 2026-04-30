@@ -8,6 +8,7 @@ the place to look when adding a new endpoint that needs tenant scoping.
 import frappe
 
 
+@frappe.whitelist()
 def get_active_practice(user: str | None = None) -> str:
     user = user or frappe.session.user
     if user == "Guest":

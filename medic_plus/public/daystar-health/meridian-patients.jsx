@@ -1,5 +1,6 @@
-// Patients list — wired to /api/resource/Patient via meridianApi.resource.
-// Server-side search, sort, pagination. PQC scopes results to the user's Practice.
+// Patients list + Register Patient drawer.
+// Phase 1A: identifier picker (SAID / Passport / …), race, home language,
+// preferred language, POPIA consent for special personal information.
 
 const PATIENTS_FIELDS = [
   "name", "patient_name", "sex", "dob", "status", "mobile", "email", "custom_practice",
@@ -8,7 +9,232 @@ const PAGE_SIZE_KEY = "daystar.patients.pageSize";
 const PAGE_SIZE_DEFAULT = 25;
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
+const ID_TYPES = ["SAID", "Passport", "Refugee", "Asylum", "BirthCert", "NHID", "Other"];
+const RACE_OPTIONS = ["", "African", "Coloured", "Indian or Asian", "White", "Other", "Prefer not to say"];
+const LANG_OPTIONS = [
+  "", "Afrikaans", "English", "isiNdebele", "isiXhosa", "isiZulu",
+  "Sesotho sa Leboa", "Sesotho", "Setswana", "siSwati", "Tshivenda", "Xitsonga", "Other",
+];
+
+// ---------------------------------------------------------------------------
+// Register Patient drawer
+// ---------------------------------------------------------------------------
+
+const BLANK_FORM = {
+  first_name: "", last_name: "", sex: "", dob: "", email: "", mobile: "",
+  id_type: "SAID", id_value: "",
+  race: "", home_language: "", preferred_language: "",
+  popia_consent: false,
+  duplicate_warning: null,
+};
+
+function RegisterPatientDrawer({ practice, onClose, onCreated }) {
+  const [form, setForm] = mUseState(BLANK_FORM);
+  const [saving, setSaving] = mUseState(false);
+  const [error, setError] = mUseState(null);
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val, duplicate_warning: null }));
+
+  const checkDuplicates = () => {
+    if (!form.first_name) return;
+    const name = [form.first_name, form.last_name].filter(Boolean).join(" ");
+    window.meridianApi.call("medic_plus.api.patient_identity.find_duplicate_patients", {
+      patient_name: name,
+      practice,
+      dob: form.dob || null,
+      id_value: form.id_value || null,
+    }).then(results => {
+      if (results && results.length) {
+        setForm(f => ({ ...f, duplicate_warning: results }));
+      }
+    }).catch(() => {});
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (form.id_type === "SAID" && !form.popia_consent) {
+      setError("POPIA consent is required before capturing an SA ID number.");
+      return;
+    }
+
+    const identifiers = form.id_value ? [{
+      id_type: form.id_type,
+      id_value: form.id_value,
+      is_primary: 1,
+    }] : [];
+
+    setSaving(true);
+    window.meridianApi.call("frappe.client.insert", {
+      doc: {
+        doctype: "Patient",
+        first_name: form.first_name,
+        last_name: form.last_name || undefined,
+        sex: form.sex || "Unknown",
+        dob: form.dob || undefined,
+        email: form.email || undefined,
+        mobile: form.mobile || undefined,
+        custom_practice: practice,
+        custom_identifiers: identifiers,
+        custom_race: form.race || undefined,
+        custom_home_language: form.home_language || undefined,
+        custom_preferred_language: form.preferred_language || undefined,
+        custom_popia_consent_special: form.popia_consent ? 1 : 0,
+      },
+    }).then(doc => {
+      setSaving(false);
+      onCreated(doc.name);
+    }).catch(err => {
+      setSaving(false);
+      const msg = (err.message || "").replace(/^[A-Za-z]+Error:\s*/i, "");
+      setError(msg || "Could not register patient.");
+    });
+  };
+
+  return (
+    <div data-testid="register-patient-drawer" style={{
+      position: "fixed", inset: 0, zIndex: 1000,
+      display: "flex", justifyContent: "flex-end",
+    }}>
+      <div onClick={onClose} style={{ flex: 1, background: "rgba(0,0,0,0.3)" }} />
+      <div style={{
+        width: 480, background: "var(--bg-card)", height: "100%",
+        boxShadow: "-4px 0 24px rgba(0,0,0,0.18)", overflowY: "auto",
+        display: "flex", flexDirection: "column",
+      }}>
+        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
+          <h2 style={{ flex: 1, margin: 0, fontSize: 17, fontWeight: 600 }}>Register Patient</h2>
+          <button className="btn btn-secondary btn-sm" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: "20px 24px", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Duplicate warning */}
+          {form.duplicate_warning && (
+            <div data-testid="duplicate-warning" style={{ padding: "10px 14px", background: "var(--warning-soft)", border: "1px solid var(--warning)", borderRadius: 8, fontSize: 13 }}>
+              ⚠ {form.duplicate_warning.length} potential duplicate{form.duplicate_warning.length > 1 ? "s" : ""} found —
+              {" "}{form.duplicate_warning.map(d => d.patient_name).join(", ")}.
+              You may still proceed.
+            </div>
+          )}
+
+          <section>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Demographics</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                First Name *
+                <input className="input" required value={form.first_name}
+                  onChange={e => set("first_name", e.target.value)}
+                  onBlur={checkDuplicates} data-testid="reg-first-name" />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Last Name
+                <input className="input" value={form.last_name}
+                  onChange={e => set("last_name", e.target.value)}
+                  onBlur={checkDuplicates} data-testid="reg-last-name" />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Sex
+                <select className="select" value={form.sex} onChange={e => set("sex", e.target.value)} data-testid="reg-sex">
+                  <option value="">— select —</option>
+                  <option>Male</option><option>Female</option><option>Other</option>
+                </select>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Date of Birth
+                <input className="input" type="date" value={form.dob}
+                  onChange={e => set("dob", e.target.value)}
+                  onBlur={checkDuplicates} data-testid="reg-dob" />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Email
+                <input className="input" type="email" value={form.email} onChange={e => set("email", e.target.value)} />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Mobile
+                <input className="input" type="tel" value={form.mobile} onChange={e => set("mobile", e.target.value)} />
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Identifier</div>
+            <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                ID Type
+                <select className="select" value={form.id_type} onChange={e => set("id_type", e.target.value)} data-testid="reg-id-type">
+                  {ID_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                ID Number
+                <input className="input" value={form.id_value}
+                  onChange={e => set("id_value", e.target.value)}
+                  onBlur={checkDuplicates}
+                  placeholder={form.id_type === "SAID" ? "13-digit SA ID" : "ID value"}
+                  data-testid="reg-id-value" />
+              </label>
+            </div>
+            {form.id_type === "SAID" && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={form.popia_consent}
+                  onChange={e => set("popia_consent", e.target.checked)}
+                  data-testid="reg-popia-consent"
+                  style={{ marginTop: 2 }} />
+                <span>
+                  I confirm the patient has given informed consent for the collection of their SA ID number and other special personal information under{" "}
+                  <strong>POPIA Section 27</strong>.
+                </span>
+              </label>
+            )}
+          </section>
+
+          <section>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Language &amp; Background <span style={{ fontSize: 11, fontWeight: 400 }}>(optional)</span></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Race
+                <select className="select" value={form.race} onChange={e => set("race", e.target.value)} data-testid="reg-race">
+                  {RACE_OPTIONS.map(r => <option key={r} value={r}>{r || "— select —"}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Home Language
+                <select className="select" value={form.home_language} onChange={e => set("home_language", e.target.value)} data-testid="reg-home-language">
+                  {LANG_OPTIONS.map(l => <option key={l} value={l}>{l || "— select —"}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                Preferred Language
+                <select className="select" value={form.preferred_language} onChange={e => set("preferred_language", e.target.value)} data-testid="reg-preferred-language">
+                  {LANG_OPTIONS.map(l => <option key={l} value={l}>{l || "— select —"}</option>)}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          {error && (
+            <div data-testid="reg-error" style={{ padding: "10px 14px", background: "var(--danger-soft)", border: "1px solid var(--danger)", borderRadius: 8, color: "#b91c1c", fontSize: 13 }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 8 }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 1 }} data-testid="reg-submit">
+              {saving ? "Registering…" : "Register Patient"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function MPatientsScreen({ go }) {
+  const [showRegister, setShowRegister] = mUseState(false);
+  const [practice, setPractice] = mUseState(null);
   const [query, setQuery] = mUseState("");
   const [debouncedQuery, setDebouncedQuery] = mUseState("");
   const [sort, setSort] = mUseState({ key: "patient_name", dir: "asc" });
@@ -19,6 +245,13 @@ function MPatientsScreen({ go }) {
   });
   const [page, setPage] = mUseState(0);
   const [state, setState] = mUseState({ status: "loading", rows: [], total: 0, error: null });
+
+  // Resolve practice once on mount (needed by RegisterPatientDrawer).
+  mUseEffect(() => {
+    window.meridianApi.call("medic_plus.api.practice_resolver.get_active_practice")
+      .then(p => setPractice(p))
+      .catch(() => {});
+  }, []);
 
   // Debounce search to 300ms.
   mUseEffect(() => {
@@ -142,6 +375,16 @@ function MPatientsScreen({ go }) {
 
   return (
     <div className="page fade-in" data-testid="patients-page">
+      {showRegister && practice && (
+        <RegisterPatientDrawer
+          practice={practice}
+          onClose={() => setShowRegister(false)}
+          onCreated={(name) => {
+            setShowRegister(false);
+            go("patient", name);
+          }}
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 16, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: "0 0 4px", letterSpacing: "-0.02em" }}>Patients</h1>
@@ -149,6 +392,14 @@ function MPatientsScreen({ go }) {
             {totalKnown != null ? `${totalKnown} patient${totalKnown === 1 ? "" : "s"}` : "Loading…"}
           </p>
         </div>
+        <button
+          className="btn btn-primary btn-sm"
+          data-testid="register-patient-btn"
+          onClick={() => setShowRegister(true)}
+          disabled={!practice}
+        >
+          + Register Patient
+        </button>
       </div>
 
       <div className="card" style={{ marginBottom: "var(--gap)" }}>
