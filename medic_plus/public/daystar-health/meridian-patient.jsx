@@ -128,6 +128,7 @@ function PatientError({ message, go }) {
 function OverviewTab({ data }) {
   const p = data.patient || {};
   const latestVitals = (data.vitals || [])[0];
+  const aid = (data.medical_aid || [])[0];
   return (
     <div data-testid="patient-tab-content-overview" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gap)' }}>
       <div className="card card-pad">
@@ -149,6 +150,21 @@ function OverviewTab({ data }) {
           </>
         ) : (
           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No vitals recorded yet.</div>
+        )}
+      </div>
+      <div className="card card-pad" data-testid="patient-medical-aid-card" style={{ gridColumn: '1 / -1' }}>
+        <h3 style={{ fontSize: 13.5, fontWeight: 600, margin: '0 0 12px' }}>Medical Aid</h3>
+        {aid ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <KV label="Scheme" value={aid.scheme} />
+            <KV label="Plan" value={aid.plan} />
+            <KV label="Member ID" value={aid.principal_member_id} />
+            <KV label="Dependent code" value={aid.dependent_code} />
+            <KV label="Policy number" value={aid.policy_number} />
+            <KV label="Expires" value={aid.expiry_date} />
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No active medical aid policy on file.</div>
         )}
       </div>
       <div className="card card-pad" style={{ gridColumn: '1 / -1' }}>

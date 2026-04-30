@@ -198,6 +198,36 @@ class TestEndpointsHappyPath(IntegrationTestCase):
 		names = {r["name"] for r in rows}
 		self.assertIn(self.condition_name, names)
 
+	def test_patient_summary_includes_medical_aid_rows(self):
+		# build_patient_summary is the composite that hydrates the patient
+		# drawer. The Overview tab renders Medical Aid from this payload —
+		# missing it means the drawer falls back to "no scheme on file"
+		# even when an active policy exists.
+		from medic_plus.api.patient_summary import build_patient_summary
+		# Seed a Patient Insurance Policy with the SA medical-aid extension.
+		# Frappe Healthcare's Insurance Payor needs deep accounting setup we
+		# don't want in a unit test — flags.ignore_mandatory bypasses it.
+		# Real practices fill insurance_payor via the UI + ERPNext setup.
+		scheme = frappe.db.get_value("Medical Aid Scheme", {"is_active": 1}, "name")
+		self.assertTrue(scheme, "Medical Aid Scheme fixture must be loaded for this test")
+		policy_doc = frappe.get_doc({
+			"doctype": "Patient Insurance Policy",
+			"patient": self.patient,
+			"policy_number": f"POL-{_suffix()}",
+			"policy_expiry_date": "2027-12-31",
+			"custom_sa_scheme": scheme,
+			"custom_principal_member_id": "123456789",
+			"custom_dependent_code": "00",
+		})
+		policy_doc.flags.ignore_mandatory = True
+		policy = policy_doc.insert(ignore_permissions=True)
+		summary = build_patient_summary(patient_name=self.patient, practice=self.practice)
+		aid = summary.get("medical_aid") or []
+		self.assertEqual(len(aid), 1)
+		self.assertEqual(aid[0]["scheme"], scheme)
+		self.assertEqual(aid[0]["principal_member_id"], "123456789")
+		self.assertEqual(aid[0]["policy_number"], policy.policy_number)
+
 	def test_chronic_condition_denormalises_practice_on_insert(self):
 		# Spot-check the controller's before_insert behaviour: the
 		# custom_practice field on the new doctype must be auto-filled
