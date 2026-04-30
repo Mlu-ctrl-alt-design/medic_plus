@@ -41,6 +41,7 @@ window.__DAYSTAR_HEALTH__ = {
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-patients.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-patient.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-appointments.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-new-visit.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-profile.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/tweaks-panel.jsx"></script>
 
@@ -52,62 +53,99 @@ const TWEAK_DEFAULTS = {
   "density": "comfortable"
 };
 
-const VALID_ROUTES = ['dashboard','patients','patient','profile','appointments','records','labs','medications','billing','practice','login','recover','no-practice'];
+const VALID_ROUTES = ['dashboard','patients','profile','appointments','records','labs','medications','billing','practice','login','recover','no-practice'];
+const VALID_DRAWERS = ['patient','newVisit'];
 
-function readUrlRoute() {
+function readUrl() {
   const params = new URLSearchParams(window.location.search);
-  const r = params.get('screen');
-  if (r && VALID_ROUTES.includes(r)) return { route: r, arg: params.get('id') };
-  return null;
+  let route = params.get('screen');
+  let drawer = params.get('drawer');
+  let id = params.get('id');
+  // Legacy: ?screen=patient&id=X → render dashboard with patient drawer.
+  if (route === 'patient') { drawer = 'patient'; route = 'dashboard'; }
+  if (!route || !VALID_ROUTES.includes(route)) route = null;
+  if (drawer && !VALID_DRAWERS.includes(drawer)) drawer = null;
+  return { route, drawer, id };
 }
 
 function initialRouteState() {
   const api = window.meridianApi || {};
-  if (!api.isAuthenticated) return { route: 'login', arg: null };
-  if (!api.hasPractice) return { route: 'no-practice', arg: null };
-  return readUrlRoute() || { route: 'dashboard', arg: null };
+  if (!api.isAuthenticated) return { route: 'login', drawer: null, drawerArg: null };
+  if (!api.hasPractice) return { route: 'no-practice', drawer: null, drawerArg: null };
+  const u = readUrl();
+  return {
+    route: u.route || 'dashboard',
+    drawer: u.drawer || null,
+    drawerArg: u.drawer === 'patient' ? u.id : null,
+  };
 }
 
-function syncUrl(r, arg, replace) {
+function syncUrl({ route, drawer, drawerArg }, replace) {
   const params = new URLSearchParams();
-  if (r && r !== 'dashboard') params.set('screen', r);
-  if (arg) params.set('id', arg);
+  if (route && route !== 'dashboard') params.set('screen', route);
+  if (drawer) {
+    params.set('drawer', drawer);
+    if (drawer === 'patient' && drawerArg) params.set('id', drawerArg);
+  }
   const qs = params.toString();
   const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
   const fn = replace ? 'replaceState' : 'pushState';
-  window.history[fn]({ route: r, arg }, '', url);
+  window.history[fn]({ route, drawer, drawerArg }, '', url);
 }
 
 function App() {
-  const [routeState, setRouteState] = useState(initialRouteState);
-  const { route, arg: routeArg } = routeState;
+  const [appState, setAppState] = useState(initialRouteState);
+  const { route, drawer, drawerArg } = appState;
   const [tweaks, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [appointmentsRefreshKey, setAppointmentsRefreshKey] = useState(0);
 
   useEffect(() => {
     document.body.dataset.theme = tweaks.theme;
     document.body.dataset.density = tweaks.density;
   }, [tweaks.theme, tweaks.density]);
 
-  // On first paint, normalize the URL to match the resolved route (e.g.
-  // unauthenticated visit to ?screen=patient&id=X should rewrite to /).
-  useEffect(() => { syncUrl(route, routeArg, true); }, []);
+  // On first paint, normalize the URL to match the resolved state.
+  useEffect(() => { syncUrl(appState, true); }, []);
 
-  // Browser back/forward — re-read the URL and update state without
-  // pushing a new history entry.
+  // Browser back/forward — re-read the URL.
   useEffect(() => {
     const handler = () => {
-      const next = readUrlRoute() || { route: 'dashboard', arg: null };
-      setRouteState(next);
+      const u = readUrl();
+      setAppState({
+        route: u.route || 'dashboard',
+        drawer: u.drawer || null,
+        drawerArg: u.drawer === 'patient' ? u.id : null,
+      });
     };
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
   }, []);
 
   const go = (r, arg = null) => {
-    setRouteState({ route: r, arg });
-    syncUrl(r, arg, false);
+    // Patient + newVisit are drawer overlays, not screens.
+    if (r === 'patient') {
+      const next = { ...appState, drawer: 'patient', drawerArg: arg };
+      setAppState(next);
+      syncUrl(next, false);
+      return;
+    }
+    if (r === 'newVisit') {
+      const next = { ...appState, drawer: 'newVisit', drawerArg: null };
+      setAppState(next);
+      syncUrl(next, false);
+      return;
+    }
+    const next = { route: r, drawer: null, drawerArg: null };
+    setAppState(next);
+    syncUrl(next, false);
     window.scrollTo(0, 0);
+  };
+
+  const closeDrawer = () => {
+    const next = { ...appState, drawer: null, drawerArg: null };
+    setAppState(next);
+    syncUrl(next, false);
   };
 
   if (route === 'login') return <><window.MLoginScreen go={go} /><Tweaks tweaks={tweaks} setTweak={setTweak} /></>;
@@ -120,29 +158,36 @@ function App() {
     billing: 'Billing & Claims', practice: 'Practice', profile: 'Account'
   };
   let crumbs = [{ label: 'Daystar Health', go: () => go('dashboard') }];
-  if (route === 'patient') {
-    const p = window.MH_DATA.PATIENTS.find(x => x.id === routeArg);
-    crumbs.push({ label: 'Patients', go: () => go('patients') });
-    crumbs.push({ label: p?.name || 'Patient' });
-  } else if (titles[route]) {
-    crumbs.push({ label: titles[route] });
-  }
+  if (titles[route]) crumbs.push({ label: titles[route] });
 
   return (
     <div className="app-shell">
       <window.MSidebar route={route} go={go} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className={`sidebar-backdrop${sidebarOpen ? ' show' : ''}`} onClick={() => setSidebarOpen(false)} />
       <div className="main">
-        <window.MTopbar go={go} crumbs={crumbs} onToggleSidebar={() => setSidebarOpen(true)} />
+        <window.MTopbar go={go} crumbs={crumbs} onToggleSidebar={() => setSidebarOpen(true)} onNewVisit={() => go('newVisit')} />
         {route === 'dashboard' && <window.MDashboardScreen go={go} />}
         {route === 'patients' && <window.MPatientsScreen go={go} />}
-        {route === 'patient' && <window.MPatientScreen patientId={routeArg} go={go} />}
-        {route === 'appointments' && <window.MAppointmentsScreen go={go} />}
+        {route === 'appointments' && <window.MAppointmentsScreen go={go} key={appointmentsRefreshKey} />}
         {route === 'profile' && <window.MProfileScreen go={go} />}
-        {!['dashboard', 'patients', 'patient', 'appointments', 'profile'].includes(route) && (
+        {!['dashboard', 'patients', 'appointments', 'profile'].includes(route) && (
           <Placeholder name={titles[route] || route} />
         )}
       </div>
+      <window.MDrawer
+        open={drawer === 'patient'}
+        onClose={closeDrawer}
+        title={drawerArg ? `Patient · ${drawerArg}` : 'Patient'}
+      >
+        {drawer === 'patient' && drawerArg && (
+          <window.MPatientScreen patientId={drawerArg} go={go} />
+        )}
+      </window.MDrawer>
+      <window.MNewVisitDrawer
+        open={drawer === 'newVisit'}
+        onClose={closeDrawer}
+        onCreated={() => setAppointmentsRefreshKey((k) => k + 1)}
+      />
       <Tweaks tweaks={tweaks} setTweak={setTweak} />
     </div>
   );

@@ -70,7 +70,7 @@ function MSidebar({ route, go, open, onClose }) {
   );
 }
 
-function MTopbar({ go, crumbs = [], onToggleSidebar }) {
+function MTopbar({ go, crumbs = [], onToggleSidebar, onNewVisit }) {
   const api = window.meridianApi || {};
   const [profile, setProfile] = React.useState(api._profile || null);
 
@@ -108,14 +108,14 @@ function MTopbar({ go, crumbs = [], onToggleSidebar }) {
         <kbd>⌘K</kbd>
       </div>
       <div className="topbar-actions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button className="btn btn-secondary btn-sm topbar-new-visit"><window.MIcons.Plus size={14} /> <span className="topbar-new-visit-label">New visit</span></button>
+        <button className="btn btn-secondary btn-sm topbar-new-visit" data-testid="topbar-new-visit" onClick={onNewVisit}><window.MIcons.Plus size={14} /> <span className="topbar-new-visit-label">New visit</span></button>
         <button className="btn btn-ghost btn-sm" style={{ width: 36, padding: 0 }}>
           <window.MIcons.Bell size={17} />
         </button>
         <div className="topbar-divider" style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 6px' }} />
         <button data-testid="topbar-profile" onClick={() => go('profile')} className="topbar-profile-btn" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: '4px 8px 4px 4px', borderRadius: 8, cursor: 'pointer' }}>
-          {user.user_image ? (
-            <img src={user.user_image} alt="" className="avatar avatar-sm" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+          {user.user_image && !user.user_image.startsWith('/private/') ? (
+            <img src={user.user_image} alt="" className="avatar avatar-sm" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
           ) : (
             <div className="avatar avatar-sm" style={{ width: 28, height: 28, fontSize: 11 }}>{initials}</div>
           )}
@@ -130,5 +130,40 @@ function MTopbar({ go, crumbs = [], onToggleSidebar }) {
   );
 }
 
+function MDrawer({ open, onClose, title, children, footer }) {
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose && onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  return (
+    <>
+      <div
+        className={`drawer-backdrop${open ? ' open' : ''}`}
+        onClick={onClose}
+        data-testid="drawer-backdrop"
+      />
+      <aside
+        className={`drawer${open ? ' open' : ''}`}
+        role="dialog"
+        aria-hidden={!open}
+        data-testid="drawer"
+      >
+        <div className="drawer-header">
+          <div className="drawer-title">{title}</div>
+          <button className="drawer-close" data-testid="drawer-close" aria-label="Close" onClick={onClose}>
+            <window.MIcons.X size={16} />
+          </button>
+        </div>
+        <div className="drawer-body" data-testid="drawer-body">{children}</div>
+        {footer && <div className="drawer-footer">{footer}</div>}
+      </aside>
+    </>
+  );
+}
+
 window.MSidebar = MSidebar;
 window.MTopbar = MTopbar;
+window.MDrawer = MDrawer;
