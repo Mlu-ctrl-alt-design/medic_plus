@@ -99,9 +99,9 @@ fixtures = [
 		"Payment Reminder - 30 Days Overdue",
 		"Payment Reminder - 60 Days Overdue",
 	]]]},
-	# SA EMR Phase 1 — code sets + scheme directory
-	{"dt": "Code System",       "filters": [["name", "in", ["ICD-10"]]]},
-	{"dt": "Code Value",        "filters": [["code_system", "=", "ICD-10"]]},
+	# SA EMR Phase 1 + 1B — code sets + scheme directory
+	{"dt": "Code System",       "filters": [["name", "in", ["ICD-10", "ICD-10-ZA", "NAPPI", "LOINC", "UCUM", "ATC", "SNOMED-CT-ZA-stub"]]]},
+	{"dt": "Code Value",        "filters": [["code_system", "in", ["ICD-10", "ICD-10-ZA", "NAPPI", "LOINC", "UCUM", "ATC", "SNOMED-CT-ZA-stub"]]]},
 	{"dt": "Medical Aid Scheme"},
 	# Phase 5.11 — Backup Drill Log (append-only audit trail, no delete)
 	{"dt": "Backup Drill Log"},

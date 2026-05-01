@@ -24,8 +24,21 @@ def _table_exists(table: str) -> bool:
 	return len(rows) > 0
 
 
+def _column_exists(table: str, column: str) -> bool:
+	rows = frappe.db.sql(
+		"SELECT 1 FROM information_schema.columns "
+		"WHERE table_schema = DATABASE() AND table_name = %s AND column_name = %s LIMIT 1",
+		(table, column),
+	)
+	return len(rows) > 0
+
+
 def _add_index(table: str, column: str, index_name: str | None = None) -> None:
 	if not _table_exists(table):
+		return
+	if not _column_exists(table, column):
+		# Child tables inherit scoping from their parent and don't carry
+		# their own `custom_practice` column — skip them silently.
 		return
 	idx = index_name or column
 	if _has_index(table, column):
