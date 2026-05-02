@@ -1215,6 +1215,86 @@ Closes the legal-floor gap so the Daystar Health SPA can host real SA practice d
 
 ---
 
+## 2026-05-02 — Phase 1E: Healthbridge Claims + POPIA Scaffold + FHIR R4 (#28)
+
+Closing slice of Phase 1. Lands three verticals on `develop` in 8 atomic commits.
+
+### Claims (Healthbridge real-time switching)
+
+**New doctypes:**
+- `Tariff Code` (autoname=field:code): BHF/SAMA procedure master; 20-code curated seed covering consultations, procedures, medications, dispensing fees; platform-admin R/W, practice roles read-only.
+- `Switch Configuration` (autoname=field:practice): per-practice Healthbridge credentials (provider_code, endpoint_url, sender_id, username, encrypted password); PQC scoped by `practice` field.
+- `Insurance Claim` (IC-.#####): Draft→Submitted→Accepted/Partial/Rejected/Error workflow; links practice, patient, encounter; has `claim_lines` child table.
+- `Insurance Claim Line` (child table): line_type (Diagnosis/Procedure/Medication), code, description, quantity, unit_fee, total_fee, per-line status.
+
+**Custom fields on Patient Encounter (Phase 1E):**
+- `custom_section_claims` — collapsible section
+- `custom_claim_diagnosis_code` (Data) — ICD-10 code (e.g. J01.9)
+- `custom_claim_tariff_code` (Link → Tariff Code) — primary procedure
+- `custom_claim_nappi_code` (Data) — NAPPI product code for primary medication
+
+**Python modules:**
+- `api/claim_builder.py`: pure function `build_claim(encounter_name)` → unsaved Insurance Claim. Reads the three Phase-1E encounter fields; hydrates scheme/member from Patient Insurance Policy; returns None for encounters with no claimable lines. No side-effects — table-testable.
+- `api/healthbridge_client.py`: thin HTTP transport. `submit_to_switch(claim_name)` constructs Basic-Auth headers from Switch Configuration, builds JSON payload, POSTs to endpoint, parses per-line statuses from 200 response. `_post()` is a module-level callable — tests replace it without requests-mock at import time.
+- `api/claims.py`: `@frappe.whitelist() submit_claim(claim_name)` — Draft→Submitted before network call (audit trace even on crash); applies Accepted/Partial/Error + per-line statuses; `get_claim_for_encounter(encounter_name)` lookup. `auto_build_claim_for_encounter()` idempotent helper called by `on_submit` hook.
+- `doc_events.build_claim_on_submit()`: wired to `Patient Encounter.on_submit`.
+
+**Tracer test** (`test_claims.py`, 12 IntegrationTestCase methods): Encounter submit auto-creates Draft claim with 3 lines (Diagnosis J01.9, Procedure 0190, Medication NAPPI 705793001); `submit_claim()` posts to monkeypatched `_post`, parses `HB-REF-9999` switch_reference, transitions to Accepted with per-line statuses; cross-tenant PQC blocks Practice B from reading/submitting Practice A's claim.
+
+### POPIA Scaffold
+
+**New doctypes:**
+- `Patient Consent Record` (PCR-.#####): per-purpose (Treatment/Billing/Research/Marketing/AI/Insurance/PublicHealth/Legal/Other), versioned, POPIA s11 lawful basis, SHA-256 consent_text_hash, status lifecycle Given→Withdrawn/Expired/Pending. PQC: Practice roles scope via patient.custom_practice; Patient role sees own records only.
+- `Sub-Processor Register` (autoname=field:processor_name): platform-wide DPA register; category (AI/Communications/Laboratory/HealthSwitching/Payments/Storage/Other); DPA signed date, annual review, cross-border transfer mechanism, breach SLA.
+
+**Seeded sub-processors (10):** Anthropic (AI/USA), Jitsi (Communications/EU), LiveKit (Communications/USA), Healthbridge (HealthSwitching/SA), Lancet (Laboratory/SA), Ampath (Laboratory/SA), PathCare (Laboratory/SA), Vermaak (Laboratory/SA), NHLS (Laboratory/SA), NICD (Laboratory/SA — legal obligation basis for communicable disease reporting).
+
+**Retention cron update:** `retention.flag_expired_consent_records()` — daily; marks Given consent records older than 3 years as Expired; idempotent; guards with `frappe.db.table_exists()` for migration safety.
+
+### FHIR R4 Read-Only Emit
+
+**New doctype:**
+- `FHIR Access Token` (FAT-.#####): SMART v2 bearer tokens; SHA-256 hash only stored (raw never persisted); practice-bound; TTL 1 hour; PQC limits to issuing user + platform admins.
+
+**Python modules:**
+- `api/fhir/token.py`: `issue_token(user, practice, scope)` → (raw, doc_name); `resolve_token(raw)` validates hash + expiry; `revoke_token(raw)`.
+- `api/fhir/mappers.py`: 6 FHIR R4/R5 resource mappers, all returning dicts that validate against `fhir.resources` models:
+  - `Patient`: name (family/given), gender, DOB, SA-ID identifier, active flag.
+  - `Encounter`: status (in-progress/discharged/cancelled), subject, participant, actualPeriod, diagnosis (ICD-10-ZA coded), type (BHF tariff coded). `meta.versionId` + `meta.lastUpdated` from Frappe `modified`.
+  - `Condition`: from `custom_claim_diagnosis_code`, ICD-10-ZA coded, clinicalStatus=active.
+  - `MedicationRequest`: from `custom_claim_nappi_code`, NAPPI coded, status=active, intent=order.
+  - `AllergyIntolerance`: from Patient Allergy; SNOMED coded; criticality from severity.
+  - `Observation` (vitals): BP (LOINC 55284-4 with systolic/diastolic components), body weight (29463-7), height (8302-2); UCUM units; encounter reference.
+- `api/fhir/capability_statement.py`: builds CapabilityStatement listing 6 resource types; SMART-on-FHIR security tag; fhirVersion=4.0.1.
+- `api/fhir/router.py`: `@frappe.whitelist()` endpoints — `get_metadata` (allow_guest), `get_patient`, `get_encounter`, `get_condition`, `get_medication_request`, `get_allergy_intolerance`, `get_observations`, `patient_everything` ($everything Bundle), `issue_fhir_token`. Cross-tenant: `_assert_resource_practice` compares resource's practice field to token's practice context; platform admins bypass. Session-user fallback for same-site SPA.
+- `www/api/fhir/R4.py`: Frappe `www/` dispatcher; URL pattern `/api/fhir/R4/<ResourceType>/<id>`; returns `application/fhir+json`.
+- `hooks.py`: `website_route_rules` entry for `/api/fhir/R4/<path:path>`.
+
+**FHIR tracer test** (`test_fhir.py`, 24 IntegrationTestCase methods): token issue/resolve/expiry; Patient/Encounter/Condition/MedicationRequest/Observation all pass `fhir.resources` model_validate; CapabilityStatement validates with fhirVersion=4.0.1 and lists 6 resources; cross-tenant denial (Practice B token → DoesNotExistError on Practice A encounter); FHIR token PQC shape.
+
+**Playwright UI tests** (`test_claims_fhir_ui.py`, 10 methods): FHIR metadata 200 with CapabilityStatement shape (no auth); claims API shape (null for unknown, error not crash, guest 401/403); token issuance requires login; sub-processor register >= 10 seeded rows including Healthbridge.
+
+### Judgment calls and gaps
+
+| Decision | Rationale |
+|---|---|
+| `fhir.resources` 8.2.0 (R5 model library) used to validate | Only available package; R4 JSON is structurally compatible; `fhirVersion: 4.0.1` declared in CapabilityStatement |
+| Three flat custom fields on Encounter (not child table) | Minimal — avoids coupling to Healthcare module's internal drug_prescription schema until Phase 1D Drug Master lands |
+| `_post` as module-level function | Allows monkeypatching without requests-mock at import time; cleaner than injecting a transport object |
+| FHIR token TTL = 1 hour | Conservative for a healthcare context; operator can re-issue |
+| Condition/MedicationRequest IDs include encounter name | Derived resources have no independent Frappe DocType; round-trip stable via encounter name |
+| Issues #24, #26, #27 closed in code (not on GitHub) | Code exists (patient_identifier, encounter_order doctypes present); GitHub issue closure is a separate admin task |
+
+### Unticked items (deferred)
+
+- [ ] FHIR search (full `?patient=<id>` search across DB) — current router has stubs; full search needs pagination and SQL safety review
+- [ ] FHIR SMART `/.well-known/smart-configuration` discovery document
+- [ ] Drug Master from #27 — once merged, `medication_request_to_fhir` can reference Drug Master for richer FHIR coding
+- [ ] FHIR write (CREATE/UPDATE) — read-only for Phase 1; write requires validation layer
+- [ ] Structured SOAP encounter fields (#26) — `encounter_to_fhir` will map them when available
+
+---
+
 ## Roadmap
 
 - [ ] Prescription print format — Jinja, per-practice letterhead ✅ Done (Phase 1D)
