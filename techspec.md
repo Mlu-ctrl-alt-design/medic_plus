@@ -4,6 +4,185 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-05-02 — Phase 1C (Issue #26): Structured SOAP Encounter + Problem List + Encounter Order
+
+### Scope
+
+Structured clinical documentation layer on top of the existing Frappe Healthcare `Patient Encounter` doctype. Doctors can capture a full SOAP note (Subjective / Objective / Assessment / Plan) with ICD-10-coded assessment, a per-body-system Examination Findings child table, and Encounter Orders (lab / imaging / referral). Submitting an encounter automatically upserts a `Patient Problem List` row for each assessed ICD-10 code, providing a longitudinal active-problem view per patient.
+
+Prerequisites: Phase 1A (SA-PMI Patient Identifiers, issue #24) and Phase 1B (Terminology stack / ICD-10-ZA seed, issue #25) merged into `develop`.
+
+---
+
+### New Doctypes
+
+#### Examination Finding (child table, `istable=1`)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `body_system` | Select | General / Cardiovascular / Respiratory / Gastrointestinal / Neurological / Musculoskeletal / Dermatological / ENT / Ophthalmology / Genitourinary / Endocrine / Psychiatric / Other |
+| `body_part` | Data (reqd) | Free text e.g. "Chest", "Left knee" |
+| `finding` | Small Text (reqd) | Clinical finding text |
+| `is_abnormal` | Check | Quick abnormal flag for summary views |
+
+Used as `custom_examination_findings` child table on Patient Encounter.
+
+#### Patient Problem List (standalone, `PPL-.#####`)
+
+One row per (patient, icd10_code) pair — active problem registry for the patient.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `patient` | Link → Patient (reqd) | Scoping anchor |
+| `custom_practice` | Link → Practice (read_only) | Denormalised from Patient on `before_insert` for fast PQC filter |
+| `icd10_code` | Link → Code Value | ICD-10-ZA system |
+| `snomed_code` | Link → Code Value | SNOMED-CT-ZA-stub (Phase 5.6 gated) |
+| `description` | Data | Human-readable display text auto-filled from Code Value.display |
+| `status` | Select | Active / Inactive / Resolved |
+| `onset_date` | Date | Populated from encounter_date on first creation |
+| `source_encounter` | Link → Patient Encounter | Latest encounter that created/updated this row |
+| `severity` | Select | Mild / Moderate / Severe |
+| `notes` | Small Text | Free notes |
+
+---
+
+### Custom Fields Added to Patient Encounter (8 new)
+
+| Field | Type | Placement |
+|-------|------|-----------|
+| `custom_hopi` | Long Text | After `custom_chief_complaint` |
+| `custom_subjective` | Long Text | After `custom_hopi` |
+| `custom_objective` | Long Text | After `custom_subjective` |
+| `custom_assessment_text` | Small Text | After `custom_objective` |
+| `custom_assessment_code` | Link → Code Value (ICD-10-ZA filter) | After `custom_assessment_text` |
+| `custom_plan` | Long Text | After `custom_assessment_code` |
+| `custom_section_examination` | Section Break (collapsible) | After `custom_plan` |
+| `custom_examination_findings` | Table → Examination Finding | After `custom_section_examination` |
+
+Existing `custom_chief_complaint` and `custom_encounter_orders` fields from Phase 5.7 are unchanged.
+
+---
+
+### Document Lifecycle — `on_submit` on Patient Encounter
+
+`medic_plus.api.doc_events.on_encounter_submit` fires on Patient Encounter submit and calls two helpers:
+
+1. **`_advance_encounter_orders(doc)`** — promotes any `Draft` Encounter Order rows to `Ordered` status, then calls `doc.db_update()` so child rows persist.
+
+2. **`_upsert_problem_list(doc)`** — reads `custom_assessment_code` (ICD-10-ZA `Code Value` name). If blank, no-op. Otherwise:
+   - Looks up `(patient, icd10_code)` in `Patient Problem List`.
+   - **Existing row:** `frappe.db.set_value` to set `source_encounter` + `status = Active`.
+   - **New row:** `frappe.get_doc(...).insert(ignore_permissions=True)` with `description` pulled from `Code Value.display`, `onset_date` from `encounter_date`, `custom_practice` from encounter (falls back to patient's practice).
+   - Idempotent: two submits for the same (patient, ICD-10 code) yield exactly one Problem List row.
+
+---
+
+### Permission Query Condition
+
+`get_patient_problem_list_permission_query(user)` in `api/permissions.py`:
+
+- Platform admin → `""` (unrestricted).
+- Patient role → `tabPatient Problem List.patient = <patient_for_user>`.
+- Practice staff → `tabPatient Problem List.custom_practice = <practice>` (direct filter on denormalised field; subquery via Patient acts as defence in depth for pre-migration rows if any).
+- No Practice Member row → `"1=0"`.
+
+Registered in `hooks.py` under `permission_query_conditions`.
+
+---
+
+### Custom DocPerm (3 new rows)
+
+| DocType | Role | Read | Write | Create | Delete |
+|---------|------|------|-------|--------|--------|
+| Patient Problem List | Practice Admin | ✓ | ✓ | ✓ | ✓ |
+| Patient Problem List | Practice Doctor | ✓ | ✓ | ✓ | — |
+| Patient Problem List | Practice Receptionist | ✓ | — | — | — |
+
+---
+
+### Endpoint: `get_encounter_detail(encounter)`
+
+Whitelisted in `medic_plus.api.daystar_health`:
+
+- **Cross-tenant guard:** reads `custom_practice` from the encounter; raises `frappe.PermissionError` if it doesn't match the caller's active Practice.
+- **POPIA whitelist:** never emits `custom_sa_id_number` or any non-clinical patient field.
+- **Payload shape:**
+  ```json
+  {
+    "encounter": {
+      "name", "patient", "encounter_date",
+      "chief_complaint", "hopi", "subjective", "objective",
+      "assessment_text", "assessment_code", "plan",
+      "examination_findings": [ { body_system, body_part, finding, is_abnormal } ],
+      "orders": [ { order_type, order_name, status, notes } ]
+    },
+    "problem_list": [ { name, icd10_code, description, status, onset_date, severity } ]
+  }
+  ```
+
+---
+
+### SPA: `meridian-new-visit.jsx` (upgraded)
+
+The drawer previously only created a `Patient Appointment`. It now creates a full `Patient Encounter` with four tabbed sections:
+
+| Tab | Content |
+|-----|---------|
+| **Schedule** | Patient, Practitioner, Date, Time, Appointment Type, Chief Complaint |
+| **SOAP Notes** | HOPI, Subjective, Objective, Assessment Text, ICD-10 code picker (debounced 300ms via `search_icd10`), Plan |
+| **Examination** | Dynamic row editor: Body System (Select), Body Part, Finding; each row has a remove button. "Add finding" button appends a blank row. |
+| **Orders** | Dynamic row editor: Order Type (Lab/Imaging/Referral/Immunisation), Order Name. "Add order" button appends a blank row. |
+
+On submit, the drawer POSTs a `Patient Encounter` document (not `Patient Appointment`) via `frappe.client.insert`. Child rows with blank required fields are filtered before sending. `custom_practice` is stamped server-side by `set_practice_on_insert`.
+
+`data-testid` attributes on all interactive elements (tabs, fields, row editors) for Playwright coverage.
+
+---
+
+### Tests
+
+#### Python (`medic_plus/api/test_soap_encounter.py`) — 10 test methods across 4 classes
+
+| Class | Behaviours |
+|-------|-----------|
+| `TestSOAPEncounterTracer` | SOAP fields persist on submit; Examination Finding row persists with body_part + finding; Encounter Order row promoted to Ordered; Patient Problem List created with Active status; Practice B PQC blocks encounter read; Practice B PQC blocks Problem List read |
+| `TestSOAPPQCShape` | PPL PQC scopes to practice; Admin gets unrestricted; orphan gets 1=0 |
+| `TestProblemListUpsert` | Second encounter with same ICD-10 does not duplicate Problem List row |
+| `TestEncounterPayloadPOPIA` | `get_encounter_detail` happy path returns correct keys; cross-practice call raises PermissionError |
+
+`IGNORE_TEST_RECORD_DEPENDENCIES = ["Company", "Healthcare Practitioner"]` guards traversal into ERPNext test modules.
+
+#### Playwright (`medic_plus/tests/ui/test_soap_encounter_ui.py`) — 9 test methods across 2 classes
+
+| Class | Behaviours |
+|-------|-----------|
+| `TestNewEncounterDrawer` | New-visit button visible; drawer opens; Schedule tab fields render; 4 section tabs visible; SOAP tab text areas render; ICD-10 search shows dropdown; Examination tab add-row works; Orders tab add-row works |
+| `TestEncounterDetailEndpoint` | `get_encounter_detail` payload shape; no SA ID leakage; cross-practice returns 403 (urllib second-session pattern) |
+
+---
+
+### Design Decisions
+
+| Decision | Reason |
+|----------|--------|
+| `custom_practice` denormalised on Patient Problem List | Direct column filter avoids a subquery on every list view. `before_insert` controller populates it from `Patient.custom_practice` at creation time. |
+| Upsert keyed on `(patient, icd10_code)` | One active problem per code per patient — avoids proliferating duplicate rows from repeated encounters for the same chronic condition. |
+| Encounter Orders promoted from Draft → Ordered on submit | Submit signals clinical intent; "Ordered" means the request has been authorised. Routing to lab providers is deferred (Phase 2). |
+| `get_encounter_detail` returns `problem_list` for the whole patient, not just the encounter | SPA renders the full active-problem list alongside any open encounter, so the drawer doesn't require a second API call. |
+| SOAP fields as Custom Fields (not new DocType) | Patient Encounter is a Frappe Healthcare core doctype; adding a separate SOAP child would break the standard encounter workflow. Custom Fields on the base encounter keep compatibility with all Healthcare module features (Vital Signs, Drug Prescriptions, etc.). |
+| `Examination Finding` as child table, not standalone | Findings are inseparable from the encounter context; standalone creates audit-log overhead with no benefit. |
+
+### Out of Scope (Deferred)
+
+- Allergies-reviewed child table on encounter (Phase 2).
+- Medication reconciliation rows (continued / changed / stopped / added) — Phase 2.
+- Encounter Order *routing* to lab / imaging providers — Phase 2.
+- SNOMED coding of findings (IHTSDO licence gated — Phase 5.6 / #38).
+- Antenatal / chronic-disease / well-child encounter templates already exist (Phase 5.7–5.9); SOAP fields are additive and do not conflict.
+- Referral letter Composition with FHIR — Phase 3.
+
+---
+
 ## 2026-04-30 — Phase 1B (Issue #25): Terminology stack
 
 ### Scope
