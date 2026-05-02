@@ -4,6 +4,214 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-05-02 — Phase 1D (Issue #27): Medication Safety (Drug Master + Safety Checks + HPCSA Booklet 8)
+
+### Scope
+
+SA-compliant medication safety layer on top of the existing `Drug Prescription` child table
+(Healthcare module) and `Patient Allergy` doctype.  Three warn-not-block checks fire on every
+`Patient Encounter` `before_save` that carries a `custom_nappi_code_value`-tagged drug row.
+HPCSA Booklet 8 print format added.  SPA prescription panel ships with live warning badges and
+override UX.
+
+### Blocker Status (Issue #27 blocked by #25 + #26)
+
+| Issue | Expected | Actual |
+|-------|----------|--------|
+| #25 — Terminology stack (NAPPI / ATC) | Merged to develop | ✅ Merged (`53e787a`) |
+| #26 — Structured SOAP encounter | Issue still open in GitHub | ✅ **Code merged** (`189977d`, `7833a27`) — issue tracker not updated |
+
+The `patient_allergy` doctype and Healthcare module's native `drug_prescription` child table on
+`Patient Encounter` provided all functional plumbing needed; full #26 SOAP fields (subjective /
+assessment_code / plan) are present in develop and are referenced by the Booklet 8 print format.
+
+### New Doctypes
+
+#### Drug Master (`DM-.#####`)
+
+Platform-level pharmaceutical catalogue keyed by NAPPI Code Value.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `nappi_code_value` | Link → Code Value | Required; NAPPI system seed |
+| `drug_name` | Data | Auto-filled from Code Value `display` on before_save |
+| `nappi_code` | Data (read-only) | Parsed from Code Value name: `"719318-NAPPI"` → `"719318"` |
+| `atc_code_value` | Link → Code Value | ATC system — drives allergy class matching |
+| `atc_code` | Data (read-only) | Parsed from ATC CV name: `"J01MA-ATC"` → `"J01MA"` |
+| `ingredient` | Data | INN / SNOMED stub |
+| `schedule` | Select S0–S6 | SA SAHPRA schedule |
+| `dosage_form` | Data | e.g. tablet, capsule, syrup |
+| `strength` | Data | e.g. 500mg, 250mg/5ml |
+
+Permissions: `System Manager` + `Healthcare Administrator` full CRUD; `Practice Admin` / `Practice Doctor` read.
+No PQC — platform catalogue, visible to all authenticated practice users.
+
+#### Prescription Override Reason (child table of `Patient Encounter`)
+
+Captures practitioner's clinical justification for each dismissed safety warning.
+
+| Field | Type |
+|-------|------|
+| `warning_type` | Select: Drug Allergy / Drug Interaction / Schedule Rule |
+| `drug_name` | Data |
+| `practitioner` | Link → Healthcare Practitioner |
+| `dismissed_at` | Datetime |
+| `reason` | Small Text (required) |
+
+**PQC** (`get_prescription_override_reason_permission_query`): scopes via parent
+`Patient Encounter.custom_practice` — identical pattern to `Patient Identifier` child-table PQC.
+
+### Custom Fields Added (7)
+
+| Doctype | Field | Type | Notes |
+|---------|-------|------|-------|
+| `Drug Prescription` | `custom_nappi_code_value` | Link → Code Value | NAPPI CV — entry point for safety checks |
+| `Drug Prescription` | `custom_schedule` | Select S0–S6 | Auto-populated from Drug Master |
+| `Drug Prescription` | `custom_repeats_authorised` | Int | Phase 5 dispensation hook decrements |
+| `Drug Prescription` | `custom_repeats_remaining` | Int | Stub — decremented by dispensation event |
+| `Drug Prescription` | `custom_generic_substitution_allowed` | Check | |
+| `Patient Allergy` | `custom_atc_code` | Data | ATC class code for class-level allergy matching (e.g. `J01MA`) |
+| `Patient Encounter` | `custom_prescription_override_reasons` | Table → Prescription Override Reason | |
+
+### Code Values Added
+
+| Name | System | Display |
+|------|--------|---------|
+| `719390-NAPPI` | NAPPI | Levofloxacin 500mg tablet |
+
+### Safety Check Module (`api/drug_safety.py`)
+
+Pure functions — no side effects, no Frappe session assumptions:
+
+```
+check_drug_allergy(patient, atc_code, drug_name) → list[dict]
+  Matching: (1) allergy.custom_atc_code == atc_code  OR  (2) allergy.substance ⊆ drug_name (case-insensitive)
+  Only Active, Drug-category allergies. Returns [] if patient absent.
+
+check_drug_interaction(nappi_code_values) → list[dict]
+  Cross-product check against Healthcare's Drug Interaction table.
+  Resolves drug names via Drug Master. Skips cleanly when table is empty.
+
+check_schedule_rule(nappi_code_value, prescriber) → list[dict]
+  S5 rule: prescriber must have custom_practice_number (MP/PR number).
+  S6 rule: no repeats permitted (always warned); + S5 MP rule.
+  S0–S4: no warning.
+
+run_safety_checks(encounter_doc) → list[dict]
+  Aggregates all three checks for every drug_prescription row with custom_nappi_code_value.
+  Attaches result to doc._drug_safety_warnings for test assertions.
+```
+
+Warning dict shape: `{ type, drug, message, severity | None }`.
+
+### Before-save Hook (`run_prescription_safety`)
+
+Registered in `hooks.py` as `Patient Encounter.before_save`.
+
+1. Calls `run_safety_checks(doc)`.
+2. Collects drugs whose names appear in `custom_prescription_override_reasons` rows → **covered**.
+3. Calls `frappe.msgprint(uncovered_messages, indicator="orange", raise_exception=False)` — non-blocking.
+4. Document saves regardless of warnings.
+
+The SPA may surface warnings earlier (before save) via `check_prescription_safety` endpoint so the
+user can fill in override reasons before the first save attempt.
+
+### HPCSA Booklet 8 Print Format
+
+Registered as `"Drug Prescription Booklet 8"` on `Patient Encounter`.
+
+Sections (all from Medicines Act 101/1965 + HPCSA Booklet 8 requirements):
+- **Letterhead**: practice name, address, phone, email, logo
+- **HPCSA credentialing bar**: practitioner name + HPCSA number + MP/PR number
+- **Rx title** with statutory subtitle
+- **Patient bar**: name + DOB + SA ID + encounter date + reference
+- **Drug table**: medicine name + NAPPI code + schedule badge (S5/S6 red) + strength + form + dosage + qty + repeats remaining + instructions
+- **Override reasons** section (renders only when `custom_prescription_override_reasons` present)
+- **Signature block**: handwritten signature image + HPCSA + MP/PR + date
+- **Statutory disclaimer**: Medicines Act + S6 no-repeat rule
+
+### Whitelisted SPA Endpoints (`api/daystar_health.py`)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `check_prescription_safety(patient, nappi_code_values)` | Aggregate allergy + schedule checks; cross-tenant guard via `get_active_practice()` |
+| `get_drug_master_by_nappi(nappi_code_value)` | Single Drug Master lookup for SPA auto-fill (schedule, strength, dosage_form) |
+
+### SPA Prescription Panel (`meridian-new-visit.jsx`)
+
+`MPrescriptionPanel` (exported as `window.MPrescriptionPanel`):
+- Controlled component: `rows`, `onChange`, `patient`, `prescriber`, `disabled` props
+- `MPrescriptionRow` per drug: NAPPI picker (`MNappiPicker`), drug name, schedule (read-only), strength, dosage form, dosage, duration, repeats authorised, generic substitution checkbox
+- Auto-fill: on NAPPI selection, calls `get_drug_master_by_nappi` to populate schedule/strength/dosage_form
+- Live warning badges: on NAPPI change, calls `check_prescription_safety`; orange badge = uncovered warning; grey = override noted
+- Override UX: warning badge click expands textarea; uncovered-warning notice shown when any warning lacks override reason
+- Remove row button; empty state placeholder; "+ Add drug" button
+
+### Tests
+
+#### Python (`api/test_drug_safety.py`) — 16 IntegrationTestCase assertions
+
+| Class | Assertions |
+|-------|-----------|
+| `TestDrugMasterAutoPopulate` | `nappi_code` + `atc_code` populated from Code Values on before_save |
+| `TestCheckDrugAllergy` | ATC match warns; different ATC no warning; resolved allergy no warning; ingredient substring fallback |
+| `TestEncounterSafetyWarning` | `run_safety_checks` returns allergy warning; encounter saves; warnings attached to doc |
+| `TestPrescriptionOverrideReason` | Override row persists; covered warnings not re-surfaced |
+| `TestPrescriptionCrossTenant` | Encounter PQC excludes Practice B; override reason PQC excludes Practice B; `frappe.get_all` returns nothing for Practice B user |
+| `TestScheduleRuleCheck` | S5 + missing MP number warns; S6 always warns about no repeats; S4 no warning |
+
+All classes have `IGNORE_TEST_RECORD_DEPENDENCIES = ["Company", "Healthcare Practitioner"]`.
+
+#### Playwright UI (`tests/ui/test_prescription_panel_ui.py`) — 8 tests
+
+| Class | Assertions |
+|-------|-----------|
+| `TestPrescriptionPanelSPALoad` | SPA loads; `window.MPrescriptionPanel` defined; `window.MNappiPicker` defined |
+| `TestPrescriptionPanelRendering` | Empty state; add-drug appends row; NAPPI picker input visible; `cipro` search shows results; selection populates drug_name |
+| `TestCheckPrescriptionSafetyEndpoint` | Returns list; `get_drug_master_by_nappi` returns None for unknown; ciprofloxacin NAPPI CV exists in fixtures |
+
+### Judgment Calls
+
+1. **Drug Master is platform-level, not practice-scoped.** A medicine catalogue has no meaningful
+   tenant scoping — any doctor in any practice prescribes from the same SAHPRA-approved list.
+   DocPerms (read for Practice Doctor/Admin) replace a PQC.
+
+2. **ATC-class matching via `Patient Allergy.custom_atc_code`** rather than a Link field.
+   A free-text ATC code supports manually entered class allergies (e.g. "J01MA" entered by the
+   receptionist without needing a Code Value record). A Link would require the Code Value to exist
+   first — adding friction without safety benefit.
+
+3. **`before_save` uses `frappe.msgprint` (non-blocking)** — not `frappe.throw`.  SA clinical
+   workflows require prescriber override capability for documented clinical reasons.  Hard blocking
+   would prevent valid prescribing (e.g. only quinolone that covers Pseudomonas aeruginosa).
+
+4. **Dispensation event stub only (Phase 5)**: `custom_repeats_remaining` field exists but is
+   not decremented.  A `before_save` hook on Stock Entry (`custom_practice` + item matching) is
+   deferred to Phase 5 closed-loop dispensation.
+
+5. **`Prescription Override Reason` as child table of Patient Encounter** (not standalone).
+   Override reasons are encounter-scoped — there is no use case for querying overrides outside
+   the context of the encounter they belong to.  Child table keeps the data model simple and
+   isolation is guaranteed by the parent encounter's PQC.
+
+### Acceptance Gates
+
+- Python: `bench --site medic-demo-staging.thedaystar.co.za run-tests --app medic_plus --skip-before-tests`
+- Playwright: `env/bin/python -m pytest apps/medic_plus/medic_plus/tests/ui/ -v`
+
+Both must pass before merging to `main`.  The bench toolchain was not available in the development
+environment used for this commit; staging run is the acceptance gate.
+
+### Out of Scope (Deferred)
+
+- Dispensation event ingestion from pharmacy system (Phase 5 — event hook stub only)
+- E-prescribing transmission to pharmacy networks (Phase 5+)
+- Formulary check against medical-aid scheme (Phase 5)
+- Full production NAPPI catalogue (current 50+1 row seed is synthetic; production import via `bench import-nappi`)
+- Full Drug-Drug interaction table population (Healthcare's `Drug Interaction` doctype is checked but the table is empty on the demo site)
+
+---
+
 ## 2026-05-02 — Phase 4 (Issue #31): Telemedicine + AI Augmentation
 
 ### Scope
