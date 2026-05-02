@@ -98,6 +98,15 @@ fixtures = [
 			"Patient Appointment-custom_video_room_id",
 			"Patient Appointment-custom_video_join_url",
 			"Patient Appointment-custom_patient_join_url",
+			# Phase 1D — Drug safety / HPCSA Booklet 8
+			"Drug Prescription-custom_nappi_code_value",
+			"Drug Prescription-custom_schedule",
+			"Drug Prescription-custom_repeats_authorised",
+			"Drug Prescription-custom_repeats_remaining",
+			"Drug Prescription-custom_generic_substitution_allowed",
+			"Patient Allergy-custom_atc_code",
+			"Patient Encounter-custom_prescription_override_reasons",
+
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -141,6 +150,8 @@ permission_query_conditions = {
 	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
 	# Phase 1C — Structured SOAP encounter + Problem List
 	"Patient Problem List": "medic_plus.api.permissions.get_patient_problem_list_permission_query",
+	# Phase 1D — Drug safety doctypes
+	"Prescription Override Reason": "medic_plus.api.permissions.get_prescription_override_reason_permission_query",
 	# Phase 5.7 — Encounter Templates
 	"Encounter Template": "medic_plus.api.permissions.get_encounter_template_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
@@ -178,6 +189,7 @@ doc_events = {
 			"medic_plus.api.doc_events.set_practice_on_insert",
 			"medic_plus.api.doc_events.apply_encounter_template",
 		],
+		"before_save": "medic_plus.api.doc_events.run_prescription_safety",
 		"before_submit": "medic_plus.api.doc_events.validate_encounter_template_fields",
 		"on_submit": "medic_plus.api.doc_events.on_encounter_submit",
 	},

@@ -127,6 +127,44 @@ def update_checklist_on_first_invoice(doc, method=None):
 		on_billing_configured(practice)
 
 
+def run_prescription_safety(doc, method=None):
+	"""Phase 1D — non-blocking drug safety checks on Patient Encounter before_save.
+
+	Runs allergy, interaction, and schedule-rule checks for every Drug Prescription
+	row that carries a custom_nappi_code_value.  Warnings are surfaced via
+	frappe.msgprint (orange indicator, non-blocking) so the encounter saves
+	regardless.  The raw list is also attached to doc._drug_safety_warnings for
+	test assertions.
+
+	If custom_prescription_override_reasons rows are present, only warnings NOT
+	already covered by an override are re-surfaced.
+	"""
+	from medic_plus.api.drug_safety import run_safety_checks
+
+	warnings = run_safety_checks(doc)
+	if not warnings:
+		return
+
+	# Determine which warnings are already covered by an override reason row.
+	covered_drugs = {
+		row.drug_name
+		for row in (doc.custom_prescription_override_reasons or [])
+		if row.drug_name
+	}
+
+	uncovered = [w for w in warnings if w.get("drug") not in covered_drugs]
+	if not uncovered:
+		return
+
+	lines = "\n".join(f"• {w['message']}" for w in uncovered)
+	frappe.msgprint(
+		msg=lines,
+		title="Prescription Safety Warning",
+		indicator="orange",
+		raise_exception=False,
+	)
+
+
 def validate_patient_identifiers(doc, method=None):
     """Validate Patient Identifier child rows and derive DOB/sex from SA ID.
 
