@@ -1,0 +1,170 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "processor_name",
+  "category",
+  "column_break_1",
+  "is_active",
+  "data_location",
+  "section_agreement",
+  "dpa_signed_date",
+  "dpa_reference",
+  "column_break_agreement",
+  "annual_review_date",
+  "review_contact",
+  "section_scope",
+  "personal_data_types",
+  "processing_purposes",
+  "column_break_scope",
+  "transfer_mechanism",
+  "adequacy_decision",
+  "section_contact",
+  "privacy_policy_url",
+  "breach_notification_hours",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "processor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Processor Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "AI\nCommunications\nLaboratory\nHealthSwitching\nPayments\nStorage\nOther"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Active"
+  },
+  {
+   "fieldname": "data_location",
+   "fieldtype": "Data",
+   "label": "Data Location (Country/Region)"
+  },
+  {
+   "fieldname": "section_agreement",
+   "fieldtype": "Section Break",
+   "label": "DPA Agreement"
+  },
+  {
+   "fieldname": "dpa_signed_date",
+   "fieldtype": "Date",
+   "label": "DPA Signed Date"
+  },
+  {
+   "fieldname": "dpa_reference",
+   "fieldtype": "Data",
+   "label": "DPA Reference / Version"
+  },
+  {
+   "fieldname": "column_break_agreement",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "annual_review_date",
+   "fieldtype": "Date",
+   "label": "Next Annual Review"
+  },
+  {
+   "fieldname": "review_contact",
+   "fieldtype": "Data",
+   "label": "Review Contact Email"
+  },
+  {
+   "fieldname": "section_scope",
+   "fieldtype": "Section Break",
+   "label": "Processing Scope"
+  },
+  {
+   "fieldname": "personal_data_types",
+   "fieldtype": "Small Text",
+   "label": "Personal Data Types Processed"
+  },
+  {
+   "fieldname": "processing_purposes",
+   "fieldtype": "Small Text",
+   "label": "Processing Purposes"
+  },
+  {
+   "fieldname": "column_break_scope",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "StandardContractualClauses",
+   "fieldname": "transfer_mechanism",
+   "fieldtype": "Select",
+   "label": "Cross-Border Transfer Mechanism",
+   "options": "AdequacyDecision\nStandardContractualClauses\nBindingCorporateRules\nConsentBased\nNotApplicable"
+  },
+  {
+   "fieldname": "adequacy_decision",
+   "fieldtype": "Data",
+   "label": "Adequacy Decision Reference"
+  },
+  {
+   "fieldname": "section_contact",
+   "fieldtype": "Section Break",
+   "label": "Contact & Breach"
+  },
+  {
+   "fieldname": "privacy_policy_url",
+   "fieldtype": "Data",
+   "label": "Privacy Policy URL"
+  },
+  {
+   "default": "72",
+   "fieldname": "breach_notification_hours",
+   "fieldtype": "Int",
+   "label": "Breach Notification SLA (hours)"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Sub-Processor Register",
+ "naming_rule": "Expression (old style)",
+ "autoname": "field:processor_name",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "write": 1,
+   "role": "Healthcare Administrator",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Practice Admin"
+  }
+ ],
+ "sort_field": "processor_name",
+ "sort_order": "ASC",
+ "track_changes": 1
+}

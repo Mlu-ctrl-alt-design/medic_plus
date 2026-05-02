@@ -1,0 +1,186 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "practice",
+  "purpose",
+  "column_break_1",
+  "status",
+  "version",
+  "section_dates",
+  "consented_on",
+  "consented_by",
+  "column_break_dates",
+  "withdrawn_on",
+  "withdrawal_reason",
+  "section_context",
+  "consent_text_hash",
+  "lawful_basis",
+  "column_break_context",
+  "ip_address",
+  "user_agent",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practice",
+   "options": "Practice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Purpose",
+   "options": "Treatment\nBilling\nResearch\nMarketing\nAI\nInsurance\nPublicHealth\nLegal\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Given",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Given\nWithdrawn\nExpired\nPending"
+  },
+  {
+   "default": "1",
+   "fieldname": "version",
+   "fieldtype": "Int",
+   "label": "Version",
+   "description": "Incremented on each superseding consent for audit trail"
+  },
+  {
+   "fieldname": "section_dates",
+   "fieldtype": "Section Break",
+   "label": "Consent Dates"
+  },
+  {
+   "fieldname": "consented_on",
+   "fieldtype": "Datetime",
+   "label": "Consented On",
+   "reqd": 1
+  },
+  {
+   "fieldname": "consented_by",
+   "fieldtype": "Data",
+   "label": "Consented By",
+   "description": "Email or identifier of the person who gave consent"
+  },
+  {
+   "fieldname": "column_break_dates",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "withdrawn_on",
+   "fieldtype": "Datetime",
+   "label": "Withdrawn On"
+  },
+  {
+   "fieldname": "withdrawal_reason",
+   "fieldtype": "Small Text",
+   "label": "Withdrawal Reason"
+  },
+  {
+   "fieldname": "section_context",
+   "fieldtype": "Section Break",
+   "label": "Consent Context",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "consent_text_hash",
+   "fieldtype": "Data",
+   "label": "Consent Text Hash (SHA-256)",
+   "read_only": 1,
+   "description": "SHA-256 of the consent notice shown to the patient at the time of consent"
+  },
+  {
+   "default": "Consent",
+   "fieldname": "lawful_basis",
+   "fieldtype": "Select",
+   "label": "Lawful Basis (POPIA s11)",
+   "options": "Consent\nContractualObligation\nLegalObligation\nVitalInterest\nPublicInterest\nLegitimateInterest"
+  },
+  {
+   "fieldname": "column_break_context",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address",
+   "read_only": 1
+  },
+  {
+   "fieldname": "user_agent",
+   "fieldtype": "Small Text",
+   "label": "User Agent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Patient Consent Record",
+ "naming_rule": "Expression (old style)",
+ "autoname": "PCR-.#####",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "write": 1,
+   "role": "Healthcare Administrator",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Practice Admin"
+  },
+  {
+   "read": 1,
+   "role": "Practice Doctor"
+  },
+  {
+   "read": 1,
+   "role": "Practice Receptionist"
+  },
+  {
+   "read": 1,
+   "role": "Patient"
+  }
+ ],
+ "search_fields": "patient,purpose,status",
+ "sort_field": "consented_on",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

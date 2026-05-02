@@ -135,6 +135,8 @@ fixtures = [
 	{"dt": "Backup Drill Log"},
 	# Phase 1E — Claims: Tariff Code master, Switch Configuration (no filter — platform-wide)
 	{"dt": "Tariff Code"},
+	# Phase 1E — POPIA scaffold
+	{"dt": "Sub-Processor Register"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
@@ -254,6 +256,7 @@ scheduler_events = {
 	},
 	"daily": [
 		"medic_plus.api.retention.flag_overdue_records",
+		"medic_plus.api.retention.flag_expired_consent_records",
 	],
 }
 
