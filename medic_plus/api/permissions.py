@@ -357,3 +357,38 @@ def get_encounter_template_permission_query(user: str = None) -> str:
 		f"(`tabEncounter Template`.`is_platform_template` = 1"
 		f" OR `tabEncounter Template`.`practice` = {escaped})"
 	)
+
+
+# Phase 4 — Telemedicine + AI
+
+def get_practice_ai_settings_permission_query(user: str = None) -> str:
+	"""PQC for Practice AI Settings — scoped to the user's practice."""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabPractice AI Settings`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_ai_inference_log_permission_query(user: str = None) -> str:
+	"""PQC for AI Inference Log — scoped to the user's practice."""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabAI Inference Log`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_telemedicine_consent_permission_query(user: str = None) -> str:
+	"""PQC for Telemedicine Consent — scoped to the user's practice."""
+	if _is_platform_admin(user):
+		return ""
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		patient = _get_patient_name_for_user(user)
+		return f"`tabTelemedicine Consent`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabTelemedicine Consent`.`practice` = {frappe.db.escape(practice)}"

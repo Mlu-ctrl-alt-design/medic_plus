@@ -91,7 +91,13 @@ fixtures = [
 			"Patient Encounter-custom_plan",
 			"Patient Encounter-custom_section_examination",
 			"Patient Encounter-custom_examination_findings",
-
+			# Phase 4 — Telemedicine + AI
+			"Patient-custom_ai_consent",
+			"Patient Appointment-custom_video_section",
+			"Patient Appointment-custom_consultation_type",
+			"Patient Appointment-custom_video_room_id",
+			"Patient Appointment-custom_video_join_url",
+			"Patient Appointment-custom_patient_join_url",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -145,6 +151,10 @@ permission_query_conditions = {
 	# Data masking / consent
 	"Data Unmask Request": "medic_plus.api.permissions.get_data_unmask_request_permission_query",
 	"Clinical Access Log": "medic_plus.api.permissions.get_clinical_access_log_permission_query",
+	# Phase 4 — Telemedicine + AI
+	"Practice AI Settings": "medic_plus.api.permissions.get_practice_ai_settings_permission_query",
+	"AI Inference Log": "medic_plus.api.permissions.get_ai_inference_log_permission_query",
+	"Telemedicine Consent": "medic_plus.api.permissions.get_telemedicine_consent_permission_query",
 	# Financial doctypes — scoped via practice's ERPNext Company
 	"Sales Invoice": "medic_plus.api.permissions.get_sales_invoice_permission_query",
 	"POS Profile": "medic_plus.api.permissions.get_pos_profile_permission_query",

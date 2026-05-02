@@ -4,6 +4,199 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-05-02 — Phase 4 (Issue #31): Telemedicine + AI Augmentation
+
+### Scope
+
+Three parallel capabilities shipped as one phase:
+1. **Telemedicine** — video consultation rooms (Jitsi Meet / LiveKit Cloud), patient one-time-token join URLs, HPCSA Booklet 10 informed consent, telemedicine tariff mapping.
+2. **AI gateway** — Anthropic SDK wrapper with prompt caching, PHI redaction, spend-cap enforcement, and per-practice feature toggles.
+3. **Three AI features** — note generation (Whisper → SOAP), differential diagnosis (top-3 ICD-10), and Rx sanity check (third warning row alongside deterministic checks).
+
+Pre-cleared HITL gates: Anthropic spend agreement signed; sub-processor disclosure updated; Patient AI Consent UX reviewed.
+
+### New DocTypes
+
+#### Practice AI Settings
+- **Purpose:** Per-practice AI feature toggles and spend cap.
+- **Naming:** `autoname: field:practice` — one record per Practice.
+- **Key fields:** `ai_enabled` (master switch), `note_gen_enabled`, `ddx_enabled`, `rx_check_enabled`, `default_model` (Sonnet 4.6 / Opus 4.7), `monthly_spend_cap_usd` (0 = no cap), `current_month_spend_usd` (read-only).
+- **PQC:** Practice Admin + Practice Doctor see only their own practice's settings. Healthcare Administrator sees all.
+- **Auto-disable:** `_check_and_enforce_spend_cap(practice)` sums `AI Inference Log.cost_usd` for the current calendar month via `frappe.db.sql`; if `total ≥ cap > 0`, sets `ai_enabled = 0`.
+
+#### AI Inference Log
+- **Purpose:** Append-only audit trail for every AI inference call.
+- **Naming:** `AIL-.YYYY.-.#####`
+- **Key fields:** `practice`, `encounter`, `practitioner`, `feature` (note_gen/ddx/rx_check), `input_redacted` (PHI stripped), `output`, `model`, `latency_ms`, `cost_usd`, `practitioner_action` (Pending/Accepted/Edited/Discarded).
+- **Validation:** `validate()` scans `input_redacted` for 13-digit runs (SA ID pattern) and throws if found — belt-and-suspenders against PHI leakage.
+- **PQC:** Practice Admin/Doctor see their practice's logs. Healthcare Administrator sees all.
+
+#### Telemedicine Consent
+- **Purpose:** Records patient's informed consent for telemedicine under HPCSA Booklet 10.
+- **Naming:** `TC-.YYYY.-.#####`
+- **Validity:** 12 months from `consent_date`. `expiry_date` is auto-set in `before_insert`.
+- **Consent text:** Full HPCSA Booklet 10 telemedicine policy text stored verbatim on each record so it survives future policy changes.
+- **Re-prompt:** `get_tele_consent_status(patient, practice)` returns `"active" | "expired" | "revoked" | "required"`. UI re-prompts on `expired` or `required`.
+- **PQC:** Practice staff see their practice's consents; Patient role sees only their own record.
+
+### Custom Fields Added
+
+| DocType | Field | Type | Purpose |
+|---------|-------|------|---------|
+| Patient | `custom_ai_consent` | Check | Master gate — AI calls blocked if False regardless of practice settings |
+| Patient Appointment | `custom_video_section` | Section Break | Groups telemedicine fields |
+| Patient Appointment | `custom_consultation_type` | Select (In-Person/Telemedicine/Phone) | Consultation modality |
+| Patient Appointment | `custom_video_room_id` | Data (read-only) | Room ID set by `create_room()` |
+| Patient Appointment | `custom_video_join_url` | Data (read-only) | Practitioner URL |
+| Patient Appointment | `custom_patient_join_url` | Data (read-only) | Patient one-time-token URL |
+
+All fields added to `fixtures/custom_field.json` and `hooks.py` filter list.
+
+### Medic Plus Settings — New Fields
+
+| Field | Purpose |
+|-------|---------|
+| `anthropic_api_key` | Anthropic SDK auth |
+| `openai_api_key` | Whisper transcription |
+| `video_provider` | "jitsi" (default) or "livekit" |
+| `video_base_url` | Jitsi server or LiveKit base URL |
+| `livekit_api_key` / `livekit_api_secret` | LiveKit Cloud auth |
+
+### API Modules
+
+#### `medic_plus.api.ai` — AI Gateway
+
+```python
+redact_phi(text, phi_map) → (redacted_text, token_map)
+restore_phi(text, token_map) → original_text
+call_claude(*, system, user, practice, feature, model, patient_ai_consent) → dict
+generate_soap_note(audio_b64, encounter, practice, practitioner, patient_ai_consent, patient_phi) → dict
+suggest_ddx(subjective, objective, practice, practitioner, encounter, patient_ai_consent) → dict
+rx_sanity_check(medications, allergies, practice, practitioner, encounter, patient_ai_consent) → dict
+```
+
+**PHI redaction design:**
+- `_PHI_FIELDS`: `patient_name, email, mobile, phone, dob, custom_sa_id_number, address, first_name, last_name, middle_name`
+- Each PHI value is hashed via SHA-256 → `[PATIENT_<8-hex>]` token. Deterministic within one call.
+- Sub-tokens (first/last name split on whitespace/comma) are also redacted individually.
+- Substitution is longest-match-first to prevent partial replacement.
+- `restore_phi()` inverts the token map to put values back into AI output before returning to the caller.
+- `AI Inference Log.input_redacted` stores the redacted text only — raw PHI never persists.
+
+**Anthropic SDK integration:**
+- Lazy client instantiation: `_get_anthropic_client()` is patched in all tests.
+- System prompt sent as a list block with `cache_control: {"type": "ephemeral"}` — activates Anthropic prompt caching.
+- Default model: `claude-sonnet-4-6`. Opus 4.7 opt-in per practice for DDx.
+- Cost tracked: `(input_tokens × input_rate + output_tokens × output_rate) / 1_000_000` USD.
+
+**Enforcement chain (call_claude):**
+1. `patient_ai_consent == False` → PermissionError before any API call.
+2. `Practice AI Settings.ai_enabled == False` → PermissionError.
+3. `Practice AI Settings.<feature>_enabled == False` → PermissionError.
+4. Call Anthropic API.
+5. `_check_and_enforce_spend_cap(practice)` — auto-disable if over cap.
+6. `_log_inference(...)` — append AI Inference Log row.
+
+#### `medic_plus.api.tele` — Telemedicine Room Management
+
+```python
+create_room(appointment, practice, patient) → {room_id, practitioner_url, patient_join_url, patient_token}
+get_tele_consent_status(patient, practice) → {status, consent?}
+record_tele_consent(patient, practice) → {consent, expiry_date}
+validate_patient_token(token, room_id) → {valid, appointment?}
+```
+
+**Room ID:** `medic-{frappe.generate_hash(appointment, 10).upper()}` — opaque, collision-resistant.
+
+**Patient join URL:** `{site_url}/teleconsult/{room_id}?token={patient_token}&role=patient`
+- Token stored in Frappe cache with 2-hour TTL (`tele_patient_token:{token}` → appointment name).
+- Token is bound to the appointment's room_id; mismatched claims are rejected.
+
+**Provider selection:** `Medic Plus Settings.video_provider` — "jitsi" (default, room = URL path) or "livekit" (room creation via LiveKit Server SDK).
+
+### Web Page: `/teleconsult/<room_id>`
+
+Authenticated Jinja page. Context resolved in `www/teleconsult/index.py`.
+
+**Practitioner view:**
+- Split layout: embedded Jitsi iframe (left) + Encounter Editor side-panel (right).
+- Side panel: SOAP textareas (Subjective / Objective / Assessment / Plan).
+- "Start Dictation" button: `MediaRecorder` captures 30s of audio → base64 → `generate_soap_note()` → fills SOAP fields. AI Draft badge shown.
+- "Sign Encounter" button: saves the encounter.
+
+**Patient view:**
+- `?role=patient&token=<token>` — token validated server-side via `validate_patient_token()`.
+- Valid: embedded Jitsi iframe (full width).
+- Invalid/expired: waiting room spinner + error message.
+
+### Permission Query Conditions (New)
+
+| DocType | Function |
+|---------|----------|
+| Practice AI Settings | `get_practice_ai_settings_permission_query` |
+| AI Inference Log | `get_ai_inference_log_permission_query` |
+| Telemedicine Consent | `get_telemedicine_consent_permission_query` |
+
+### Tests
+
+#### Python (`medic_plus/api/test_ai.py`) — 12 test methods across 5 classes
+
+| Class | Behaviours |
+|-------|-----------|
+| `TestPhiRedactor` | SA ID redacted; patient name + sub-tokens redacted; email/mobile/DOB redacted; tokens deterministic within one call; `restore_phi` round-trips; corpus fuzz (3 patients, 6 PHI fields each — no sub-token ≥4 chars leaks into redacted output) |
+| `TestAiGatewayMocked` | `call_claude()` returns text + latency/cost; system prompt carries `cache_control`; blocked when practice AI disabled; blocked when patient consent False |
+| `TestMonthlySpendCapAutoDisable` | Under-cap does not disable; over-cap sets `ai_enabled=0`; zero cap never disables |
+| `TestNoteGeneration` | SOAP note fills four sections; PHI not present in outbound Claude payload |
+| `TestDifferentialDiagnosis` | Returns 3 candidates with icd_code + description |
+| `TestRxSanityCheck` | Returns warning text for interaction |
+
+#### Python (`medic_plus/api/test_tele.py`) — 6 test methods across 2 classes
+
+| Class | Behaviours |
+|-------|-----------|
+| `TestCreateRoom` | Returns room_id + practitioner_url + patient_join_url + patient_token; token appears in patient_join_url |
+| `TestTelemedicineConsentCheck` | Active, expired, revoked, required statuses |
+
+#### Playwright (`medic_plus/tests/ui/test_telemedicine_ai.py`) — 9 test methods across 5 classes
+
+| Class | Behaviours |
+|-------|-----------|
+| `TestPracticeAiSettingsUi` | List reachable; new form shows ai_enabled; spend cap field visible |
+| `TestPatientAiConsentUi` | Patient form has custom_ai_consent field |
+| `TestPatientAppointmentTeleFields` | Appointment form has consultation_type; options include Telemedicine/Phone |
+| `TestTeleconsultPage` | Loads for authenticated admin; unauthenticated redirects to login |
+| `TestAiInferenceLogUi` | List reachable; new form shows input_redacted + practitioner_action |
+| `TestTelemedicineConsentUi` | List reachable; form has HPCSA acknowledgement; consent API endpoint works |
+
+### Design Decisions
+
+| Decision | Reason |
+|----------|--------|
+| PHI redaction via deterministic SHA-256 tokens | Idempotent — same input always produces same token; allows `restore_phi()` to swap tokens back into AI output if needed |
+| `restore_phi()` available but not used in SOAP output | SOAP note is stored as AI draft for practitioner review; PHI-safe version stored in AI Inference Log; practitioner supplies context via real encounter record |
+| Anthropic client instantiated lazily | `_get_anthropic_client()` is patchable before any module-level import; keeps CI clean with no live network |
+| `cache_control: ephemeral` on system prompt | Activates Anthropic prompt caching — clinical system prompts repeat across many calls; saves 90%+ of input-token cost on cached portion |
+| Monthly cap via `frappe.db.sql` sum | Avoids loading every AI Inference Log doc into memory; single SQL aggregate per call; zero-cap = unconditional skip |
+| Patient join URL uses one-time token in Redis cache | Token is bound to appointment → room_id; 2-hour TTL prevents indefinite access; token is never the appointment name (opaque) |
+| Jitsi as default provider | Self-hosted option; no SDK dependency; room = URL path; zero provisioning cost for testing |
+| LiveKit as opt-in | Requires `livekit` SDK; used when practice needs TURN/STUN or recording |
+| AI Inference Log validates SA ID pattern in input_redacted | Belt-and-suspenders: if redactor has a bug, DB-level guard prevents 13-digit run from persisting |
+| Telemedicine Consent stores full HPCSA text verbatim | Future policy changes don't retroactively rewrite what was shown to the patient |
+
+### Out of Scope (Deferred)
+
+- Full encounter save/sign workflow from teleconsult side-panel (Phase 4 close)
+- Insurance Claim auto-build with telemedicine tariff code 0190V (Phase 4B)
+- DDx model override to Opus 4.7 per-practice toggle (field exists; UX deferred)
+- Whisper integration with self-hosted server (currently uses OpenAI Whisper endpoint)
+- SMS/WhatsApp notification for patient join URL (Africa's Talking — Phase 5)
+
+### Sub-Processor Register
+
+Anthropic added as sub-processor: processes de-identified/tokenized consultation transcriptions for clinical NLP. Raw PHI never leaves the bench — redaction runs server-side before any API call. Updated in Privacy Notice (HITL gate cleared pre-implementation).
+
+---
+
 ## 2026-05-02 — Phase 1C (Issue #26): Structured SOAP Encounter + Problem List + Encounter Order
 
 ### Scope
