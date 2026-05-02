@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "issued_to",
+  "practice",
+  "token_hash",
+  "column_break_1",
+  "scope",
+  "expires_at",
+  "is_active"
+ ],
+ "fields": [
+  {
+   "fieldname": "issued_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Issued To (User)",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practice",
+   "options": "Practice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "token_hash",
+   "fieldtype": "Data",
+   "label": "Token Hash (SHA-256)",
+   "reqd": 1,
+   "unique": 1,
+   "read_only": 1,
+   "description": "SHA-256 of the raw bearer token — raw token is never stored"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scope",
+   "fieldtype": "Small Text",
+   "label": "SMART Scope",
+   "description": "Space-delimited SMART v2 scopes, e.g. patient/*.read"
+  },
+  {
+   "fieldname": "expires_at",
+   "fieldtype": "Datetime",
+   "label": "Expires At",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Active"
+  }
+ ],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "FHIR Access Token",
+ "naming_rule": "Expression (old style)",
+ "autoname": "FAT-.#####",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Healthcare Administrator"
+  },
+  {
+   "read": 1,
+   "role": "Practice Admin"
+  },
+  {
+   "read": 1,
+   "role": "Practice Doctor"
+  }
+ ],
+ "sort_field": "expires_at",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

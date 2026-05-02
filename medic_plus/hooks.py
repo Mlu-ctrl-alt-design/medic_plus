@@ -137,6 +137,14 @@ fixtures = [
 	{"dt": "Tariff Code"},
 	# Phase 1E — POPIA scaffold
 	{"dt": "Sub-Processor Register"},
+	# Phase 1E — FHIR (no static seed; tokens are runtime-generated)
+]
+
+# ---------------------------------------------------------------------------
+# FHIR R4 website route rules
+# ---------------------------------------------------------------------------
+website_route_rules = [
+	{"from_route": "/api/fhir/R4/<path:path>", "to_route": "api/fhir/R4"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
@@ -179,6 +187,8 @@ permission_query_conditions = {
 	"Switch Configuration": "medic_plus.api.permissions.get_switch_configuration_permission_query",
 	# Phase 1E — POPIA consent
 	"Patient Consent Record": "medic_plus.api.permissions.get_patient_consent_record_permission_query",
+	# Phase 1E — FHIR tokens
+	"FHIR Access Token": "medic_plus.api.permissions.get_fhir_access_token_permission_query",
 	# Financial doctypes — scoped via practice's ERPNext Company
 	"Sales Invoice": "medic_plus.api.permissions.get_sales_invoice_permission_query",
 	"POS Profile": "medic_plus.api.permissions.get_pos_profile_permission_query",
