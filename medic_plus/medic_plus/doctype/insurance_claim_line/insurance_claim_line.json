@@ -1,0 +1,83 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "line_type",
+  "code",
+  "description",
+  "column_break_1",
+  "quantity",
+  "unit_fee",
+  "total_fee",
+  "status",
+  "rejection_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "line_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Line Type",
+   "options": "Diagnosis\nProcedure\nMedication",
+   "reqd": 1
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Code",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "label": "Qty"
+  },
+  {
+   "default": "0.00",
+   "fieldname": "unit_fee",
+   "fieldtype": "Currency",
+   "label": "Unit Fee"
+  },
+  {
+   "default": "0.00",
+   "fieldname": "total_fee",
+   "fieldtype": "Currency",
+   "label": "Total Fee"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Line Status",
+   "options": "Pending\nAccepted\nPartial\nRejected"
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason"
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Insurance Claim Line",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC"
+}

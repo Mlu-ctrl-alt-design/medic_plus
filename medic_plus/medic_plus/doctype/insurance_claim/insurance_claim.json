@@ -1,0 +1,190 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "practice",
+  "patient",
+  "encounter",
+  "column_break_1",
+  "status",
+  "submitted_at",
+  "switch_reference",
+  "section_scheme",
+  "scheme_name",
+  "member_id",
+  "column_break_scheme",
+  "dependent_code",
+  "authorisation_reference",
+  "section_lines",
+  "claim_lines",
+  "section_response",
+  "raw_response",
+  "column_break_response",
+  "response_code",
+  "response_message"
+ ],
+ "fields": [
+  {
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practice",
+   "options": "Practice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fieldname": "encounter",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient Encounter",
+   "options": "Patient Encounter",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nAccepted\nPartial\nRejected\nError"
+  },
+  {
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "label": "Submitted At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "switch_reference",
+   "fieldtype": "Data",
+   "label": "Switch Reference",
+   "read_only": 1,
+   "description": "Unique reference returned by Healthbridge on submission"
+  },
+  {
+   "fieldname": "section_scheme",
+   "fieldtype": "Section Break",
+   "label": "Medical Aid Details"
+  },
+  {
+   "fieldname": "scheme_name",
+   "fieldtype": "Data",
+   "label": "Scheme Name"
+  },
+  {
+   "fieldname": "member_id",
+   "fieldtype": "Data",
+   "label": "Member ID"
+  },
+  {
+   "fieldname": "column_break_scheme",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dependent_code",
+   "fieldtype": "Data",
+   "label": "Dependent Code"
+  },
+  {
+   "fieldname": "authorisation_reference",
+   "fieldtype": "Data",
+   "label": "Authorisation Reference"
+  },
+  {
+   "fieldname": "section_lines",
+   "fieldtype": "Section Break",
+   "label": "Claim Lines"
+  },
+  {
+   "fieldname": "claim_lines",
+   "fieldtype": "Table",
+   "label": "Claim Lines",
+   "options": "Insurance Claim Line"
+  },
+  {
+   "fieldname": "section_response",
+   "fieldtype": "Section Break",
+   "label": "Switch Response",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "raw_response",
+   "fieldtype": "Code",
+   "label": "Raw Response",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_response",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "response_code",
+   "fieldtype": "Data",
+   "label": "Response Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_message",
+   "fieldtype": "Small Text",
+   "label": "Response Message",
+   "read_only": 1
+  }
+ ],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Insurance Claim",
+ "naming_rule": "Expression (old style)",
+ "autoname": "IC-.#####",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "write": 1,
+   "role": "Healthcare Administrator",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "email": 1,
+   "print": 1,
+   "role": "Practice Admin"
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "role": "Practice Doctor"
+  },
+  {
+   "read": 1,
+   "role": "Practice Receptionist"
+  }
+ ],
+ "search_fields": "patient,encounter,status",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "practice",
+  "provider_code",
+  "column_break_1",
+  "is_active",
+  "section_endpoint",
+  "endpoint_url",
+  "sender_id",
+  "column_break_endpoint",
+  "username",
+  "password",
+  "section_options",
+  "timeout_seconds",
+  "column_break_options",
+  "retry_on_failure"
+ ],
+ "fields": [
+  {
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practice",
+   "options": "Practice",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "provider_code",
+   "fieldtype": "Data",
+   "label": "Practice Provider Code",
+   "description": "BHF-issued practice provider number for Healthbridge switching"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Active"
+  },
+  {
+   "fieldname": "section_endpoint",
+   "fieldtype": "Section Break",
+   "label": "Healthbridge Endpoint"
+  },
+  {
+   "fieldname": "endpoint_url",
+   "fieldtype": "Data",
+   "label": "Endpoint URL",
+   "description": "Leave blank to use platform default. Override only for staging/UAT."
+  },
+  {
+   "fieldname": "sender_id",
+   "fieldtype": "Data",
+   "label": "Sender PR Number"
+  },
+  {
+   "fieldname": "column_break_endpoint",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "label": "Username"
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "label": "Password"
+  },
+  {
+   "fieldname": "section_options",
+   "fieldtype": "Section Break",
+   "label": "Options"
+  },
+  {
+   "default": "30",
+   "fieldname": "timeout_seconds",
+   "fieldtype": "Int",
+   "label": "HTTP Timeout (seconds)"
+  },
+  {
+   "fieldname": "column_break_options",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "retry_on_failure",
+   "fieldtype": "Check",
+   "label": "Retry on Failure"
+  }
+ ],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Switch Configuration",
+ "naming_rule": "Expression (old style)",
+ "autoname": "field:practice",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Healthcare Administrator"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Practice Admin"
+  }
+ ],
+ "sort_field": "practice",
+ "sort_order": "ASC",
+ "track_changes": 1
+}

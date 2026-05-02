@@ -1,0 +1,116 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "code",
+  "description",
+  "column_break_1",
+  "scheme",
+  "unit_type",
+  "section_fees",
+  "base_fee",
+  "column_break_fees",
+  "vat_applicable",
+  "is_active"
+ ],
+ "fields": [
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tariff Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "BHF/SAMA",
+   "fieldname": "scheme",
+   "fieldtype": "Select",
+   "label": "Scheme",
+   "options": "BHF/SAMA\nNHIF\nOther"
+  },
+  {
+   "fieldname": "unit_type",
+   "fieldtype": "Select",
+   "label": "Unit Type",
+   "options": "Consultation\nProcedure\nLabTest\nImaging\nMedication\nOther"
+  },
+  {
+   "fieldname": "section_fees",
+   "fieldtype": "Section Break",
+   "label": "Fees"
+  },
+  {
+   "default": "0.00",
+   "fieldname": "base_fee",
+   "fieldtype": "Currency",
+   "label": "Base Fee (ZAR)"
+  },
+  {
+   "fieldname": "column_break_fees",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "vat_applicable",
+   "fieldtype": "Check",
+   "label": "VAT Applicable"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  }
+ ],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Tariff Code",
+ "naming_rule": "Expression (old style)",
+ "autoname": "field:code",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Practice Admin"
+  },
+  {
+   "read": 1,
+   "role": "Practice Doctor"
+  },
+  {
+   "read": 1,
+   "role": "Practice Receptionist"
+  }
+ ],
+ "search_fields": "code,description",
+ "sort_field": "code",
+ "sort_order": "ASC",
+ "track_changes": 0
+}
