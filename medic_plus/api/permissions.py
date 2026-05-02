@@ -377,11 +377,6 @@ def get_encounter_template_permission_query(user: str = None) -> str:
 
 def get_practice_ai_settings_permission_query(user: str = None) -> str:
 	"""PQC for Practice AI Settings — scoped to the user's practice."""
-# ---------------------------------------------------------------------------
-# Phase 1E — Claims + POPIA
-# ---------------------------------------------------------------------------
-
-def get_insurance_claim_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
@@ -392,10 +387,6 @@ def get_insurance_claim_permission_query(user: str = None) -> str:
 
 def get_ai_inference_log_permission_query(user: str = None) -> str:
 	"""PQC for AI Inference Log — scoped to the user's practice."""
-	return f"`tabInsurance Claim`.`practice` = {frappe.db.escape(practice)}"
-
-
-def get_switch_configuration_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""
 	practice = _get_user_practice(user)
@@ -415,6 +406,27 @@ def get_telemedicine_consent_permission_query(user: str = None) -> str:
 	if not practice:
 		return "1=0"
 	return f"`tabTelemedicine Consent`.`practice` = {frappe.db.escape(practice)}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 1E — Claims + POPIA
+# ---------------------------------------------------------------------------
+
+def get_insurance_claim_permission_query(user: str = None) -> str:
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabInsurance Claim`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_switch_configuration_permission_query(user: str = None) -> str:
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
 	return f"`tabSwitch Configuration`.`practice` = {frappe.db.escape(practice)}"
 
 
