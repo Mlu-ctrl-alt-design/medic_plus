@@ -553,3 +553,60 @@ def get_patient_detail(patient: str) -> dict:
     if patient_practice != practice:
         raise frappe.PermissionError("Patient does not belong to your practice.")
     return build_patient_summary(patient_name=patient, practice=practice)
+
+
+@frappe.whitelist()
+def check_prescription_safety(patient: str, nappi_code_values: str = "[]") -> list:
+    """Return aggregated safety warnings for the given NAPPI Code Values / patient.
+
+    Called by the SPA prescription panel on every NAPPI selection change.
+    ``nappi_code_values`` is a JSON-encoded list of Code Value names (e.g.
+    ["719318-NAPPI", "719390-NAPPI"]).  Returns a list of warning dicts
+    (see api/drug_safety.py for the shape).
+
+    Cross-tenant guard: patient must belong to the caller's active practice.
+    """
+    import json as _json
+    from medic_plus.api.drug_safety import (
+        check_drug_allergy,
+        check_drug_interaction,
+        check_schedule_rule,
+        _get_drug_master,
+    )
+
+    practice = get_active_practice()
+    patient_practice = frappe.db.get_value("Patient", patient, "custom_practice")
+    if patient_practice != practice:
+        raise frappe.PermissionError("Patient does not belong to your practice.")
+
+    cvs = _json.loads(nappi_code_values) if isinstance(nappi_code_values, str) else nappi_code_values
+
+    all_warnings: list[dict] = []
+    for nappi_cv in cvs:
+        dm = _get_drug_master(nappi_cv)
+        if not dm:
+            continue
+        drug_name = dm.get("drug_name") or nappi_cv
+        atc_code = dm.get("atc_code")
+        all_warnings.extend(check_drug_allergy(patient, atc_code, drug_name))
+        all_warnings.extend(check_schedule_rule(nappi_cv, prescriber=None))
+
+    all_warnings.extend(check_drug_interaction(cvs))
+    return all_warnings
+
+
+@frappe.whitelist()
+def get_drug_master_by_nappi(nappi_code_value: str) -> dict | None:
+    """Return Drug Master fields for the given NAPPI Code Value name.
+
+    Used by the SPA prescription panel to auto-fill schedule, strength,
+    and dosage form after NAPPI selection.
+    """
+    if not nappi_code_value:
+        return None
+    return frappe.db.get_value(
+        "Drug Master",
+        {"nappi_code_value": nappi_code_value},
+        ["name", "drug_name", "nappi_code", "atc_code", "schedule", "strength", "dosage_form"],
+        as_dict=True,
+    )
