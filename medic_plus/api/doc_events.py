@@ -297,3 +297,9 @@ def sync_practice_doctors(doc, method=None):
 	for practitioner, pm_name in existing_map.items():
 		if practitioner not in current_practitioners:
 			frappe.delete_doc("Practice Member", pm_name, ignore_permissions=True, force=True)
+
+
+def build_claim_on_submit(doc, method=None):
+	"""Phase 1E — auto-build a Draft Insurance Claim when an encounter is submitted."""
+	from medic_plus.api.claims import auto_build_claim_for_encounter
+	auto_build_claim_for_encounter(doc.name)
