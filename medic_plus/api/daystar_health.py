@@ -478,6 +478,69 @@ def get_patient_medical_aid(patient: str) -> list:
 
 
 @frappe.whitelist()
+def get_encounter_detail(encounter: str) -> dict:
+	"""Return a POPIA-safe composite payload for a single Patient Encounter.
+
+	Cross-tenant guard: the encounter must belong to the caller's active
+	Practice.  PermissionError is raised for cross-practice requests so
+	the response cannot be used to probe Practice membership.
+
+	Payload shape:
+	  {
+	    encounter: { ...SOAP fields, examination_findings: [...], orders: [...] },
+	    problem_list: [ ...Patient Problem List rows for this patient ],
+	  }
+	"""
+	practice = get_active_practice()
+	enc_practice = frappe.db.get_value("Patient Encounter", encounter, "custom_practice")
+	if enc_practice != practice:
+		raise frappe.PermissionError("Encounter does not belong to your practice.")
+
+	enc_doc = frappe.get_doc("Patient Encounter", encounter)
+
+	enc_payload = {
+		"name": enc_doc.name,
+		"patient": enc_doc.patient,
+		"encounter_date": str(enc_doc.encounter_date or ""),
+		"chief_complaint": enc_doc.get("custom_chief_complaint") or "",
+		"hopi": enc_doc.get("custom_hopi") or "",
+		"subjective": enc_doc.get("custom_subjective") or "",
+		"objective": enc_doc.get("custom_objective") or "",
+		"assessment_text": enc_doc.get("custom_assessment_text") or "",
+		"assessment_code": enc_doc.get("custom_assessment_code") or "",
+		"plan": enc_doc.get("custom_plan") or "",
+		"examination_findings": [
+			{
+				"body_system": row.body_system,
+				"body_part": row.body_part,
+				"finding": row.finding,
+				"is_abnormal": bool(row.is_abnormal),
+			}
+			for row in (enc_doc.get("custom_examination_findings") or [])
+		],
+		"orders": [
+			{
+				"order_type": row.order_type,
+				"order_name": row.order_name,
+				"status": row.status,
+				"notes": row.notes or "",
+			}
+			for row in (enc_doc.get("custom_encounter_orders") or [])
+		],
+	}
+
+	problem_list = frappe.get_all(
+		"Patient Problem List",
+		filters={"patient": enc_doc.patient, "custom_practice": practice},
+		fields=["name", "icd10_code", "description", "status", "onset_date", "severity"],
+		order_by="onset_date desc",
+		limit=50,
+	)
+
+	return {"encounter": enc_payload, "problem_list": problem_list}
+
+
+@frappe.whitelist()
 def get_patient_detail(patient: str) -> dict:
     """Return the composite payload for a Patient detail screen.
 

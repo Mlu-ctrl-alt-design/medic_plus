@@ -82,6 +82,15 @@ fixtures = [
 			"Patient Encounter-custom_developmental_milestones_reviewed",
 			"Patient Encounter-custom_vision_hearing_reviewed",
 			"Patient Encounter-custom_nutrition_assessment",
+			# Phase 1C — Structured SOAP encounter
+			"Patient Encounter-custom_hopi",
+			"Patient Encounter-custom_subjective",
+			"Patient Encounter-custom_objective",
+			"Patient Encounter-custom_assessment_text",
+			"Patient Encounter-custom_assessment_code",
+			"Patient Encounter-custom_plan",
+			"Patient Encounter-custom_section_examination",
+			"Patient Encounter-custom_examination_findings",
 
 		]]],
 	},
@@ -124,6 +133,8 @@ permission_query_conditions = {
 	"Patient Insurance Coverage": "medic_plus.api.permissions.get_patient_insurance_coverage_permission_query",
 	# Phase 1A — SA-PMI Patient Identity
 	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
+	# Phase 1C — Structured SOAP encounter + Problem List
+	"Patient Problem List": "medic_plus.api.permissions.get_patient_problem_list_permission_query",
 	# Phase 5.7 — Encounter Templates
 	"Encounter Template": "medic_plus.api.permissions.get_encounter_template_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
@@ -158,6 +169,7 @@ doc_events = {
 			"medic_plus.api.doc_events.apply_encounter_template",
 		],
 		"before_submit": "medic_plus.api.doc_events.validate_encounter_template_fields",
+		"on_submit": "medic_plus.api.doc_events.on_encounter_submit",
 	},
 	"Inpatient Record": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",

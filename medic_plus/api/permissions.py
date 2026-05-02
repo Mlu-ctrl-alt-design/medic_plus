@@ -319,6 +319,28 @@ def get_journal_entry_permission_query(user: str = None) -> str:
 	return _get_company_filter(user, "Journal Entry")
 
 
+def get_patient_problem_list_permission_query(user: str = None) -> str:
+	"""PQC for Patient Problem List — scopes via patient.custom_practice.
+
+	Problem List rows carry a denormalised custom_practice (set on before_insert
+	from the linked Patient) for a fast direct filter.  A subquery via Patient
+	acts as defence in depth for any rows that pre-date the denormalisation.
+	"""
+	if _is_platform_admin(user):
+		return ""
+	roles = frappe.get_roles(user or frappe.session.user)
+	if "Patient" in roles:
+		patient = _get_patient_name_for_user(user)
+		return (
+			f"`tabPatient Problem List`.`patient` = {frappe.db.escape(patient)}"
+			if patient else "1=0"
+		)
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabPatient Problem List`.`custom_practice` = {frappe.db.escape(practice)}"
+
+
 def get_encounter_template_permission_query(user: str = None) -> str:
 	"""PQC for Encounter Template.
 

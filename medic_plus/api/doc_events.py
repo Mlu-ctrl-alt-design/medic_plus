@@ -168,6 +168,63 @@ def validate_patient_identifiers(doc, method=None):
         )
 
 
+def on_encounter_submit(doc, method=None):
+	"""On Patient Encounter submit: advance orders to Ordered + upsert Problem List."""
+	_advance_encounter_orders(doc)
+	_upsert_problem_list(doc)
+
+
+def _advance_encounter_orders(doc):
+	"""Promote Draft Encounter Order rows to Ordered status on submit."""
+	orders = doc.get("custom_encounter_orders") or []
+	for row in orders:
+		if row.status == "Draft":
+			row.status = "Ordered"
+	if orders:
+		doc.db_update()
+
+
+def _upsert_problem_list(doc):
+	"""Create or update a Patient Problem List entry from the encounter's ICD-10 assessment.
+
+	Idempotent: a (patient, icd10_code) pair produces exactly one Problem List row.
+	Re-submitting a corrected encounter with the same code refreshes source_encounter.
+	"""
+	icd10_code = doc.get("custom_assessment_code")
+	if not icd10_code or not doc.patient:
+		return
+
+	practice = doc.get("custom_practice") or frappe.db.get_value(
+		"Patient", doc.patient, "custom_practice"
+	)
+
+	existing = frappe.db.get_value(
+		"Patient Problem List",
+		{"patient": doc.patient, "icd10_code": icd10_code},
+		"name",
+	)
+
+	if existing:
+		frappe.db.set_value(
+			"Patient Problem List", existing,
+			{"source_encounter": doc.name, "status": "Active"},
+			update_modified=True,
+		)
+	else:
+		# Derive display text from Code Value record
+		description = frappe.db.get_value("Code Value", icd10_code, "display") or icd10_code
+		frappe.get_doc({
+			"doctype": "Patient Problem List",
+			"patient": doc.patient,
+			"custom_practice": practice,
+			"icd10_code": icd10_code,
+			"description": description,
+			"status": "Active",
+			"onset_date": doc.encounter_date,
+			"source_encounter": doc.name,
+		}).insert(ignore_permissions=True)
+
+
 def sync_practice_doctors(doc, method=None):
 	"""Keep Practice Member (role=Doctor) in sync with the Practice.doctors child table.
 
