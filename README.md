@@ -133,6 +133,17 @@ MIT
 
 ## Changelog
 
+### 2026-05-08 — v2.0.0: SA EMR Phase 1 close + Phase 4 + POPIA + FHIR R4
+- First major version. Rolls up Phase 1C (SOAP encounter), Phase 1D (drug safety), Phase 1E (insurance claims + POPIA + FHIR), and Phase 4 (telemedicine + AI augmentation). 16 commits, 15 new doctypes, ~11k lines added. Full release notes in `docs/releases/v2.0.0.md`.
+- **Phase 1C — Structured SOAP encounter (#26):** `Examination Finding` (child of Patient Encounter) and `Patient Problem List` doctypes; SPA encounter drawer captures Subjective / Objective / Assessment / Plan with ICD-10-ZA picker.
+- **Phase 1D — Drug safety (commit `e8323a9`):** `Drug Master` + `Prescription Override Reason` doctypes; allergy/interaction/paediatric-dose checks; HPCSA Booklet 8 prescription print format; SPA `MPrescriptionPanel`.
+- **Phase 1E — Insurance Claims (#28):** `Insurance Claim` + `Insurance Claim Line` + `Tariff Code` + `Switch Configuration` doctypes; `claim_builder` + HealthBridge submission client; on-submit hook; cross-tenant PQCs.
+- **POPIA controls (#28):** `Patient Consent Record` + `Sub-Processor Register` doctypes; daily `flag_expired_consent_records` cron expires consent older than 3 years.
+- **FHIR R4 read-only server (#28):** `/api/fhir/R4/<ResourceType>/<id>` returning `application/fhir+json`; six R4 resources (Patient/Encounter/Condition/MedicationRequest/AllergyIntolerance/Observation); `$everything` Bundle; `CapabilityStatement` at `/api/fhir/R4/metadata`; SMART v2 bearer tokens via `FHIR Access Token` doctype (SHA-256 hashed, 1-hour TTL, practice-bound).
+- **Phase 4 — Telemedicine + AI augmentation (commit `e49c3ef`):** `Telemedicine Consent` + `Practice AI Settings` + `AI Inference Log` + `Medic Plus Settings` doctypes; per-encounter `/teleconsult` page; PHI redactor strips identifiers before any external AI call; AI off by default per practice.
+- **Tests:** integration + Playwright suites for claims, drug safety, FHIR, POPIA, telemedicine, encounter — every PQC asserts cross-tenant isolation.
+- **Permission fix (commit `1db4748`):** repaired Phase 4 + Phase 1E PQC function bodies.
+
 ### 2026-04-30 — SA EMR Phase 1 (Issue #18): Compliance core
 - Closes the legal-floor gap so the SPA can host real SA practice data. Six commits on `develop` (e51975c → d2b967a).
 - New doctypes: `Patient Allergy` (FHIR-aligned criticality), `Patient Chronic Condition`, `Medical Aid Scheme`, `Record Archive Queue`. Each clinical doctype denormalises `custom_practice` from Patient on insert.
