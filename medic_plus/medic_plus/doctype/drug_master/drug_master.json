@@ -1,0 +1,143 @@
+{
+ "actions": [],
+ "autoname": "DM-.#####",
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "nappi_code_value",
+  "drug_name",
+  "column_break_1",
+  "schedule",
+  "dosage_form",
+  "strength",
+  "section_break_atc",
+  "atc_code_value",
+  "atc_code",
+  "column_break_2",
+  "ingredient",
+  "nappi_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "nappi_code_value",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "NAPPI Code Value",
+   "options": "Code Value",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "drug_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Drug Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "schedule",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Schedule",
+   "options": "\nS0\nS1\nS2\nS3\nS4\nS5\nS6"
+  },
+  {
+   "fieldname": "dosage_form",
+   "fieldtype": "Data",
+   "label": "Dosage Form",
+   "description": "e.g. tablet, capsule, syrup, injection"
+  },
+  {
+   "fieldname": "strength",
+   "fieldtype": "Data",
+   "label": "Strength",
+   "description": "e.g. 500mg, 250mg/5ml"
+  },
+  {
+   "fieldname": "section_break_atc",
+   "fieldtype": "Section Break",
+   "label": "ATC Classification"
+  },
+  {
+   "fieldname": "atc_code_value",
+   "fieldtype": "Link",
+   "label": "ATC Code Value",
+   "options": "Code Value"
+  },
+  {
+   "fieldname": "atc_code",
+   "fieldtype": "Data",
+   "label": "ATC Code",
+   "read_only": 1,
+   "description": "Populated automatically from ATC Code Value (e.g. J01MA)"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ingredient",
+   "fieldtype": "Data",
+   "label": "Active Ingredient",
+   "description": "INN / SNOMED concept stub"
+  },
+  {
+   "fieldname": "nappi_code",
+   "fieldtype": "Data",
+   "label": "NAPPI Code",
+   "read_only": 1,
+   "search_index": 1,
+   "description": "Populated automatically from NAPPI Code Value"
+  }
+ ],
+ "links": [],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Drug Master",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "Practice Admin"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "Practice Doctor"
+  }
+ ],
+ "sort_field": "drug_name",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 0
+}

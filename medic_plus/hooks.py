@@ -82,7 +82,35 @@ fixtures = [
 			"Patient Encounter-custom_developmental_milestones_reviewed",
 			"Patient Encounter-custom_vision_hearing_reviewed",
 			"Patient Encounter-custom_nutrition_assessment",
-
+			# Phase 1C — Structured SOAP encounter
+			"Patient Encounter-custom_hopi",
+			"Patient Encounter-custom_subjective",
+			"Patient Encounter-custom_objective",
+			"Patient Encounter-custom_assessment_text",
+			"Patient Encounter-custom_assessment_code",
+			"Patient Encounter-custom_plan",
+			"Patient Encounter-custom_section_examination",
+			"Patient Encounter-custom_examination_findings",
+			# Phase 4 — Telemedicine + AI
+			"Patient-custom_ai_consent",
+			"Patient Appointment-custom_video_section",
+			"Patient Appointment-custom_consultation_type",
+			"Patient Appointment-custom_video_room_id",
+			"Patient Appointment-custom_video_join_url",
+			"Patient Appointment-custom_patient_join_url",
+			# Phase 1D — Drug safety / HPCSA Booklet 8
+			"Drug Prescription-custom_nappi_code_value",
+			"Drug Prescription-custom_schedule",
+			"Drug Prescription-custom_repeats_authorised",
+			"Drug Prescription-custom_repeats_remaining",
+			"Drug Prescription-custom_generic_substitution_allowed",
+			"Patient Allergy-custom_atc_code",
+			"Patient Encounter-custom_prescription_override_reasons",
+			# Phase 1E — Claims (Healthbridge switch)
+			"Patient Encounter-custom_section_claims",
+			"Patient Encounter-custom_claim_diagnosis_code",
+			"Patient Encounter-custom_claim_tariff_code",
+			"Patient Encounter-custom_claim_nappi_code",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -105,6 +133,18 @@ fixtures = [
 	{"dt": "Medical Aid Scheme"},
 	# Phase 5.11 — Backup Drill Log (append-only audit trail, no delete)
 	{"dt": "Backup Drill Log"},
+	# Phase 1E — Claims: Tariff Code master, Switch Configuration (no filter — platform-wide)
+	{"dt": "Tariff Code"},
+	# Phase 1E — POPIA scaffold
+	{"dt": "Sub-Processor Register"},
+	# Phase 1E — FHIR (no static seed; tokens are runtime-generated)
+]
+
+# ---------------------------------------------------------------------------
+# FHIR R4 website route rules
+# ---------------------------------------------------------------------------
+website_route_rules = [
+	{"from_route": "/api/fhir/R4/<path:path>", "to_route": "api/fhir/R4"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
@@ -124,6 +164,10 @@ permission_query_conditions = {
 	"Patient Insurance Coverage": "medic_plus.api.permissions.get_patient_insurance_coverage_permission_query",
 	# Phase 1A — SA-PMI Patient Identity
 	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
+	# Phase 1C — Structured SOAP encounter + Problem List
+	"Patient Problem List": "medic_plus.api.permissions.get_patient_problem_list_permission_query",
+	# Phase 1D — Drug safety doctypes
+	"Prescription Override Reason": "medic_plus.api.permissions.get_prescription_override_reason_permission_query",
 	# Phase 5.7 — Encounter Templates
 	"Encounter Template": "medic_plus.api.permissions.get_encounter_template_permission_query",
 	"Sick Note": "medic_plus.api.permissions.get_sick_note_permission_query",
@@ -134,6 +178,17 @@ permission_query_conditions = {
 	# Data masking / consent
 	"Data Unmask Request": "medic_plus.api.permissions.get_data_unmask_request_permission_query",
 	"Clinical Access Log": "medic_plus.api.permissions.get_clinical_access_log_permission_query",
+	# Phase 4 — Telemedicine + AI
+	"Practice AI Settings": "medic_plus.api.permissions.get_practice_ai_settings_permission_query",
+	"AI Inference Log": "medic_plus.api.permissions.get_ai_inference_log_permission_query",
+	"Telemedicine Consent": "medic_plus.api.permissions.get_telemedicine_consent_permission_query",
+	# Phase 1E — Claims
+	"Insurance Claim": "medic_plus.api.permissions.get_insurance_claim_permission_query",
+	"Switch Configuration": "medic_plus.api.permissions.get_switch_configuration_permission_query",
+	# Phase 1E — POPIA consent
+	"Patient Consent Record": "medic_plus.api.permissions.get_patient_consent_record_permission_query",
+	# Phase 1E — FHIR tokens
+	"FHIR Access Token": "medic_plus.api.permissions.get_fhir_access_token_permission_query",
 	# Financial doctypes — scoped via practice's ERPNext Company
 	"Sales Invoice": "medic_plus.api.permissions.get_sales_invoice_permission_query",
 	"POS Profile": "medic_plus.api.permissions.get_pos_profile_permission_query",
@@ -157,7 +212,12 @@ doc_events = {
 			"medic_plus.api.doc_events.set_practice_on_insert",
 			"medic_plus.api.doc_events.apply_encounter_template",
 		],
+		"before_save": "medic_plus.api.doc_events.run_prescription_safety",
 		"before_submit": "medic_plus.api.doc_events.validate_encounter_template_fields",
+		"on_submit": [
+			"medic_plus.api.doc_events.on_encounter_submit",
+			"medic_plus.api.doc_events.build_claim_on_submit",
+		],
 	},
 	"Inpatient Record": {
 		"before_insert": "medic_plus.api.doc_events.set_practice_on_insert",
@@ -206,6 +266,7 @@ scheduler_events = {
 	},
 	"daily": [
 		"medic_plus.api.retention.flag_overdue_records",
+		"medic_plus.api.retention.flag_expired_consent_records",
 	],
 }
 

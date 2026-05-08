@@ -1,0 +1,122 @@
+[
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "Anthropic",
+  "category": "AI",
+  "is_active": 1,
+  "data_location": "USA",
+  "personal_data_types": "De-identified clinical text submitted to AI assistant features",
+  "processing_purposes": "AI-assisted clinical documentation, differential diagnosis support",
+  "transfer_mechanism": "StandardContractualClauses",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://www.anthropic.com/privacy"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "Jitsi",
+  "category": "Communications",
+  "is_active": 1,
+  "data_location": "EU (Cloudflare CDN)",
+  "personal_data_types": "Video/audio streams for telehealth consultations",
+  "processing_purposes": "Secure telehealth video consultations",
+  "transfer_mechanism": "StandardContractualClauses",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://jitsi.org/security/"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "LiveKit",
+  "category": "Communications",
+  "is_active": 1,
+  "data_location": "USA (configurable self-hosted)",
+  "personal_data_types": "Real-time audio/video streams",
+  "processing_purposes": "Telehealth and care-coordination communications",
+  "transfer_mechanism": "StandardContractualClauses",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://livekit.io/privacy"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "Healthbridge",
+  "category": "HealthSwitching",
+  "is_active": 1,
+  "data_location": "South Africa",
+  "personal_data_types": "Insurance claim data including patient identifiers, diagnosis codes, procedure codes, medication codes",
+  "processing_purposes": "Medical-aid claim switching and adjudication",
+  "transfer_mechanism": "NotApplicable",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://www.healthbridge.co.za/privacy"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "Lancet Laboratories",
+  "category": "Laboratory",
+  "is_active": 1,
+  "data_location": "South Africa",
+  "personal_data_types": "Patient demographics, clinical requests, laboratory results",
+  "processing_purposes": "Pathology testing and result reporting",
+  "transfer_mechanism": "NotApplicable",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://www.lancet.co.za/privacy-policy"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "Ampath Laboratories",
+  "category": "Laboratory",
+  "is_active": 1,
+  "data_location": "South Africa",
+  "personal_data_types": "Patient demographics, clinical requests, laboratory results",
+  "processing_purposes": "Pathology testing and result reporting",
+  "transfer_mechanism": "NotApplicable",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://www.ampath.co.za/privacy"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "PathCare Laboratories",
+  "category": "Laboratory",
+  "is_active": 1,
+  "data_location": "South Africa",
+  "personal_data_types": "Patient demographics, clinical requests, laboratory results",
+  "processing_purposes": "Pathology testing and result reporting",
+  "transfer_mechanism": "NotApplicable",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://www.pathcare.co.za"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "Vermaak Laboratories",
+  "category": "Laboratory",
+  "is_active": 1,
+  "data_location": "South Africa",
+  "personal_data_types": "Patient demographics, clinical requests, laboratory results",
+  "processing_purposes": "Pathology testing and result reporting",
+  "transfer_mechanism": "NotApplicable",
+  "breach_notification_hours": 72
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "NHLS (National Health Laboratory Service)",
+  "category": "Laboratory",
+  "is_active": 1,
+  "data_location": "South Africa",
+  "personal_data_types": "Patient demographics, clinical requests, laboratory results",
+  "processing_purposes": "Public sector pathology testing",
+  "transfer_mechanism": "NotApplicable",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://www.nhls.ac.za"
+ },
+ {
+  "doctype": "Sub-Processor Register",
+  "processor_name": "NICD (National Institute for Communicable Diseases)",
+  "category": "Laboratory",
+  "is_active": 1,
+  "data_location": "South Africa",
+  "personal_data_types": "Communicable disease surveillance data (de-identified for NICD)",
+  "processing_purposes": "Communicable disease surveillance and public health reporting (legally mandated under NHRA)",
+  "lawful_basis": "LegalObligation",
+  "transfer_mechanism": "NotApplicable",
+  "breach_notification_hours": 72,
+  "privacy_policy_url": "https://www.nicd.ac.za"
+ }
+]

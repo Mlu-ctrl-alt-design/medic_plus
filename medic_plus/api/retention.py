@@ -71,3 +71,36 @@ def _queue_for_archive(patient: str) -> None:
 		"status": "Pending Review",
 		"flagged_on": frappe.utils.now_datetime(),
 	}).insert(ignore_permissions=True)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1E — POPIA consent record expiry
+# ---------------------------------------------------------------------------
+
+# Consent records expire after 3 years of inactivity per POPIA guidance
+CONSENT_EXPIRY_YEARS = 3
+
+
+def flag_expired_consent_records() -> int:
+	"""Mark Patient Consent Records as Expired if they exceed the expiry window.
+
+	Called by the daily scheduler.  Only affects Given records — Withdrawn/
+	Pending are already terminal or handled by the operator.  Idempotent.
+	"""
+	if not frappe.db.table_exists("tabPatient Consent Record"):
+		return 0
+
+	cutoff = frappe.utils.now_datetime() - datetime.timedelta(
+		days=365 * CONSENT_EXPIRY_YEARS
+	)
+	overdue = frappe.get_all(
+		"Patient Consent Record",
+		filters={"status": "Given", "consented_on": ["<", cutoff]},
+		pluck="name",
+		limit=0,
+	)
+	for name in overdue:
+		frappe.db.set_value("Patient Consent Record", name, "status", "Expired")
+	if overdue:
+		frappe.db.commit()
+	return len(overdue)

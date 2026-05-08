@@ -1,0 +1,62 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "warning_type",
+  "drug_name",
+  "column_break_1",
+  "practitioner",
+  "dismissed_at",
+  "reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "warning_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Warning Type",
+   "options": "Drug Allergy\nDrug Interaction\nSchedule Rule",
+   "reqd": 1
+  },
+  {
+   "fieldname": "drug_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Drug"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Overriding Practitioner",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "dismissed_at",
+   "fieldtype": "Datetime",
+   "label": "Dismissed At"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Override Reason",
+   "reqd": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Prescription Override Reason",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC"
+}

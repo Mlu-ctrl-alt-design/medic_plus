@@ -127,6 +127,44 @@ def update_checklist_on_first_invoice(doc, method=None):
 		on_billing_configured(practice)
 
 
+def run_prescription_safety(doc, method=None):
+	"""Phase 1D — non-blocking drug safety checks on Patient Encounter before_save.
+
+	Runs allergy, interaction, and schedule-rule checks for every Drug Prescription
+	row that carries a custom_nappi_code_value.  Warnings are surfaced via
+	frappe.msgprint (orange indicator, non-blocking) so the encounter saves
+	regardless.  The raw list is also attached to doc._drug_safety_warnings for
+	test assertions.
+
+	If custom_prescription_override_reasons rows are present, only warnings NOT
+	already covered by an override are re-surfaced.
+	"""
+	from medic_plus.api.drug_safety import run_safety_checks
+
+	warnings = run_safety_checks(doc)
+	if not warnings:
+		return
+
+	# Determine which warnings are already covered by an override reason row.
+	covered_drugs = {
+		row.drug_name
+		for row in (doc.custom_prescription_override_reasons or [])
+		if row.drug_name
+	}
+
+	uncovered = [w for w in warnings if w.get("drug") not in covered_drugs]
+	if not uncovered:
+		return
+
+	lines = "\n".join(f"• {w['message']}" for w in uncovered)
+	frappe.msgprint(
+		msg=lines,
+		title="Prescription Safety Warning",
+		indicator="orange",
+		raise_exception=False,
+	)
+
+
 def validate_patient_identifiers(doc, method=None):
     """Validate Patient Identifier child rows and derive DOB/sex from SA ID.
 
@@ -168,6 +206,63 @@ def validate_patient_identifiers(doc, method=None):
         )
 
 
+def on_encounter_submit(doc, method=None):
+	"""On Patient Encounter submit: advance orders to Ordered + upsert Problem List."""
+	_advance_encounter_orders(doc)
+	_upsert_problem_list(doc)
+
+
+def _advance_encounter_orders(doc):
+	"""Promote Draft Encounter Order rows to Ordered status on submit."""
+	orders = doc.get("custom_encounter_orders") or []
+	for row in orders:
+		if row.status == "Draft":
+			row.status = "Ordered"
+	if orders:
+		doc.db_update()
+
+
+def _upsert_problem_list(doc):
+	"""Create or update a Patient Problem List entry from the encounter's ICD-10 assessment.
+
+	Idempotent: a (patient, icd10_code) pair produces exactly one Problem List row.
+	Re-submitting a corrected encounter with the same code refreshes source_encounter.
+	"""
+	icd10_code = doc.get("custom_assessment_code")
+	if not icd10_code or not doc.patient:
+		return
+
+	practice = doc.get("custom_practice") or frappe.db.get_value(
+		"Patient", doc.patient, "custom_practice"
+	)
+
+	existing = frappe.db.get_value(
+		"Patient Problem List",
+		{"patient": doc.patient, "icd10_code": icd10_code},
+		"name",
+	)
+
+	if existing:
+		frappe.db.set_value(
+			"Patient Problem List", existing,
+			{"source_encounter": doc.name, "status": "Active"},
+			update_modified=True,
+		)
+	else:
+		# Derive display text from Code Value record
+		description = frappe.db.get_value("Code Value", icd10_code, "display") or icd10_code
+		frappe.get_doc({
+			"doctype": "Patient Problem List",
+			"patient": doc.patient,
+			"custom_practice": practice,
+			"icd10_code": icd10_code,
+			"description": description,
+			"status": "Active",
+			"onset_date": doc.encounter_date,
+			"source_encounter": doc.name,
+		}).insert(ignore_permissions=True)
+
+
 def sync_practice_doctors(doc, method=None):
 	"""Keep Practice Member (role=Doctor) in sync with the Practice.doctors child table.
 
@@ -202,3 +297,9 @@ def sync_practice_doctors(doc, method=None):
 	for practitioner, pm_name in existing_map.items():
 		if practitioner not in current_practitioners:
 			frappe.delete_doc("Practice Member", pm_name, ignore_permissions=True, force=True)
+
+
+def build_claim_on_submit(doc, method=None):
+	"""Phase 1E — auto-build a Draft Insurance Claim when an encounter is submitted."""
+	from medic_plus.api.claims import auto_build_claim_for_encounter
+	auto_build_claim_for_encounter(doc.name)

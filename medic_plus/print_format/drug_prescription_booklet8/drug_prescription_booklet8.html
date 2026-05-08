@@ -1,0 +1,266 @@
+{% set practice = frappe.get_doc("Practice", doc.custom_practice) if doc.custom_practice else None %}
+{% set practitioner_doc = frappe.get_doc("Healthcare Practitioner", doc.practitioner) if doc.practitioner else None %}
+{% set patient_doc = frappe.get_doc("Patient", doc.patient) if doc.patient else None %}
+{% set patient_name = patient_doc.patient_name if patient_doc else "" %}
+{% set patient_dob = patient_doc.dob if patient_doc else "" %}
+{% set patient_id_number = frappe.db.get_value("Patient", doc.patient, "custom_sa_id_number") if doc.patient else "" %}
+
+<style>
+  body { font-family: Arial, sans-serif; font-size: 10pt; color: #111; }
+  .b8-page { max-width: 720px; margin: 0 auto; padding: 28px 24px; }
+
+  /* ---- Header / Letterhead ---- */
+  .b8-header { display: flex; justify-content: space-between; align-items: flex-start;
+               border-bottom: 3px double #1a3a5c; padding-bottom: 12px; margin-bottom: 18px; }
+  .b8-practice-name { font-size: 16pt; font-weight: bold; color: #1a3a5c; }
+  .b8-practice-meta { font-size: 9pt; color: #444; margin-top: 3px; }
+  .b8-logo { max-height: 68px; }
+
+  /* ---- HPCSA credentialing block ---- */
+  .b8-cred-bar { background: #f0f4f8; border: 1px solid #b0c4d8; border-radius: 4px;
+                 padding: 8px 14px; margin-bottom: 16px; display: flex; gap: 28px;
+                 flex-wrap: wrap; }
+  .b8-cred-item { font-size: 9.5pt; }
+  .b8-cred-label { font-weight: bold; color: #444; }
+
+  /* ---- Rx title ---- */
+  .b8-rx-title { display: flex; align-items: center; margin-bottom: 14px; }
+  .b8-rx-symbol { font-size: 30pt; font-weight: bold; color: #1a3a5c; margin-right: 10px; line-height: 1; }
+  .b8-rx-label { font-size: 13pt; font-weight: bold; text-transform: uppercase;
+                 letter-spacing: 2px; color: #1a3a5c; }
+  .b8-rx-subtitle { font-size: 8.5pt; color: #666; margin-left: 8px; }
+
+  /* ---- Patient bar ---- */
+  .b8-patient-bar { background: #eaf4fb; border: 1px solid #aed6f1; border-radius: 4px;
+                    padding: 10px 14px; margin-bottom: 16px; }
+  .b8-patient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 24px; }
+  .b8-pi { font-size: 9.5pt; }
+  .b8-pi-label { font-weight: bold; color: #555; }
+
+  /* ---- Drug table ---- */
+  .b8-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9.5pt; }
+  .b8-table th { background: #1a3a5c; color: #fff; padding: 7px 8px; text-align: left; }
+  .b8-table td { padding: 7px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  .b8-table tr:nth-child(even) td { background: #f8f9fa; }
+  .b8-drug-name { font-weight: bold; font-size: 10pt; }
+  .b8-nappi  { font-size: 8pt; color: #777; }
+  .b8-sched  { display: inline-block; background: #1a3a5c; color: #fff; border-radius: 3px;
+               padding: 1px 6px; font-size: 8pt; margin-left: 4px; }
+  .b8-sched-warn { display: inline-block; background: #c0392b; color: #fff; border-radius: 3px;
+                   padding: 1px 6px; font-size: 8pt; margin-left: 4px; }
+  .b8-empty { text-align: center; color: #999; padding: 20px; font-style: italic; }
+
+  /* ---- Override reasons ---- */
+  .b8-override-section { border: 1px solid #e6b800; background: #fffbe6; border-radius: 4px;
+                          padding: 10px 14px; margin-bottom: 18px; }
+  .b8-override-title { font-weight: bold; color: #856404; font-size: 9.5pt; margin-bottom: 6px; }
+  .b8-override-row { font-size: 9pt; margin-bottom: 4px; color: #333; }
+
+  /* ---- Footer / Signature ---- */
+  .b8-footer { display: flex; justify-content: space-between; align-items: flex-end;
+               border-top: 1px solid #ccc; padding-top: 16px; margin-top: 8px; }
+  .b8-sig-block { text-align: center; }
+  .b8-sig-img { max-height: 68px; max-width: 200px; display: block; margin-bottom: 4px; }
+  .b8-sig-line { border-top: 1px solid #555; width: 200px; margin-bottom: 4px; }
+  .b8-sig-label { font-size: 9pt; color: #333; }
+  .b8-footer-right { font-size: 9pt; color: #555; text-align: right; }
+
+  .b8-disclaimer { font-size: 7.5pt; color: #999; text-align: center; margin-top: 14px;
+                    border-top: 1px dashed #ddd; padding-top: 8px; }
+  @media print {
+    .b8-page { padding: 0; }
+  }
+</style>
+
+<div class="b8-page">
+
+  <!-- Letterhead -->
+  <div class="b8-header">
+    <div>
+      <div class="b8-practice-name">{{ practice.practice_name if practice else "" }}</div>
+      {% if practice %}
+      <div class="b8-practice-meta">
+        {% if practice.address %}{{ practice.address }}<br>{% endif %}
+        {% if practice.city %}{{ practice.city }}{% if practice.postal_code %}&nbsp;&nbsp;{{ practice.postal_code }}{% endif %}<br>{% endif %}
+        {% if practice.phone %}Tel: {{ practice.phone }}&nbsp;&nbsp;{% endif %}
+        {% if practice.email %}Email: {{ practice.email }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if practice and practice.logo %}
+    <img src="{{ practice.logo }}" class="b8-logo" alt="Logo">
+    {% endif %}
+  </div>
+
+  <!-- HPCSA Credentialing Bar (Booklet 8 required fields) -->
+  {% if practitioner_doc %}
+  <div class="b8-cred-bar">
+    <div class="b8-cred-item">
+      <span class="b8-cred-label">Practitioner: </span>
+      {{ practitioner_doc.practitioner_name }}
+    </div>
+    {% if practitioner_doc.custom_hpcsa_number %}
+    <div class="b8-cred-item">
+      <span class="b8-cred-label">HPCSA No: </span>{{ practitioner_doc.custom_hpcsa_number }}
+    </div>
+    {% endif %}
+    {% if practitioner_doc.custom_practice_number %}
+    <div class="b8-cred-item">
+      <span class="b8-cred-label">MP/PR No: </span>{{ practitioner_doc.custom_practice_number }}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Rx Title -->
+  <div class="b8-rx-title">
+    <div class="b8-rx-symbol">℞</div>
+    <div>
+      <div class="b8-rx-label">Prescription</div>
+      <div class="b8-rx-subtitle">HPCSA Booklet 8 — Original / Repeat {{ doc.name }}</div>
+    </div>
+  </div>
+
+  <!-- Patient bar -->
+  <div class="b8-patient-bar">
+    <div class="b8-patient-grid">
+      <div class="b8-pi">
+        <span class="b8-pi-label">Patient: </span>{{ patient_name }}
+      </div>
+      {% if patient_dob %}
+      <div class="b8-pi">
+        <span class="b8-pi-label">Date of Birth: </span>{{ frappe.utils.formatdate(patient_dob) }}
+      </div>
+      {% endif %}
+      {% if patient_id_number %}
+      <div class="b8-pi">
+        <span class="b8-pi-label">SA ID: </span>{{ patient_id_number }}
+      </div>
+      {% endif %}
+      <div class="b8-pi">
+        <span class="b8-pi-label">Date: </span>{{ frappe.utils.formatdate(doc.encounter_date) }}
+      </div>
+      <div class="b8-pi">
+        <span class="b8-pi-label">Ref: </span>{{ doc.name }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Drug Prescription Table -->
+  {% set drugs = doc.drug_prescription if doc.drug_prescription else [] %}
+  {% if drugs %}
+  <table class="b8-table">
+    <thead>
+      <tr>
+        <th style="width:30%;">Medicine / NAPPI</th>
+        <th style="width:12%;">Strength</th>
+        <th style="width:12%;">Form</th>
+        <th style="width:14%;">Dosage</th>
+        <th style="width:8%;">Qty</th>
+        <th style="width:8%;">Rpts</th>
+        <th style="width:16%;">Instructions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in drugs %}
+      {# Resolve Drug Master data via NAPPI Code Value #}
+      {% set dm = frappe.db.get_value(
+           "Drug Master",
+           {"nappi_code_value": row.custom_nappi_code_value},
+           ["drug_name", "nappi_code", "schedule", "strength", "dosage_form"],
+           as_dict=True
+         ) if row.custom_nappi_code_value else None %}
+      {% set sched = (row.custom_schedule or (dm.schedule if dm else None) or "") %}
+      <tr>
+        <td>
+          <div class="b8-drug-name">
+            {{ dm.drug_name if dm else (row.drug_name or row.drug_code or "") }}
+            {% if sched %}
+            {% if sched in ("S5", "S6") %}
+            <span class="b8-sched-warn">{{ sched }}</span>
+            {% else %}
+            <span class="b8-sched">{{ sched }}</span>
+            {% endif %}
+            {% endif %}
+          </div>
+          {% if dm and dm.nappi_code %}
+          <div class="b8-nappi">NAPPI: {{ dm.nappi_code }}</div>
+          {% elif row.custom_nappi_code_value %}
+          <div class="b8-nappi">NAPPI CV: {{ row.custom_nappi_code_value }}</div>
+          {% endif %}
+        </td>
+        <td>{{ (dm.strength if dm else "") or "" }}</td>
+        <td>
+          {{ (dm.dosage_form if dm else "") or "" }}
+          {% if row.dosage_form %}<br><em>{{ row.dosage_form }}</em>{% endif %}
+        </td>
+        <td>{{ row.dosage or "" }}</td>
+        <td>—</td>
+        <td>
+          {% if row.custom_repeats_authorised is defined and row.custom_repeats_authorised is not none %}
+          {{ row.custom_repeats_authorised }}
+          {% if row.custom_repeats_remaining is defined %}
+          <br><small>({{ row.custom_repeats_remaining }} left)</small>
+          {% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ row.comment or row.period or "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="b8-empty">No medications prescribed in this encounter.</div>
+  {% endif %}
+
+  <!-- Override Reasons (Booklet 8: requires documented clinical justification for S5/S6) -->
+  {% set overrides = doc.custom_prescription_override_reasons if doc.custom_prescription_override_reasons else [] %}
+  {% if overrides %}
+  <div class="b8-override-section">
+    <div class="b8-override-title">Clinical Override Reasons</div>
+    {% for ov in overrides %}
+    <div class="b8-override-row">
+      <strong>{{ ov.warning_type }}</strong> — {{ ov.drug_name }}:
+      {{ ov.reason }}
+      {% if ov.practitioner %}<em>({{ ov.practitioner }})</em>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Footer / Signature -->
+  <div class="b8-footer">
+    <div class="b8-sig-block">
+      {% if practitioner_doc and practitioner_doc.custom_practitioner_signature %}
+      <img src="{{ practitioner_doc.custom_practitioner_signature }}"
+           class="b8-sig-img" alt="Signature">
+      {% else %}
+      <div style="height:68px;"></div>
+      {% endif %}
+      <div class="b8-sig-line"></div>
+      <div class="b8-sig-label">
+        <strong>{{ practitioner_doc.practitioner_name if practitioner_doc else "" }}</strong><br>
+        {% if practitioner_doc and practitioner_doc.custom_hpcsa_number %}
+        HPCSA: {{ practitioner_doc.custom_hpcsa_number }}<br>
+        {% endif %}
+        {% if practitioner_doc and practitioner_doc.custom_practice_number %}
+        MP/PR: {{ practitioner_doc.custom_practice_number }}<br>
+        {% endif %}
+        Date: {{ frappe.utils.formatdate(doc.encounter_date) }}
+      </div>
+    </div>
+    <div class="b8-footer-right">
+      <div>Encounter: {{ doc.name }}</div>
+      {% if practice %}
+      <div>{{ practice.practice_name }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="b8-disclaimer">
+    This prescription is issued in accordance with the Medicines and Related Substances Act 101 of 1965.
+    Schedule 5 and above require a prescription book entry. Schedule 6 items may not be repeated.
+    Valid for use by the named patient only.
+  </div>
+
+</div>

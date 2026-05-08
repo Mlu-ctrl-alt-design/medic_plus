@@ -13,7 +13,16 @@
   "yoco_secret_key",
   "yoco_public_key",
   "yoco_webhook_secret",
-  "yoco_signup_fee_cents"
+  "yoco_signup_fee_cents",
+  "section_break_ai",
+  "anthropic_api_key",
+  "openai_api_key",
+  "section_break_video",
+  "video_provider",
+  "video_base_url",
+  "column_break_video2",
+  "livekit_api_key",
+  "livekit_api_secret"
  ],
  "fields": [
   {
@@ -66,11 +75,61 @@
    "fieldtype": "Int",
    "label": "Signup Fee (cents ZAR)",
    "description": "Amount charged at doctor signup, in ZAR cents. e.g. 49900 = R499.00"
+  },
+  {
+   "fieldname": "section_break_ai",
+   "fieldtype": "Section Break",
+   "label": "AI Configuration (Phase 4)"
+  },
+  {
+   "fieldname": "anthropic_api_key",
+   "fieldtype": "Password",
+   "label": "Anthropic API Key",
+   "description": "Used by the AI gateway for SOAP notes, DDx, and Rx sanity checks"
+  },
+  {
+   "fieldname": "openai_api_key",
+   "fieldtype": "Password",
+   "label": "OpenAI API Key",
+   "description": "Used for Whisper audio transcription"
+  },
+  {
+   "fieldname": "section_break_video",
+   "fieldtype": "Section Break",
+   "label": "Video Provider (Phase 4)"
+  },
+  {
+   "default": "jitsi",
+   "fieldname": "video_provider",
+   "fieldtype": "Select",
+   "label": "Video Provider",
+   "options": "jitsi\nlivekit"
+  },
+  {
+   "default": "https://meet.jit.si",
+   "fieldname": "video_base_url",
+   "fieldtype": "Data",
+   "label": "Video Base URL",
+   "description": "Base URL for the Jitsi server or LiveKit server"
+  },
+  {
+   "fieldname": "column_break_video2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "livekit_api_key",
+   "fieldtype": "Password",
+   "label": "LiveKit API Key"
+  },
+  {
+   "fieldname": "livekit_api_secret",
+   "fieldtype": "Password",
+   "label": "LiveKit API Secret"
   }
  ],
  "is_single": 1,
  "links": [],
- "modified": "2026-04-14 00:00:00.000000",
+ "modified": "2026-05-02 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Medic Plus",
  "name": "Medic Plus Settings",

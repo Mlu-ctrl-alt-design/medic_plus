@@ -1,0 +1,57 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "body_system",
+  "body_part",
+  "column_break_1",
+  "finding",
+  "is_abnormal"
+ ],
+ "fields": [
+  {
+   "fieldname": "body_system",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Body System",
+   "options": "General\nCardiovascular\nRespiratory\nGastrointestinal\nNeurological\nMusculoskeletal\nDermatological\nENT\nOphthalmology\nGenitourinary\nEndocrine\nPsychiatric\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "body_part",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Body Part",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "finding",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Finding",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_abnormal",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Abnormal"
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Examination Finding",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC"
+}

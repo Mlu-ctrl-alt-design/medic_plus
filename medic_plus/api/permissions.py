@@ -319,6 +319,42 @@ def get_journal_entry_permission_query(user: str = None) -> str:
 	return _get_company_filter(user, "Journal Entry")
 
 
+def get_patient_problem_list_permission_query(user: str = None) -> str:
+	"""PQC for Patient Problem List — scopes via patient.custom_practice."""
+	if _is_platform_admin(user):
+		return ""
+	roles = frappe.get_roles(user or frappe.session.user)
+	if "Patient" in roles:
+		patient = _get_patient_name_for_user(user)
+		return (
+			f"`tabPatient Problem List`.`patient` = {frappe.db.escape(patient)}"
+			if patient else "1=0"
+		)
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabPatient Problem List`.`custom_practice` = {frappe.db.escape(practice)}"
+
+
+def get_prescription_override_reason_permission_query(user: str = None) -> str:
+	"""PQC for Prescription Override Reason child table.
+
+	Scope via the parent Patient Encounter's custom_practice — same pattern
+	as Patient Identifier child-table PQC.
+	"""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return (
+		"`tabPrescription Override Reason`.`parent` IN ("
+		"SELECT `name` FROM `tabPatient Encounter` WHERE `custom_practice` = "
+		f"{frappe.db.escape(practice)}"
+		")"
+	)
+
+
 def get_encounter_template_permission_query(user: str = None) -> str:
 	"""PQC for Encounter Template.
 
@@ -335,3 +371,89 @@ def get_encounter_template_permission_query(user: str = None) -> str:
 		f"(`tabEncounter Template`.`is_platform_template` = 1"
 		f" OR `tabEncounter Template`.`practice` = {escaped})"
 	)
+
+
+# Phase 4 — Telemedicine + AI
+
+def get_practice_ai_settings_permission_query(user: str = None) -> str:
+	"""PQC for Practice AI Settings — scoped to the user's practice."""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabPractice AI Settings`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_ai_inference_log_permission_query(user: str = None) -> str:
+	"""PQC for AI Inference Log — scoped to the user's practice."""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabAI Inference Log`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_telemedicine_consent_permission_query(user: str = None) -> str:
+	"""PQC for Telemedicine Consent — scoped to the user's practice."""
+	if _is_platform_admin(user):
+		return ""
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		patient = _get_patient_name_for_user(user)
+		return f"`tabTelemedicine Consent`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabTelemedicine Consent`.`practice` = {frappe.db.escape(practice)}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 1E — Claims + POPIA
+# ---------------------------------------------------------------------------
+
+def get_insurance_claim_permission_query(user: str = None) -> str:
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabInsurance Claim`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_switch_configuration_permission_query(user: str = None) -> str:
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabSwitch Configuration`.`practice` = {frappe.db.escape(practice)}"
+
+
+def get_patient_consent_record_permission_query(user: str = None) -> str:
+	"""PQC for Patient Consent Record — scopes via patient.custom_practice."""
+	if _is_platform_admin(user):
+		return ""
+	roles = frappe.get_roles(user or frappe.session.user)
+	if "Patient" in roles:
+		patient = _get_patient_name_for_user(user)
+		return (
+			f"`tabPatient Consent Record`.`patient` = {frappe.db.escape(patient)}"
+			if patient else "1=0"
+		)
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return (
+		"`tabPatient Consent Record`.`patient` IN ("
+		f"SELECT `name` FROM `tabPatient` WHERE `custom_practice` = {frappe.db.escape(practice)}"
+		")"
+	)
+
+
+def get_fhir_access_token_permission_query(user: str = None) -> str:
+	"""FHIR Access Tokens are readable only by the issuing user or platform admins."""
+	if _is_platform_admin(user):
+		return ""
+	resolved = user or frappe.session.user
+	return f"`tabFHIR Access Token`.`issued_to` = {frappe.db.escape(resolved)}"

@@ -1,0 +1,132 @@
+{
+ "actions": [],
+ "autoname": "PPL-.#####",
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "custom_practice",
+  "column_break_1",
+  "status",
+  "section_break_codes",
+  "icd10_code",
+  "snomed_code",
+  "column_break_codes",
+  "description",
+  "source_encounter",
+  "section_break_dates",
+  "onset_date",
+  "resolved_date",
+  "column_break_dates",
+  "severity",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "custom_practice",
+   "fieldtype": "Link",
+   "label": "Practice",
+   "options": "Practice",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Active\nInactive\nResolved"
+  },
+  {
+   "fieldname": "section_break_codes",
+   "fieldtype": "Section Break",
+   "label": "Coding"
+  },
+  {
+   "fieldname": "icd10_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "ICD-10 Code",
+   "options": "Code Value",
+   "search_index": 1
+  },
+  {
+   "fieldname": "snomed_code",
+   "fieldtype": "Link",
+   "label": "SNOMED Code",
+   "options": "Code Value"
+  },
+  {
+   "fieldname": "column_break_codes",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "fieldname": "source_encounter",
+   "fieldtype": "Link",
+   "label": "Source Encounter",
+   "options": "Patient Encounter"
+  },
+  {
+   "fieldname": "section_break_dates",
+   "fieldtype": "Section Break",
+   "label": "Timeline"
+  },
+  {
+   "fieldname": "onset_date",
+   "fieldtype": "Date",
+   "label": "Onset Date"
+  },
+  {
+   "fieldname": "resolved_date",
+   "fieldtype": "Date",
+   "label": "Resolved Date"
+  },
+  {
+   "fieldname": "column_break_dates",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "severity",
+   "fieldtype": "Select",
+   "label": "Severity",
+   "options": "\nMild\nModerate\nSevere"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Patient Problem List",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [],
+ "search_fields": "patient,icd10_code,description",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "description"
+}
