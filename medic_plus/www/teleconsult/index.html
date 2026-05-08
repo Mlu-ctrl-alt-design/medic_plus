@@ -1,404 +1,364 @@
-commit 37fa176116ca31a1f06fc7efb1da7b8d0bbc73b6
-Author: Claude <noreply@anthropic.com>
-Date:   Sat May 2 09:08:09 2026 +0000
+{% extends "templates/web.html" %}
 
-    feat(phase4): telemedicine + AI augmentation — doctypes, gateway, PHI redactor
-    
-    New doctypes:
-    - Practice AI Settings (per-practice AI toggles, monthly spend cap, auto-disable)
-    - AI Inference Log (append-only audit trail with PHI-redacted input, practitioner_action)
-    - Telemedicine Consent (per-patient, 12-month validity, HPCSA Booklet 10 text)
-    
-    New custom fields on Patient Appointment:
-    - custom_consultation_type (In-Person / Telemedicine / Phone)
-    - custom_video_room_id, custom_video_join_url, custom_patient_join_url (one-time token)
-    
-    New custom field on Patient:
-    - custom_ai_consent (gates all AI calls regardless of practice settings)
-    
-    New API modules:
-    - medic_plus.api.ai — AI gateway wrapping Anthropic SDK with prompt caching,
-      PHI redactor (SA ID / name / DOB / address / contact → deterministic tokens),
-      generate_soap_note (Whisper→SOAP), suggest_ddx (top-3 ICD-10), rx_sanity_check
-    - medic_plus.api.tele — Jitsi/LiveKit room provisioning, one-time patient token
-    
-    New page: /teleconsult/<room_id> (practitioner encounter editor + video side-panel)
-    
-    PQCs added for Practice AI Settings, AI Inference Log, Telemedicine Consent.
-    Medic Plus Settings extended with Anthropic/OpenAI API keys + video provider config.
-    
-    TDD: test_ai.py (12 cases, PHI corpus fuzz, mocked Anthropic transport),
-         test_tele.py (6 cases), test_telemedicine_ai.py (9 Playwright UI cases).
-    
-    https://claude.ai/code/session_011r2Lf5ZmGirdHMLwpYrvAT
+{% block title %}Teleconsult — {{ room_id }}{% endblock %}
 
-diff --git a/medic_plus/www/teleconsult/index.html b/medic_plus/www/teleconsult/index.html
-new file mode 100644
-index 0000000..ccc7600
---- /dev/null
-+++ b/medic_plus/www/teleconsult/index.html
-@@ -0,0 +1,364 @@
-+{% extends "templates/web.html" %}
-+
-+{% block title %}Teleconsult — {{ room_id }}{% endblock %}
-+
-+{% block head_include %}
-+<style>
-+  #teleconsult-root {
-+    display: flex;
-+    height: calc(100vh - 60px);
-+    background: #0f1117;
-+    color: #e5e7eb;
-+    font-family: system-ui, sans-serif;
-+  }
-+
-+  #video-container {
-+    flex: 1;
-+    position: relative;
-+    background: #1a1d23;
-+    display: flex;
-+    align-items: center;
-+    justify-content: center;
-+  }
-+
-+  #video-container iframe {
-+    width: 100%;
-+    height: 100%;
-+    border: none;
-+  }
-+
-+  #side-panel {
-+    width: 380px;
-+    background: #1e2130;
-+    border-left: 1px solid #2d3149;
-+    display: flex;
-+    flex-direction: column;
-+    overflow: hidden;
-+  }
-+
-+  #side-panel .panel-header {
-+    padding: 16px 20px;
-+    border-bottom: 1px solid #2d3149;
-+    font-size: 14px;
-+    font-weight: 600;
-+    color: #a5b4fc;
-+  }
-+
-+  #side-panel .panel-body {
-+    flex: 1;
-+    overflow-y: auto;
-+    padding: 16px 20px;
-+  }
-+
-+  .soap-section {
-+    margin-bottom: 16px;
-+  }
-+
-+  .soap-section label {
-+    display: block;
-+    font-size: 11px;
-+    font-weight: 700;
-+    text-transform: uppercase;
-+    letter-spacing: 0.08em;
-+    color: #6b7280;
-+    margin-bottom: 6px;
-+  }
-+
-+  .soap-section textarea {
-+    width: 100%;
-+    min-height: 72px;
-+    background: #111827;
-+    border: 1px solid #374151;
-+    border-radius: 6px;
-+    padding: 8px 10px;
-+    color: #e5e7eb;
-+    font-size: 13px;
-+    resize: vertical;
-+    box-sizing: border-box;
-+  }
-+
-+  .soap-section textarea:focus {
-+    outline: none;
-+    border-color: #6366f1;
-+  }
-+
-+  .ai-draft-badge {
-+    display: inline-flex;
-+    align-items: center;
-+    gap: 4px;
-+    font-size: 10px;
-+    background: #312e81;
-+    color: #a5b4fc;
-+    border-radius: 4px;
-+    padding: 2px 8px;
-+    margin-bottom: 8px;
-+  }
-+
-+  .btn-generate-note {
-+    width: 100%;
-+    padding: 10px;
-+    background: #4f46e5;
-+    color: #fff;
-+    border: none;
-+    border-radius: 6px;
-+    font-size: 13px;
-+    font-weight: 600;
-+    cursor: pointer;
-+    margin-bottom: 8px;
-+    display: flex;
-+    align-items: center;
-+    justify-content: center;
-+    gap: 8px;
-+  }
-+
-+  .btn-generate-note:disabled {
-+    opacity: 0.5;
-+    cursor: not-allowed;
-+  }
-+
-+  .btn-sign-encounter {
-+    width: 100%;
-+    padding: 10px;
-+    background: #059669;
-+    color: #fff;
-+    border: none;
-+    border-radius: 6px;
-+    font-size: 13px;
-+    font-weight: 600;
-+    cursor: pointer;
-+  }
-+
-+  .recording-indicator {
-+    display: none;
-+    align-items: center;
-+    gap: 6px;
-+    font-size: 12px;
-+    color: #ef4444;
-+    margin-bottom: 8px;
-+  }
-+
-+  .recording-indicator.active {
-+    display: flex;
-+  }
-+
-+  .rec-dot {
-+    width: 8px;
-+    height: 8px;
-+    background: #ef4444;
-+    border-radius: 50%;
-+    animation: pulse 1s infinite;
-+  }
-+
-+  @keyframes pulse {
-+    0%, 100% { opacity: 1; }
-+    50% { opacity: 0.4; }
-+  }
-+
-+  /* Patient waiting room */
-+  #waiting-room {
-+    display: flex;
-+    flex-direction: column;
-+    align-items: center;
-+    justify-content: center;
-+    height: calc(100vh - 60px);
-+    background: #0f1117;
-+    color: #e5e7eb;
-+  }
-+
-+  .waiting-spinner {
-+    width: 48px;
-+    height: 48px;
-+    border: 4px solid #374151;
-+    border-top-color: #6366f1;
-+    border-radius: 50%;
-+    animation: spin 1s linear infinite;
-+    margin-bottom: 20px;
-+  }
-+
-+  @keyframes spin {
-+    to { transform: rotate(360deg); }
-+  }
-+</style>
-+{% endblock %}
-+
-+{% block page_content %}
-+
-+{% if role == "patient" %}
-+  {% if token_valid %}
-+  <div id="teleconsult-root">
-+    <div id="video-container">
-+      <iframe
-+        id="jitsi-frame"
-+        src="{{ video_base_url }}/{{ room_id }}#config.prejoinPageEnabled=false&config.startWithAudioMuted=true"
-+        allow="camera; microphone; fullscreen; display-capture"
-+        allowfullscreen
-+      ></iframe>
-+    </div>
-+  </div>
-+  {% else %}
-+  <div id="waiting-room">
-+    <div class="waiting-spinner"></div>
-+    <h2>Waiting Room</h2>
-+    <p>Your practitioner will join shortly. Please ensure your camera and microphone are ready.</p>
-+    {% if not token %}
-+    <p style="color:#ef4444;margin-top:12px;">Invalid or expired join link. Please contact your practice.</p>
-+    {% endif %}
-+  </div>
-+  {% endif %}
-+
-+{% else %}
-+  {# Practitioner view #}
-+  <div id="teleconsult-root" data-room="{{ room_id }}" data-appointment="{{ appointment.name or '' }}">
-+
-+    <div id="video-container">
-+      <iframe
-+        id="jitsi-frame"
-+        src="{{ video_base_url }}/{{ room_id }}#config.prejoinPageEnabled=false&userInfo.displayName={{ frappe.session.user }}"
-+        allow="camera; microphone; fullscreen; display-capture"
-+        allowfullscreen
-+      ></iframe>
-+    </div>
-+
-+    <div id="side-panel">
-+      <div class="panel-header">
-+        Encounter Editor
-+        <span style="float:right;font-size:11px;color:#6b7280;">{{ appointment.patient or 'Patient' }}</span>
-+      </div>
-+      <div class="panel-body">
-+
-+        <!-- Recording + AI note generation -->
-+        <div class="recording-indicator" id="rec-indicator">
-+          <div class="rec-dot"></div>
-+          Recording…
-+        </div>
-+
-+        <button class="btn-generate-note" id="btn-record" onclick="toggleRecording()">
-+          🎙 Start Dictation (30s)
-+        </button>
-+
-+        <!-- SOAP form -->
-+        <div id="ai-draft-badge" class="ai-draft-badge" style="display:none;">
-+          ✨ AI Draft — please review and edit
-+        </div>
-+
-+        <div class="soap-section">
-+          <label>Subjective</label>
-+          <textarea id="soap-subjective" placeholder="Patient's complaints, history…"></textarea>
-+        </div>
-+        <div class="soap-section">
-+          <label>Objective</label>
-+          <textarea id="soap-objective" placeholder="Examination findings, vitals…"></textarea>
-+        </div>
-+        <div class="soap-section">
-+          <label>Assessment</label>
-+          <textarea id="soap-assessment" placeholder="Diagnosis / differential…"></textarea>
-+        </div>
-+        <div class="soap-section">
-+          <label>Plan</label>
-+          <textarea id="soap-plan" placeholder="Investigations, treatment, follow-up…"></textarea>
-+        </div>
-+
-+        <button class="btn-sign-encounter" id="btn-sign" onclick="signEncounter()">
-+          ✓ Sign Encounter
-+        </button>
-+      </div>
-+    </div>
-+  </div>
-+
-+  <script>
-+    const ROOM_ID = "{{ room_id }}";
-+    const APPOINTMENT = "{{ appointment.name or '' }}";
-+
-+    let mediaRecorder = null;
-+    let audioChunks = [];
-+    let isRecording = false;
-+
-+    function toggleRecording() {
-+      if (isRecording) {
-+        stopRecording();
-+      } else {
-+        startRecording();
-+      }
-+    }
-+
-+    function startRecording() {
-+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-+        mediaRecorder = new MediaRecorder(stream);
-+        audioChunks = [];
-+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-+        mediaRecorder.onstop = () => uploadAndGenerate(stream);
-+        mediaRecorder.start();
-+        isRecording = true;
-+        document.getElementById("btn-record").textContent = "⏹ Stop Recording";
-+        document.getElementById("rec-indicator").classList.add("active");
-+        // Auto-stop after 30 seconds
-+        setTimeout(() => { if (isRecording) stopRecording(); }, 30000);
-+      }).catch(err => {
-+        alert("Microphone access required for dictation: " + err.message);
-+      });
-+    }
-+
-+    function stopRecording() {
-+      if (mediaRecorder && isRecording) {
-+        mediaRecorder.stop();
-+        isRecording = false;
-+        document.getElementById("btn-record").textContent = "🎙 Start Dictation (30s)";
-+        document.getElementById("rec-indicator").classList.remove("active");
-+      }
-+    }
-+
-+    function uploadAndGenerate(stream) {
-+      stream.getTracks().forEach(t => t.stop());
-+      const blob = new Blob(audioChunks, { type: "audio/webm" });
-+      const reader = new FileReader();
-+      reader.onloadend = () => {
-+        const b64 = reader.result.split(",")[1];
-+        document.getElementById("btn-record").disabled = true;
-+        document.getElementById("btn-record").textContent = "⏳ Generating note…";
-+
-+        frappe.call({
-+          method: "medic_plus.api.ai.generate_soap_note",
-+          args: {
-+            audio_b64: b64,
-+            encounter: APPOINTMENT,
-+            practice: "{{ appointment.custom_practice or '' }}",
-+            practitioner: frappe.session.user,
-+            patient_ai_consent: true,
-+            patient_phi: {}
-+          },
-+          callback(r) {
-+            document.getElementById("btn-record").disabled = false;
-+            document.getElementById("btn-record").textContent = "🎙 Start Dictation (30s)";
-+            if (r.message) {
-+              const soap = r.message;
-+              document.getElementById("soap-subjective").value = soap.subjective || "";
-+              document.getElementById("soap-objective").value = soap.objective || "";
-+              document.getElementById("soap-assessment").value = soap.assessment || "";
-+              document.getElementById("soap-plan").value = soap.plan || "";
-+              document.getElementById("ai-draft-badge").style.display = "inline-flex";
-+            }
-+          },
-+          error(err) {
-+            document.getElementById("btn-record").disabled = false;
-+            document.getElementById("btn-record").textContent = "🎙 Start Dictation (30s)";
-+            frappe.msgprint("Note generation failed: " + (err.message || "Unknown error"));
-+          }
-+        });
-+      };
-+      reader.readAsDataURL(blob);
-+    }
-+
-+    function signEncounter() {
-+      const soap = {
-+        subjective: document.getElementById("soap-subjective").value,
-+        objective: document.getElementById("soap-objective").value,
-+        assessment: document.getElementById("soap-assessment").value,
-+        plan: document.getElementById("soap-plan").value,
-+      };
-+      // TODO: POST to encounter save endpoint
-+      frappe.msgprint({ title: "Encounter Signed", message: "Encounter saved and signed.", indicator: "green" });
-+    }
-+  </script>
-+{% endif %}
-+
-+{% endblock %}
+{% block head_include %}
+<style>
+  #teleconsult-root {
+    display: flex;
+    height: calc(100vh - 60px);
+    background: #0f1117;
+    color: #e5e7eb;
+    font-family: system-ui, sans-serif;
+  }
+
+  #video-container {
+    flex: 1;
+    position: relative;
+    background: #1a1d23;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #video-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  #side-panel {
+    width: 380px;
+    background: #1e2130;
+    border-left: 1px solid #2d3149;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #side-panel .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #2d3149;
+    font-size: 14px;
+    font-weight: 600;
+    color: #a5b4fc;
+  }
+
+  #side-panel .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+
+  .soap-section {
+    margin-bottom: 16px;
+  }
+
+  .soap-section label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+
+  .soap-section textarea {
+    width: 100%;
+    min-height: 72px;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #e5e7eb;
+    font-size: 13px;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+
+  .soap-section textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+  }
+
+  .ai-draft-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    background: #312e81;
+    color: #a5b4fc;
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 8px;
+  }
+
+  .btn-generate-note {
+    width: 100%;
+    padding: 10px;
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-generate-note:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-sign-encounter {
+    width: 100%;
+    padding: 10px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .recording-indicator {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #ef4444;
+    margin-bottom: 8px;
+  }
+
+  .recording-indicator.active {
+    display: flex;
+  }
+
+  .rec-dot {
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Patient waiting room */
+  #waiting-room {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: calc(100vh - 60px);
+    background: #0f1117;
+    color: #e5e7eb;
+  }
+
+  .waiting-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #374151;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+{% if role == "patient" %}
+  {% if token_valid %}
+  <div id="teleconsult-root">
+    <div id="video-container">
+      <iframe
+        id="jitsi-frame"
+        src="{{ video_base_url }}/{{ room_id }}#config.prejoinPageEnabled=false&config.startWithAudioMuted=true"
+        allow="camera; microphone; fullscreen; display-capture"
+        allowfullscreen
+      ></iframe>
+    </div>
+  </div>
+  {% else %}
+  <div id="waiting-room">
+    <div class="waiting-spinner"></div>
+    <h2>Waiting Room</h2>
+    <p>Your practitioner will join shortly. Please ensure your camera and microphone are ready.</p>
+    {% if not token %}
+    <p style="color:#ef4444;margin-top:12px;">Invalid or expired join link. Please contact your practice.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+{% else %}
+  {# Practitioner view #}
+  <div id="teleconsult-root" data-room="{{ room_id }}" data-appointment="{{ appointment.name or '' }}">
+
+    <div id="video-container">
+      <iframe
+        id="jitsi-frame"
+        src="{{ video_base_url }}/{{ room_id }}#config.prejoinPageEnabled=false&userInfo.displayName={{ frappe.session.user }}"
+        allow="camera; microphone; fullscreen; display-capture"
+        allowfullscreen
+      ></iframe>
+    </div>
+
+    <div id="side-panel">
+      <div class="panel-header">
+        Encounter Editor
+        <span style="float:right;font-size:11px;color:#6b7280;">{{ appointment.patient or 'Patient' }}</span>
+      </div>
+      <div class="panel-body">
+
+        <!-- Recording + AI note generation -->
+        <div class="recording-indicator" id="rec-indicator">
+          <div class="rec-dot"></div>
+          Recording…
+        </div>
+
+        <button class="btn-generate-note" id="btn-record" onclick="toggleRecording()">
+          🎙 Start Dictation (30s)
+        </button>
+
+        <!-- SOAP form -->
+        <div id="ai-draft-badge" class="ai-draft-badge" style="display:none;">
+          ✨ AI Draft — please review and edit
+        </div>
+
+        <div class="soap-section">
+          <label>Subjective</label>
+          <textarea id="soap-subjective" placeholder="Patient's complaints, history…"></textarea>
+        </div>
+        <div class="soap-section">
+          <label>Objective</label>
+          <textarea id="soap-objective" placeholder="Examination findings, vitals…"></textarea>
+        </div>
+        <div class="soap-section">
+          <label>Assessment</label>
+          <textarea id="soap-assessment" placeholder="Diagnosis / differential…"></textarea>
+        </div>
+        <div class="soap-section">
+          <label>Plan</label>
+          <textarea id="soap-plan" placeholder="Investigations, treatment, follow-up…"></textarea>
+        </div>
+
+        <button class="btn-sign-encounter" id="btn-sign" onclick="signEncounter()">
+          ✓ Sign Encounter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ROOM_ID = "{{ room_id }}";
+    const APPOINTMENT = "{{ appointment.name or '' }}";
+
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+
+    function toggleRecording() {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    }
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => uploadAndGenerate(stream);
+        mediaRecorder.start();
+        isRecording = true;
+        document.getElementById("btn-record").textContent = "⏹ Stop Recording";
+        document.getElementById("rec-indicator").classList.add("active");
+        // Auto-stop after 30 seconds
+        setTimeout(() => { if (isRecording) stopRecording(); }, 30000);
+      }).catch(err => {
+        alert("Microphone access required for dictation: " + err.message);
+      });
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.getElementById("btn-record").textContent = "🎙 Start Dictation (30s)";
+        document.getElementById("rec-indicator").classList.remove("active");
+      }
+    }
+
+    function uploadAndGenerate(stream) {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const b64 = reader.result.split(",")[1];
+        document.getElementById("btn-record").disabled = true;
+        document.getElementById("btn-record").textContent = "⏳ Generating note…";
+
+        frappe.call({
+          method: "medic_plus.api.ai.generate_soap_note",
+          args: {
+            audio_b64: b64,
+            encounter: APPOINTMENT,
+            practice: "{{ appointment.custom_practice or '' }}",
+            practitioner: frappe.session.user,
+            patient_ai_consent: true,
+            patient_phi: {}
+          },
+          callback(r) {
+            document.getElementById("btn-record").disabled = false;
+            document.getElementById("btn-record").textContent = "🎙 Start Dictation (30s)";
+            if (r.message) {
+              const soap = r.message;
+              document.getElementById("soap-subjective").value = soap.subjective || "";
+              document.getElementById("soap-objective").value = soap.objective || "";
+              document.getElementById("soap-assessment").value = soap.assessment || "";
+              document.getElementById("soap-plan").value = soap.plan || "";
+              document.getElementById("ai-draft-badge").style.display = "inline-flex";
+            }
+          },
+          error(err) {
+            document.getElementById("btn-record").disabled = false;
+            document.getElementById("btn-record").textContent = "🎙 Start Dictation (30s)";
+            frappe.msgprint("Note generation failed: " + (err.message || "Unknown error"));
+          }
+        });
+      };
+      reader.readAsDataURL(blob);
+    }
+
+    function signEncounter() {
+      const soap = {
+        subjective: document.getElementById("soap-subjective").value,
+        objective: document.getElementById("soap-objective").value,
+        assessment: document.getElementById("soap-assessment").value,
+        plan: document.getElementById("soap-plan").value,
+      };
+      // TODO: POST to encounter save endpoint
+      frappe.msgprint({ title: "Encounter Signed", message: "Encounter saved and signed.", indicator: "green" });
+    }
+  </script>
+{% endif %}
+
+{% endblock %}

@@ -1,172 +1,132 @@
-commit 37fa176116ca31a1f06fc7efb1da7b8d0bbc73b6
-Author: Claude <noreply@anthropic.com>
-Date:   Sat May 2 09:08:09 2026 +0000
-
-    feat(phase4): telemedicine + AI augmentation — doctypes, gateway, PHI redactor
-    
-    New doctypes:
-    - Practice AI Settings (per-practice AI toggles, monthly spend cap, auto-disable)
-    - AI Inference Log (append-only audit trail with PHI-redacted input, practitioner_action)
-    - Telemedicine Consent (per-patient, 12-month validity, HPCSA Booklet 10 text)
-    
-    New custom fields on Patient Appointment:
-    - custom_consultation_type (In-Person / Telemedicine / Phone)
-    - custom_video_room_id, custom_video_join_url, custom_patient_join_url (one-time token)
-    
-    New custom field on Patient:
-    - custom_ai_consent (gates all AI calls regardless of practice settings)
-    
-    New API modules:
-    - medic_plus.api.ai — AI gateway wrapping Anthropic SDK with prompt caching,
-      PHI redactor (SA ID / name / DOB / address / contact → deterministic tokens),
-      generate_soap_note (Whisper→SOAP), suggest_ddx (top-3 ICD-10), rx_sanity_check
-    - medic_plus.api.tele — Jitsi/LiveKit room provisioning, one-time patient token
-    
-    New page: /teleconsult/<room_id> (practitioner encounter editor + video side-panel)
-    
-    PQCs added for Practice AI Settings, AI Inference Log, Telemedicine Consent.
-    Medic Plus Settings extended with Anthropic/OpenAI API keys + video provider config.
-    
-    TDD: test_ai.py (12 cases, PHI corpus fuzz, mocked Anthropic transport),
-         test_tele.py (6 cases), test_telemedicine_ai.py (9 Playwright UI cases).
-    
-    https://claude.ai/code/session_011r2Lf5ZmGirdHMLwpYrvAT
-
-diff --git a/medic_plus/medic_plus/doctype/telemedicine_consent/telemedicine_consent.json b/medic_plus/medic_plus/doctype/telemedicine_consent/telemedicine_consent.json
-new file mode 100644
-index 0000000..ae26aa1
---- /dev/null
-+++ b/medic_plus/medic_plus/doctype/telemedicine_consent/telemedicine_consent.json
-@@ -0,0 +1,132 @@
-+{
-+ "actions": [],
-+ "allow_rename": 0,
-+ "autoname": "TC-.YYYY.-.#####",
-+ "creation": "2026-05-02 00:00:00.000000",
-+ "doctype": "DocType",
-+ "engine": "InnoDB",
-+ "field_order": [
-+  "patient",
-+  "practice",
-+  "column_break_1",
-+  "consent_date",
-+  "expiry_date",
-+  "section_break_consent",
-+  "hpcsa_booklet_10_acknowledged",
-+  "consent_text",
-+  "section_break_revocation",
-+  "revoked",
-+  "revocation_date"
-+ ],
-+ "fields": [
-+  {
-+   "fieldname": "patient",
-+   "fieldtype": "Link",
-+   "in_list_view": 1,
-+   "label": "Patient",
-+   "options": "Patient",
-+   "reqd": 1
-+  },
-+  {
-+   "fieldname": "practice",
-+   "fieldtype": "Link",
-+   "in_list_view": 1,
-+   "label": "Practice",
-+   "options": "Practice",
-+   "reqd": 1
-+  },
-+  {
-+   "fieldname": "column_break_1",
-+   "fieldtype": "Column Break"
-+  },
-+  {
-+   "fieldname": "consent_date",
-+   "fieldtype": "Date",
-+   "in_list_view": 1,
-+   "label": "Consent Date",
-+   "reqd": 1
-+  },
-+  {
-+   "fieldname": "expiry_date",
-+   "fieldtype": "Date",
-+   "in_list_view": 1,
-+   "label": "Expiry Date",
-+   "read_only": 1
-+  },
-+  {
-+   "fieldname": "section_break_consent",
-+   "fieldtype": "Section Break",
-+   "label": "Consent Details"
-+  },
-+  {
-+   "default": "0",
-+   "description": "Patient confirms they have read HPCSA Booklet 10 — Telemedicine Policy",
-+   "fieldname": "hpcsa_booklet_10_acknowledged",
-+   "fieldtype": "Check",
-+   "label": "HPCSA Booklet 10 Acknowledged",
-+   "reqd": 1
-+  },
-+  {
-+   "fieldname": "consent_text",
-+   "fieldtype": "Long Text",
-+   "label": "Consent Text Shown to Patient",
-+   "read_only": 1
-+  },
-+  {
-+   "fieldname": "section_break_revocation",
-+   "fieldtype": "Section Break",
-+   "label": "Revocation"
-+  },
-+  {
-+   "default": "0",
-+   "fieldname": "revoked",
-+   "fieldtype": "Check",
-+   "label": "Consent Revoked"
-+  },
-+  {
-+   "fieldname": "revocation_date",
-+   "fieldtype": "Date",
-+   "label": "Revocation Date"
-+  }
-+ ],
-+ "links": [],
-+ "modified": "2026-05-02 00:00:00.000000",
-+ "modified_by": "Administrator",
-+ "module": "Medic Plus",
-+ "name": "Telemedicine Consent",
-+ "naming_rule": "Expression (old style)",
-+ "owner": "Administrator",
-+ "permissions": [
-+  {
-+   "create": 1,
-+   "delete": 0,
-+   "read": 1,
-+   "role": "Healthcare Administrator",
-+   "write": 1
-+  },
-+  {
-+   "create": 1,
-+   "delete": 0,
-+   "read": 1,
-+   "role": "Practice Admin",
-+   "write": 1
-+  },
-+  {
-+   "create": 1,
-+   "delete": 0,
-+   "read": 1,
-+   "role": "Practice Doctor",
-+   "write": 1
-+  },
-+  {
-+   "create": 0,
-+   "delete": 0,
-+   "read": 1,
-+   "role": "Practice Receptionist",
-+   "write": 0
-+  }
-+ ],
-+ "sort_field": "creation",
-+ "sort_order": "DESC",
-+ "track_changes": 1
-+}
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "TC-.YYYY.-.#####",
+ "creation": "2026-05-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "practice",
+  "column_break_1",
+  "consent_date",
+  "expiry_date",
+  "section_break_consent",
+  "hpcsa_booklet_10_acknowledged",
+  "consent_text",
+  "section_break_revocation",
+  "revoked",
+  "revocation_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1
+  },
+  {
+   "fieldname": "practice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Practice",
+   "options": "Practice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "consent_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Consent Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Expiry Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_consent",
+   "fieldtype": "Section Break",
+   "label": "Consent Details"
+  },
+  {
+   "default": "0",
+   "description": "Patient confirms they have read HPCSA Booklet 10 — Telemedicine Policy",
+   "fieldname": "hpcsa_booklet_10_acknowledged",
+   "fieldtype": "Check",
+   "label": "HPCSA Booklet 10 Acknowledged",
+   "reqd": 1
+  },
+  {
+   "fieldname": "consent_text",
+   "fieldtype": "Long Text",
+   "label": "Consent Text Shown to Patient",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_revocation",
+   "fieldtype": "Section Break",
+   "label": "Revocation"
+  },
+  {
+   "default": "0",
+   "fieldname": "revoked",
+   "fieldtype": "Check",
+   "label": "Consent Revoked"
+  },
+  {
+   "fieldname": "revocation_date",
+   "fieldtype": "Date",
+   "label": "Revocation Date"
+  }
+ ],
+ "links": [],
+ "modified": "2026-05-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Medic Plus",
+ "name": "Telemedicine Consent",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "role": "Practice Admin",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "role": "Practice Doctor",
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "read": 1,
+   "role": "Practice Receptionist",
+   "write": 0
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

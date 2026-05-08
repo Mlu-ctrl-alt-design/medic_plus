@@ -9,7 +9,8 @@
   "processing_purposes": "AI-assisted clinical documentation, differential diagnosis support",
   "transfer_mechanism": "StandardContractualClauses",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://www.anthropic.com/privacy"
+  "privacy_policy_url": "https://www.anthropic.com/privacy",
+  "name": "Anthropic"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -21,7 +22,8 @@
   "processing_purposes": "Secure telehealth video consultations",
   "transfer_mechanism": "StandardContractualClauses",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://jitsi.org/security/"
+  "privacy_policy_url": "https://jitsi.org/security/",
+  "name": "Jitsi"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -33,7 +35,8 @@
   "processing_purposes": "Telehealth and care-coordination communications",
   "transfer_mechanism": "StandardContractualClauses",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://livekit.io/privacy"
+  "privacy_policy_url": "https://livekit.io/privacy",
+  "name": "LiveKit"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -45,7 +48,8 @@
   "processing_purposes": "Medical-aid claim switching and adjudication",
   "transfer_mechanism": "NotApplicable",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://www.healthbridge.co.za/privacy"
+  "privacy_policy_url": "https://www.healthbridge.co.za/privacy",
+  "name": "Healthbridge"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -57,7 +61,8 @@
   "processing_purposes": "Pathology testing and result reporting",
   "transfer_mechanism": "NotApplicable",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://www.lancet.co.za/privacy-policy"
+  "privacy_policy_url": "https://www.lancet.co.za/privacy-policy",
+  "name": "Lancet Laboratories"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -69,7 +74,8 @@
   "processing_purposes": "Pathology testing and result reporting",
   "transfer_mechanism": "NotApplicable",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://www.ampath.co.za/privacy"
+  "privacy_policy_url": "https://www.ampath.co.za/privacy",
+  "name": "Ampath Laboratories"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -81,7 +87,8 @@
   "processing_purposes": "Pathology testing and result reporting",
   "transfer_mechanism": "NotApplicable",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://www.pathcare.co.za"
+  "privacy_policy_url": "https://www.pathcare.co.za",
+  "name": "PathCare Laboratories"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -92,7 +99,8 @@
   "personal_data_types": "Patient demographics, clinical requests, laboratory results",
   "processing_purposes": "Pathology testing and result reporting",
   "transfer_mechanism": "NotApplicable",
-  "breach_notification_hours": 72
+  "breach_notification_hours": 72,
+  "name": "Vermaak Laboratories"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -104,7 +112,8 @@
   "processing_purposes": "Public sector pathology testing",
   "transfer_mechanism": "NotApplicable",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://www.nhls.ac.za"
+  "privacy_policy_url": "https://www.nhls.ac.za",
+  "name": "NHLS (National Health Laboratory Service)"
  },
  {
   "doctype": "Sub-Processor Register",
@@ -117,6 +126,7 @@
   "lawful_basis": "LegalObligation",
   "transfer_mechanism": "NotApplicable",
   "breach_notification_hours": 72,
-  "privacy_policy_url": "https://www.nicd.ac.za"
+  "privacy_policy_url": "https://www.nicd.ac.za",
+  "name": "NICD (National Institute for Communicable Diseases)"
  }
 ]
