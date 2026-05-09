@@ -1295,6 +1295,25 @@ Closing slice of Phase 1. Lands three verticals on `develop` in 8 atomic commits
 
 ---
 
+## 2026-05-09 — v2.1.0: Signup admin overrides (Force Provision + Mark Paid)
+
+Closes the gap where a Practice Registration Request that pays out-of-band (or whose Yoco webhook was lost) had no admin path to completion. Two new System Manager-only whitelisted methods on `medic_plus.api.yoco`, surfaced as buttons on the PRR form:
+
+- **`force_provision(request_name)`** — re-runs the canonical webhook path for a PRR that is already `payment_status="Paid"` but stuck before provisioning. Cherry-picked from earlier work on `feature/phase-7b-bulk-import` (commit `55bdf3b`); never previously merged to `develop`/`main`. Surfaced via a "Force Provision" button when the PRR is Paid + not yet provisioned.
+- **`admin_mark_paid_and_provision(request_name, reason)`** — flips an Unpaid PRR to Paid (records `yoco_paid_at`, writes an audit Comment to the PRR timeline citing the actor and reason), then runs the same `_handle_payment_succeeded` path. Surfaced via a "Mark Paid (Admin Override)" button when the PRR is Unpaid + not yet provisioned. Reason is a required field on the dialog.
+
+Both methods reuse `_handle_payment_succeeded` (which elevates to Administrator and calls `_provision_from_payment`) so the admin and webhook code paths produce byte-identical tenants. Idempotent for already-Paid requests; reject already-provisioned requests.
+
+Side-effect from cherry-pick `55bdf3b`: `create_practitioner` and `create_practice` now persist the applicant's `mobile` to `Healthcare Practitioner.mobile_phone` and `Practice.phone` respectively (was being captured on the PRR + User but dropped during downstream provisioning).
+
+**Tests** (10 new in `medic_plus/api/test_signup.py`): `TestForceProvision` (4) covers happy path on Paid, rejection of Unpaid, rejection of already-provisioned, System Manager guard. `TestAdminMarkPaidOverride` (6) covers happy path on Unpaid (assert payment flipped + provisioned + override flag true), audit-comment content, idempotence on already-Paid (override flag false), rejection of already-provisioned, System Manager guard, unknown-request rejection. Run via custom runner: `env/bin/python -m daystar_followup.tests._runner --site medic-demo-staging.thedaystar.co.za --module medic_plus.api.test_signup` (the bench runner trips over ERPNext's `BootStrapTestData` import on this site — same problem documented in `/home/CLAUDE.md` for crm-staging).
+
+**Files**: `medic_plus/api/yoco.py` (force_provision + admin_mark_paid_and_provision), `medic_plus/api/_provisioning.py` (mobile propagation), `medic_plus/medic_plus/doctype/practice_registration_request/practice_registration_request.js` (new file — both buttons + Open Practice shortcut), `medic_plus/api/test_signup.py` (new test classes).
+
+**Why now**: production saw a new PRR on medic-demo.thedaystar.co.za stuck in Unpaid with no admin escape hatch. v2.0.x had only the dev-only `_test_mark_paid` (gated on `developer_mode=1`) and the Yoco webhook itself.
+
+---
+
 ## Roadmap
 
 - [ ] Prescription print format — Jinja, per-practice letterhead ✅ Done (Phase 1D)

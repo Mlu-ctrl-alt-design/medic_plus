@@ -36,11 +36,12 @@ def create_company(practice_name: str) -> str:
 	return company.name
 
 
-def create_practice(practice_name: str) -> object:
+def create_practice(practice_name: str, phone: str | None = None) -> object:
 	practice = frappe.get_doc({
 		"doctype": "Practice",
 		"practice_name": practice_name,
 		"is_active": 1,
+		"phone": phone or "",
 	})
 	practice.insert(ignore_permissions=True)
 	return practice
@@ -69,6 +70,7 @@ def create_practitioner(
 	email: str,
 	hpcsa_number: str,
 	practice_number: str,
+	mobile: str | None = None,
 ):
 	parts = full_name.split()
 	practitioner = frappe.get_doc({
@@ -76,6 +78,7 @@ def create_practitioner(
 		"first_name": parts[0],
 		"last_name": " ".join(parts[1:]) if len(parts) > 1 else "",
 		"user_id": email,
+		"mobile_phone": mobile or "",
 		"custom_hpcsa_number": hpcsa_number,
 		"custom_practice_number": practice_number,
 	})
@@ -219,7 +222,7 @@ def provision_doctor(
 	Raises on any failure — callers must rollback.
 	"""
 	company_name = create_company(practice_name)
-	practice = create_practice(practice_name)
+	practice = create_practice(practice_name, phone=mobile)
 
 	# Link the practice to its ERPNext company
 	frappe.db.set_value("Practice", practice.name, "company", company_name)
@@ -230,7 +233,7 @@ def provision_doctor(
 		"practice": practice.name,
 	}).insert(ignore_permissions=True)
 
-	practitioner = create_practitioner(full_name, email, hpcsa_number, practice_number)
+	practitioner = create_practitioner(full_name, email, hpcsa_number, practice_number, mobile=mobile)
 	create_practice_member(practice.name, email, practitioner.name, full_name=full_name, email=email)
 
 	pos_profile = create_pos_profile(practice_name, company_name)
