@@ -6,18 +6,24 @@
 // Sections: Schedule → SOAP → Examination Findings → Orders.
 // Examination Findings and Orders are child-table rows appended before POST.
 
-function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
-  const api = window.meridianApi || {};
-  const today = new Date().toISOString().slice(0, 10);
+const NV_SECTIONS = [
+  { id: 'schedule', label: 'Schedule' },
+  { id: 'soap', label: 'SOAP Notes' },
+  { id: 'exam', label: 'Examination' },
+  { id: 'orders', label: 'Orders' },
+];
 
-  // ── Scheduling fields ──────────────────────────────────────────────────────
-  const [form, setForm] = React.useState({
-    patient: prefillPatient || '',
+const NV_BODY_SYSTEMS = ['General', 'Cardiovascular', 'Respiratory', 'Gastrointestinal',
+  'Neurological', 'Musculoskeletal', 'Dermatological', 'ENT', 'Ophthalmology',
+  'Genitourinary', 'Endocrine', 'Psychiatric', 'Other'];
+
+function nvInitialForm(today) {
+  return {
+    patient: '',
     practitioner: '',
     encounter_date: today,
     encounter_time: '09:00',
     appointment_type: '',
-    // SOAP
     chief_complaint: '',
     hopi: '',
     subjective: '',
@@ -25,13 +31,99 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
     assessment_text: '',
     assessment_code: '',
     plan: '',
-  });
+  };
+}
 
-  // ── Child rows ─────────────────────────────────────────────────────────────
+// Module-scope so React keeps a stable component identity across MNewVisitDrawer
+// re-renders. Defining this inside the parent caused every input to remount on
+// every keystroke (and lose focus, popover state, etc.).
+function NVField({ label, children, span = 1 }) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        fontSize: 12,
+        color: 'var(--text-muted)',
+        gridColumn: span > 1 ? `span ${span}` : undefined,
+      }}
+    >
+      <span style={{ fontWeight: 500 }}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function NVSectionTabs({ active, onSelect }) {
+  const onKey = (e) => {
+    const idx = NV_SECTIONS.findIndex((s) => s.id === active);
+    if (idx < 0) return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      onSelect(NV_SECTIONS[(idx + 1) % NV_SECTIONS.length].id);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      onSelect(NV_SECTIONS[(idx - 1 + NV_SECTIONS.length) % NV_SECTIONS.length].id);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      onSelect(NV_SECTIONS[0].id);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      onSelect(NV_SECTIONS[NV_SECTIONS.length - 1].id);
+    }
+  };
+  return (
+    <div
+      role="tablist"
+      aria-label="Encounter sections"
+      onKeyDown={onKey}
+      style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: 16, gap: 0 }}
+    >
+      {NV_SECTIONS.map((s) => {
+        const isActive = s.id === active;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            role="tab"
+            id={`new-visit-tab-${s.id}`}
+            aria-selected={isActive}
+            aria-controls={`new-visit-panel-${s.id}`}
+            tabIndex={isActive ? 0 : -1}
+            data-testid={`visit-tab-${s.id}`}
+            onClick={() => onSelect(s.id)}
+            style={{
+              padding: '6px 14px',
+              fontSize: 12,
+              border: 'none',
+              cursor: 'pointer',
+              borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
+              background: 'none',
+              fontWeight: isActive ? 600 : 400,
+              color: isActive ? 'var(--text-color)' : 'var(--text-muted)',
+            }}
+          >
+            {s.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
+  const api = window.meridianApi || {};
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [form, setForm] = React.useState(() => ({
+    ...nvInitialForm(today),
+    patient: prefillPatient || '',
+  }));
+
   const [examFindings, setExamFindings] = React.useState([]);
   const [orders, setOrders] = React.useState([]);
 
-  // ── Remote data ────────────────────────────────────────────────────────────
   const [patients, setPatients] = React.useState([]);
   const [practitioners, setPractitioners] = React.useState([]);
   const [appointmentTypes, setAppointmentTypes] = React.useState([]);
@@ -40,46 +132,61 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
 
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState(null);
+  const [missingFields, setMissingFields] = React.useState(() => new Set());
   const [activeSection, setActiveSection] = React.useState('schedule');
 
-  // ── Load reference lists on open ──────────────────────────────────────────
+  // Load reference lists when the drawer opens. Cancellation flag prevents
+  // late responses from updating state after the drawer closes.
   React.useEffect(() => {
     if (!open) return;
+    let cancelled = false;
     setError(null);
+    setMissingFields(new Set());
     setActiveSection('schedule');
     api.resource('Patient', { fields: JSON.stringify(['name', 'patient_name']), order_by: 'patient_name asc', limit_page_length: 200 })
-      .then((rows) => setPatients((rows && rows.data) || []))
-      .catch(() => setPatients([]));
+      .then((rows) => { if (!cancelled) setPatients((rows && rows.data) || []); })
+      .catch(() => { if (!cancelled) setPatients([]); });
     api.resource('Healthcare Practitioner', { fields: JSON.stringify(['name', 'practitioner_name']), order_by: 'practitioner_name asc', limit_page_length: 200 })
-      .then((rows) => setPractitioners((rows && rows.data) || []))
-      .catch(() => setPractitioners([]));
+      .then((rows) => { if (!cancelled) setPractitioners((rows && rows.data) || []); })
+      .catch(() => { if (!cancelled) setPractitioners([]); });
     api.resource('Appointment Type', { fields: JSON.stringify(['name']), order_by: 'name asc', limit_page_length: 200 })
       .then((rows) => {
+        if (cancelled) return;
         const list = (rows && rows.data) || [];
         setAppointmentTypes(list);
         setForm((f) => f.appointment_type || !list.length ? f : { ...f, appointment_type: list[0].name });
       })
-      .catch(() => setAppointmentTypes([]));
+      .catch(() => { if (!cancelled) setAppointmentTypes([]); });
+    return () => { cancelled = true; };
   }, [open]);
 
   React.useEffect(() => {
     if (open && prefillPatient) setForm((f) => ({ ...f, patient: prefillPatient }));
   }, [open, prefillPatient]);
 
-  // ── ICD-10 search (debounced 300ms) ────────────────────────────────────────
+  // ICD-10 search (debounced 300ms). Cancellation flag drops late responses.
   React.useEffect(() => {
     if (!icd10Query || icd10Query.length < 2) { setIcd10Results([]); return; }
+    let cancelled = false;
     const timer = setTimeout(() => {
       api.call('medic_plus.api.daystar_health.search_icd10', { query: icd10Query, limit: 10 })
-        .then((res) => setIcd10Results((res && res.message) || []))
-        .catch(() => setIcd10Results([]));
+        .then((res) => { if (!cancelled) setIcd10Results((res && res.message) || []); })
+        .catch(() => { if (!cancelled) setIcd10Results([]); });
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [icd10Query]);
 
-  const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const update = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (missingFields.has(k) && v) {
+      setMissingFields((prev) => {
+        const next = new Set(prev);
+        next.delete(k);
+        return next;
+      });
+    }
+  };
 
-  // ── Examination Findings helpers ───────────────────────────────────────────
   const addFinding = () => setExamFindings((prev) => [
     ...prev,
     { body_system: 'General', body_part: '', finding: '', is_abnormal: 0 },
@@ -87,7 +194,6 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
   const updateFinding = (i, k, v) => setExamFindings((prev) => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
   const removeFinding = (i) => setExamFindings((prev) => prev.filter((_, idx) => idx !== i));
 
-  // ── Orders helpers ─────────────────────────────────────────────────────────
   const addOrder = () => setOrders((prev) => [
     ...prev,
     { order_type: 'Lab', order_name: '', status: 'Draft' },
@@ -95,14 +201,21 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
   const updateOrder = (i, k, v) => setOrders((prev) => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
   const removeOrder = (i) => setOrders((prev) => prev.filter((_, idx) => idx !== i));
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const submit = async () => {
-    if (!form.patient || !form.practitioner || !form.encounter_date || !form.chief_complaint) {
+    const missing = new Set();
+    if (!form.patient) missing.add('patient');
+    if (!form.practitioner) missing.add('practitioner');
+    if (!form.encounter_date) missing.add('encounter_date');
+    if (!form.chief_complaint) missing.add('chief_complaint');
+    if (missing.size > 0) {
+      setMissingFields(missing);
       setError('Patient, practitioner, date and chief complaint are required.');
+      setActiveSection('schedule');
       return;
     }
     setSubmitting(true);
     setError(null);
+    setMissingFields(new Set());
     try {
       const payload = {
         doctype: 'Patient Encounter',
@@ -149,13 +262,7 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
       }
       const created = (data && (data.message || data)) || null;
       if (onCreated) onCreated(created);
-      // Reset for next open
-      setForm({
-        patient: '', practitioner: '', encounter_date: today,
-        encounter_time: '09:00', appointment_type: '',
-        chief_complaint: '', hopi: '', subjective: '',
-        objective: '', assessment_text: '', assessment_code: '', plan: '',
-      });
+      setForm(nvInitialForm(today));
       setExamFindings([]);
       setOrders([]);
       setIcd10Query('');
@@ -168,32 +275,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
     }
   };
 
-  // ── Layout helpers ─────────────────────────────────────────────────────────
-  const Field = ({ label, children, span = 1 }) => (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-muted)', gridColumn: span > 1 ? `span ${span}` : undefined }}>
-      <span style={{ fontWeight: 500 }}>{label}</span>
-      {children}
-    </label>
-  );
-
-  const SectionTab = ({ id, label }) => (
-    <button
-      data-testid={`visit-tab-${id}`}
-      onClick={() => setActiveSection(id)}
-      style={{
-        padding: '6px 14px', fontSize: 12, border: 'none', cursor: 'pointer',
-        borderBottom: activeSection === id ? '2px solid var(--primary)' : '2px solid transparent',
-        background: 'none', fontWeight: activeSection === id ? 600 : 400,
-        color: activeSection === id ? 'var(--text-color)' : 'var(--text-muted)',
-      }}
-    >
-      {label}
-    </button>
-  );
-
-  const BODY_SYSTEMS = ['General', 'Cardiovascular', 'Respiratory', 'Gastrointestinal',
-    'Neurological', 'Musculoskeletal', 'Dermatological', 'ENT', 'Ophthalmology',
-    'Genitourinary', 'Endocrine', 'Psychiatric', 'Other'];
+  const ariaInvalid = (k) => (missingFields.has(k) ? 'true' : undefined);
+  const ariaDescribedBy = (k) => (missingFields.has(k) ? 'new-visit-error' : undefined);
 
   return (
     <window.MDrawer
@@ -215,53 +298,77 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
       }
     >
       {error && (
-        <div className="card" style={{ marginBottom: 12, padding: 10, background: 'var(--danger-soft)', borderColor: 'var(--danger)' }}>
+        <div
+          className="card"
+          id="new-visit-error"
+          role="alert"
+          aria-live="assertive"
+          style={{ marginBottom: 12, padding: 10, background: 'var(--danger-soft)', borderColor: 'var(--danger)' }}
+        >
           <div style={{ fontSize: 13, color: '#b91c1c' }}>{error}</div>
         </div>
       )}
 
-      {/* Section tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: 16, gap: 0 }}>
-        <SectionTab id="schedule" label="Schedule" />
-        <SectionTab id="soap" label="SOAP Notes" />
-        <SectionTab id="exam" label="Examination" />
-        <SectionTab id="orders" label="Orders" />
-      </div>
+      <NVSectionTabs active={activeSection} onSelect={setActiveSection} />
 
       {/* ── Schedule ───────────────────────────────────────────────────────── */}
       {activeSection === 'schedule' && (
-        <div style={{ display: 'grid', gap: 14, gridTemplateColumns: '1fr 1fr' }}>
-          <Field label="Patient">
-            <select data-testid="new-visit-patient" value={form.patient} onChange={(e) => update('patient', e.target.value)} className="input">
-              <option value="">Select patient…</option>
-              {patients.map((p) => (
-                <option key={p.name} value={p.name}>{p.patient_name || p.name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Practitioner">
-            <select data-testid="new-visit-practitioner" value={form.practitioner} onChange={(e) => update('practitioner', e.target.value)} className="input">
-              <option value="">Select practitioner…</option>
-              {practitioners.map((p) => (
-                <option key={p.name} value={p.name}>{p.practitioner_name || p.name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Date">
-            <input type="date" data-testid="new-visit-date" value={form.encounter_date} onChange={(e) => update('encounter_date', e.target.value)} className="input" />
-          </Field>
-          <Field label="Time">
-            <input type="time" data-testid="new-visit-time" value={form.encounter_time} onChange={(e) => update('encounter_time', e.target.value)} className="input" />
-          </Field>
-          <Field label="Type" span={2}>
-            <select data-testid="new-visit-type" value={form.appointment_type} onChange={(e) => update('appointment_type', e.target.value)} className="input">
-              <option value="">Select type…</option>
-              {appointmentTypes.map((t) => (
-                <option key={t.name} value={t.name}>{t.name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Chief Complaint" span={2}>
+        <div
+          role="tabpanel"
+          id="new-visit-panel-schedule"
+          aria-labelledby="new-visit-tab-schedule"
+          style={{ display: 'grid', gap: 14, gridTemplateColumns: '1fr 1fr' }}
+        >
+          <NVField label="Patient">
+            <window.MSelect
+              data-testid="new-visit-patient"
+              value={form.patient}
+              onChange={(v) => update('patient', v)}
+              options={patients.map((p) => ({ value: p.name, label: p.patient_name || p.name }))}
+              placeholder="Select patient…"
+              searchable
+              aria-invalid={ariaInvalid('patient')}
+              aria-describedby={ariaDescribedBy('patient')}
+            />
+          </NVField>
+          <NVField label="Practitioner">
+            <window.MSelect
+              data-testid="new-visit-practitioner"
+              value={form.practitioner}
+              onChange={(v) => update('practitioner', v)}
+              options={practitioners.map((p) => ({ value: p.name, label: p.practitioner_name || p.name }))}
+              placeholder="Select practitioner…"
+              searchable
+              aria-invalid={ariaInvalid('practitioner')}
+              aria-describedby={ariaDescribedBy('practitioner')}
+            />
+          </NVField>
+          <NVField label="Date">
+            <window.MDatePicker
+              data-testid="new-visit-date"
+              value={form.encounter_date}
+              onChange={(v) => update('encounter_date', v)}
+              aria-invalid={ariaInvalid('encounter_date')}
+              aria-describedby={ariaDescribedBy('encounter_date')}
+            />
+          </NVField>
+          <NVField label="Time">
+            <window.MTimePicker
+              data-testid="new-visit-time"
+              value={form.encounter_time}
+              onChange={(v) => update('encounter_time', v)}
+            />
+          </NVField>
+          <NVField label="Type" span={2}>
+            <window.MSelect
+              data-testid="new-visit-type"
+              value={form.appointment_type}
+              onChange={(v) => update('appointment_type', v)}
+              options={appointmentTypes.map((t) => ({ value: t.name, label: t.name }))}
+              placeholder="Select type…"
+            />
+          </NVField>
+          <NVField label="Chief Complaint" span={2}>
             <input
               type="text"
               data-testid="new-visit-chief-complaint"
@@ -269,15 +376,22 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               onChange={(e) => update('chief_complaint', e.target.value)}
               className="input"
               placeholder="Presenting complaint…"
+              aria-invalid={ariaInvalid('chief_complaint')}
+              aria-describedby={ariaDescribedBy('chief_complaint')}
             />
-          </Field>
+          </NVField>
         </div>
       )}
 
       {/* ── SOAP Notes ─────────────────────────────────────────────────────── */}
       {activeSection === 'soap' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="History of Presenting Illness">
+        <div
+          role="tabpanel"
+          id="new-visit-panel-soap"
+          aria-labelledby="new-visit-tab-soap"
+          style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        >
+          <NVField label="History of Presenting Illness">
             <textarea
               data-testid="new-visit-hopi"
               rows={3}
@@ -287,8 +401,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               style={{ resize: 'vertical', minHeight: 60 }}
               placeholder="Background and history…"
             />
-          </Field>
-          <Field label="Subjective (S)">
+          </NVField>
+          <NVField label="Subjective (S)">
             <textarea
               data-testid="new-visit-subjective"
               rows={3}
@@ -298,8 +412,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               style={{ resize: 'vertical', minHeight: 60 }}
               placeholder="Patient's description of symptoms…"
             />
-          </Field>
-          <Field label="Objective (O)">
+          </NVField>
+          <NVField label="Objective (O)">
             <textarea
               data-testid="new-visit-objective"
               rows={3}
@@ -309,8 +423,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               style={{ resize: 'vertical', minHeight: 60 }}
               placeholder="Vital signs, physical findings…"
             />
-          </Field>
-          <Field label="Assessment (A)">
+          </NVField>
+          <NVField label="Assessment (A)">
             <textarea
               data-testid="new-visit-assessment-text"
               rows={2}
@@ -320,9 +434,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               style={{ resize: 'vertical', minHeight: 48 }}
               placeholder="Clinical impression / diagnosis…"
             />
-          </Field>
-          {/* ICD-10 code picker */}
-          <Field label="ICD-10 Code">
+          </NVField>
+          <NVField label="ICD-10 Code">
             <div style={{ position: 'relative' }}>
               {form.assessment_code ? (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -373,8 +486,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
                 </>
               )}
             </div>
-          </Field>
-          <Field label="Plan (P)">
+          </NVField>
+          <NVField label="Plan (P)">
             <textarea
               data-testid="new-visit-plan"
               rows={3}
@@ -384,13 +497,17 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               style={{ resize: 'vertical', minHeight: 60 }}
               placeholder="Treatment plan, follow-up, referrals…"
             />
-          </Field>
+          </NVField>
         </div>
       )}
 
       {/* ── Examination Findings ───────────────────────────────────────────── */}
       {activeSection === 'exam' && (
-        <div>
+        <div
+          role="tabpanel"
+          id="new-visit-panel-exam"
+          aria-labelledby="new-visit-tab-exam"
+        >
           {examFindings.length === 0 && (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
               No examination findings added.
@@ -404,14 +521,11 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
             >
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>System</div>
-                <select
+                <window.MSelect
                   value={row.body_system}
-                  onChange={(e) => updateFinding(i, 'body_system', e.target.value)}
-                  className="input"
-                  style={{ fontSize: 12 }}
-                >
-                  {BODY_SYSTEMS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                  onChange={(v) => updateFinding(i, 'body_system', v)}
+                  options={NV_BODY_SYSTEMS.map((s) => ({ value: s, label: s }))}
+                />
               </div>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Body Part</div>
@@ -435,7 +549,14 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
                   style={{ fontSize: 12 }}
                 />
               </div>
-              <button className="btn btn-ghost btn-xs" onClick={() => removeFinding(i)} title="Remove">✕</button>
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={() => removeFinding(i)}
+                aria-label={`Remove finding ${i + 1}`}
+                title="Remove"
+              >
+                ✕
+              </button>
             </div>
           ))}
           <button
@@ -451,7 +572,11 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
 
       {/* ── Encounter Orders ───────────────────────────────────────────────── */}
       {activeSection === 'orders' && (
-        <div>
+        <div
+          role="tabpanel"
+          id="new-visit-panel-orders"
+          aria-labelledby="new-visit-tab-orders"
+        >
           {orders.length === 0 && (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
               No orders added.
@@ -465,17 +590,16 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
             >
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Type</div>
-                <select
+                <window.MSelect
                   value={row.order_type}
-                  onChange={(e) => updateOrder(i, 'order_type', e.target.value)}
-                  className="input"
-                  style={{ fontSize: 12 }}
-                >
-                  <option value="Lab">Lab</option>
-                  <option value="Imaging">Imaging</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Immunisation">Immunisation</option>
-                </select>
+                  onChange={(v) => updateOrder(i, 'order_type', v)}
+                  options={[
+                    { value: 'Lab', label: 'Lab' },
+                    { value: 'Imaging', label: 'Imaging' },
+                    { value: 'Referral', label: 'Referral' },
+                    { value: 'Immunisation', label: 'Immunisation' },
+                  ]}
+                />
               </div>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Order Name</div>
@@ -488,7 +612,14 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
                   style={{ fontSize: 12 }}
                 />
               </div>
-              <button className="btn btn-ghost btn-xs" onClick={() => removeOrder(i)} title="Remove">✕</button>
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={() => removeOrder(i)}
+                aria-label={`Remove order ${i + 1}`}
+                title="Remove"
+              >
+                ✕
+              </button>
             </div>
           ))}
           <button
@@ -506,341 +637,3 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
 }
 
 window.MNewVisitDrawer = MNewVisitDrawer;
-
-// ─── Phase 1D: Prescription Panel ──────────────────────────────────────────
-//
-// MPrescriptionPanel — manage a Drug Prescription child-table in the context
-// of a Patient Encounter.
-//
-// Props:
-//   patient         string   — Patient name (for live allergy checks)
-//   prescriber      string   — Healthcare Practitioner name (for Schedule checks)
-//   rows            array    — controlled drug-prescription rows
-//   onChange        fn(rows) — called on any row mutation
-//   disabled        bool     — lock the panel (e.g. encounter is submitted)
-//
-// Each row: { nappi_code_value, drug_name, schedule, strength, dosage_form,
-//             dosage, period, custom_repeats_authorised, custom_repeats_remaining,
-//             custom_generic_substitution_allowed, _override_reason }
-//
-// The panel calls check_prescription_safety on every NAPPI change and renders
-// orange warning badges per row.  When a warning badge is clicked an override
-// reason textarea opens; once filled the badge turns grey ("Override noted").
-
-const EMPTY_RX_ROW = () => ({
-  nappi_code_value: '',
-  drug_name: '',
-  schedule: '',
-  strength: '',
-  dosage_form: '',
-  dosage: '',
-  period: '',
-  custom_repeats_authorised: 0,
-  custom_generic_substitution_allowed: 0,
-  _override_reason: '',
-  _warnings: [],
-  _override_open: false,
-});
-
-function MPrescriptionRow({ row, idx, patient, prescriber, onUpdate, onRemove, disabled }) {
-  const api = window.meridianApi || {};
-
-  // Fetch Drug Master metadata when NAPPI CV changes
-  React.useEffect(() => {
-    if (!row.nappi_code_value) return;
-    let cancelled = false;
-    api.call('medic_plus.api.daystar_health.get_drug_master_by_nappi', {
-      nappi_code_value: row.nappi_code_value,
-    }).then((dm) => {
-      if (cancelled || !dm) return;
-      onUpdate(idx, {
-        drug_name: dm.drug_name || row.drug_name,
-        schedule: dm.schedule || '',
-        strength: dm.strength || '',
-        dosage_form: dm.dosage_form || '',
-      });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [row.nappi_code_value]);
-
-  // Live allergy/schedule warnings when patient + nappi CV are set
-  React.useEffect(() => {
-    if (!row.nappi_code_value || !patient) {
-      onUpdate(idx, { _warnings: [] });
-      return;
-    }
-    let cancelled = false;
-    api.call('medic_plus.api.daystar_health.check_prescription_safety', {
-      patient,
-      nappi_code_values: JSON.stringify([row.nappi_code_value]),
-    }).then((ws) => {
-      if (!cancelled) onUpdate(idx, { _warnings: ws || [] });
-    }).catch(() => {
-      if (!cancelled) onUpdate(idx, { _warnings: [] });
-    });
-    return () => { cancelled = true; };
-  }, [row.nappi_code_value, patient]);
-
-  const hasUncovered = row._warnings.length > 0 && !row._override_reason;
-  const hasCovered   = row._warnings.length > 0 && !!row._override_reason;
-
-  const inputStyle = { fontSize: 12, padding: '4px 8px', borderRadius: 4,
-    border: '1px solid var(--border)', background: 'var(--input-bg, #fff)',
-    color: 'var(--text-dark)', width: '100%', boxSizing: 'border-box' };
-  const labelStyle = { fontSize: 11, color: 'var(--text-muted)', display: 'block',
-    marginBottom: 2 };
-
-  return (
-    <div
-      data-testid={`rx-row-${idx}`}
-      style={{
-        border: `1px solid ${hasUncovered ? 'var(--warning, #f59e0b)' : 'var(--border)'}`,
-        borderRadius: 8, padding: 12, marginBottom: 10,
-        background: hasUncovered ? 'var(--warning-soft, #fffbeb)' : 'var(--surface)',
-        position: 'relative',
-      }}
-    >
-      {/* Remove button */}
-      {!disabled && (
-        <button
-          type="button"
-          data-testid={`rx-row-remove-${idx}`}
-          onClick={() => onRemove(idx)}
-          style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none',
-            cursor: 'pointer', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1 }}
-          title="Remove drug"
-        >✕</button>
-      )}
-
-      {/* NAPPI picker + drug name */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <div>
-          <label style={labelStyle}>NAPPI Medicine *</label>
-          <window.MNappiPicker
-            value={row.nappi_code_value}
-            testid={`rx-nappi-${idx}`}
-            onChange={({ code, display }) =>
-              onUpdate(idx, { nappi_code_value: `${code}-NAPPI`, drug_name: display })
-            }
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Drug Name</label>
-          <input
-            type="text"
-            data-testid={`rx-drugname-${idx}`}
-            value={row.drug_name}
-            onChange={(e) => onUpdate(idx, { drug_name: e.target.value })}
-            style={inputStyle}
-            disabled={disabled}
-          />
-        </div>
-      </div>
-
-      {/* Schedule / Strength / Form */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <div>
-          <label style={labelStyle}>Schedule</label>
-          <input
-            type="text"
-            data-testid={`rx-sched-${idx}`}
-            value={row.schedule}
-            readOnly
-            style={{ ...inputStyle, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Strength</label>
-          <input
-            type="text"
-            value={row.strength}
-            onChange={(e) => onUpdate(idx, { strength: e.target.value })}
-            style={inputStyle}
-            disabled={disabled}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Dosage Form</label>
-          <input
-            type="text"
-            value={row.dosage_form}
-            onChange={(e) => onUpdate(idx, { dosage_form: e.target.value })}
-            style={inputStyle}
-            disabled={disabled}
-          />
-        </div>
-      </div>
-
-      {/* Dosage / Duration / Repeats / Generic sub */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <div>
-          <label style={labelStyle}>Dosage</label>
-          <input
-            type="text"
-            data-testid={`rx-dosage-${idx}`}
-            value={row.dosage}
-            onChange={(e) => onUpdate(idx, { dosage: e.target.value })}
-            placeholder="e.g. 1 tablet BD"
-            style={inputStyle}
-            disabled={disabled}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Duration</label>
-          <input
-            type="text"
-            value={row.period}
-            onChange={(e) => onUpdate(idx, { period: e.target.value })}
-            placeholder="e.g. 7 days"
-            style={inputStyle}
-            disabled={disabled}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Repeats Authorised</label>
-          <input
-            type="number"
-            min="0"
-            data-testid={`rx-repeats-${idx}`}
-            value={row.custom_repeats_authorised}
-            onChange={(e) => onUpdate(idx, { custom_repeats_authorised: Number(e.target.value) })}
-            style={inputStyle}
-            disabled={disabled}
-          />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 16 }}>
-          <input
-            type="checkbox"
-            id={`rx-gensub-${idx}`}
-            checked={!!row.custom_generic_substitution_allowed}
-            onChange={(e) => onUpdate(idx, { custom_generic_substitution_allowed: e.target.checked ? 1 : 0 })}
-            disabled={disabled}
-          />
-          <label htmlFor={`rx-gensub-${idx}`} style={{ fontSize: 11, cursor: 'pointer' }}>
-            Generic sub
-          </label>
-        </div>
-      </div>
-
-      {/* Warning badges */}
-      {row._warnings.length > 0 && (
-        <div style={{ marginTop: 6 }}>
-          {row._warnings.map((w, wi) => (
-            <span
-              key={wi}
-              data-testid={`rx-warning-badge-${idx}-${wi}`}
-              title={w.message}
-              style={{
-                display: 'inline-block', fontSize: 10, padding: '2px 8px',
-                borderRadius: 12, marginRight: 6, marginBottom: 4, cursor: 'pointer',
-                background: hasCovered ? 'var(--text-muted)' : 'var(--warning, #f59e0b)',
-                color: '#fff', fontWeight: 600,
-              }}
-              onClick={() => onUpdate(idx, { _override_open: !row._override_open })}
-            >
-              {hasCovered ? '✓ Override noted' : `⚠ ${w.type === 'drug_allergy' ? 'Allergy' : w.type === 'schedule_rule' ? 'Schedule' : 'Interaction'}`}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Override reason (expands when a warning badge is clicked or when warnings exist) */}
-      {row._warnings.length > 0 && (row._override_open || hasUncovered) && (
-        <div
-          data-testid={`rx-override-${idx}`}
-          style={{
-            marginTop: 8, padding: 8, background: 'var(--warning-soft, #fffbeb)',
-            border: '1px solid var(--warning, #f59e0b)', borderRadius: 6,
-          }}
-        >
-          <label style={{ ...labelStyle, fontWeight: 600, color: '#92400e' }}>
-            Override reason (required to proceed) *
-          </label>
-          <textarea
-            data-testid={`rx-override-reason-${idx}`}
-            rows={2}
-            value={row._override_reason}
-            onChange={(e) => onUpdate(idx, { _override_reason: e.target.value })}
-            placeholder="Clinical justification for overriding the warning…"
-            style={{ ...inputStyle, resize: 'vertical', minHeight: 48 }}
-            disabled={disabled}
-          />
-          {row._warnings.map((w, wi) => (
-            <p key={wi} style={{ fontSize: 10, color: '#92400e', margin: '4px 0 0' }}>
-              {w.message}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MPrescriptionPanel({ patient, prescriber, rows, onChange, disabled = false }) {
-  const addRow = () => onChange([...rows, EMPTY_RX_ROW()]);
-
-  const updateRow = (idx, patch) => {
-    const updated = rows.map((r, i) => i === idx ? { ...r, ...patch } : r);
-    onChange(updated);
-  };
-
-  const removeRow = (idx) => onChange(rows.filter((_, i) => i !== idx));
-
-  const hasUncoveredWarnings = rows.some(
-    (r) => r._warnings && r._warnings.length > 0 && !r._override_reason
-  );
-
-  return (
-    <div data-testid="prescription-panel">
-      {rows.length === 0 && (
-        <div
-          data-testid="rx-empty"
-          style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12,
-            padding: '16px 0', borderRadius: 8, border: '1px dashed var(--border)' }}
-        >
-          No medications added yet.
-        </div>
-      )}
-
-      {rows.map((row, idx) => (
-        <MPrescriptionRow
-          key={idx}
-          row={row}
-          idx={idx}
-          patient={patient}
-          prescriber={prescriber}
-          onUpdate={updateRow}
-          onRemove={removeRow}
-          disabled={disabled}
-        />
-      ))}
-
-      {!disabled && (
-        <button
-          type="button"
-          data-testid="rx-add-drug"
-          onClick={addRow}
-          className="btn btn-outline btn-sm"
-          style={{ marginTop: 4 }}
-        >
-          + Add drug
-        </button>
-      )}
-
-      {hasUncoveredWarnings && (
-        <div
-          data-testid="rx-uncovered-warning-notice"
-          style={{
-            marginTop: 10, padding: '8px 12px', background: 'var(--warning-soft, #fffbeb)',
-            border: '1px solid var(--warning, #f59e0b)', borderRadius: 6,
-            fontSize: 12, color: '#92400e', fontWeight: 500,
-          }}
-        >
-          ⚠ One or more safety warnings require an override reason before saving.
-        </div>
-      )}
-    </div>
-  );
-}
-
-window.MPrescriptionPanel = MPrescriptionPanel;
