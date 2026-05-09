@@ -287,6 +287,191 @@ class TestYocoAutoProvision(FrappeTestCase):
 		self.assertIn("boom", row.provisioning_error or "")
 
 
+class TestForceProvision(FrappeTestCase):
+	"""force_provision: System Manager-only re-trigger for already-Paid PRRs."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.mobile = "082" + "".join(str(random.randint(0, 9)) for _ in range(7))
+		self.req = frappe.get_doc({
+			"doctype": "Practice Registration Request",
+			"practice_name": f"Force Practice {frappe.generate_hash(length=6)}",
+			"full_name": "Force Tester",
+			"email": f"force.{frappe.generate_hash(length=6)}@test.local",
+			"mobile": self.mobile,
+			"hpcsa_number": "MP55555",
+			"practice_number": "1234567",
+			"status": "Pending",
+			"payment_status": "Paid",
+			"yoco_paid_at": frappe.utils.now(),
+			"yoco_checkout_id": f"ch_force_{frappe.generate_hash(length=6)}",
+		}).insert(ignore_permissions=True)
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def test_force_provision_succeeds_for_paid_request(self):
+		from medic_plus.api.yoco import force_provision
+
+		result = force_provision(request_name=self.req.name)
+
+		self.assertEqual(result["status"], "ok")
+		self.assertTrue(result["practice"])
+		self.assertEqual(
+			frappe.db.get_value("Practice Registration Request", self.req.name, "status"),
+			"Provisioned",
+		)
+
+	def test_force_provision_rejects_unpaid_request(self):
+		from medic_plus.api.yoco import force_provision
+
+		frappe.db.set_value(
+			"Practice Registration Request", self.req.name, "payment_status", "Unpaid"
+		)
+		with self.assertRaises(frappe.ValidationError):
+			force_provision(request_name=self.req.name)
+
+	def test_force_provision_rejects_already_provisioned(self):
+		from medic_plus.api.yoco import force_provision, _handle_payment_succeeded
+
+		_handle_payment_succeeded({"metadata": {"request_name": self.req.name}})
+		with self.assertRaises(frappe.ValidationError):
+			force_provision(request_name=self.req.name)
+
+	def test_force_provision_requires_system_manager(self):
+		from medic_plus.api.yoco import force_provision
+
+		# Drop System Manager from the current user — Frappe's get_roles is
+		# read directly from the User doc, so we use a fresh non-admin user.
+		other_email = f"plain.{frappe.generate_hash(length=6)}@test.local"
+		frappe.get_doc({
+			"doctype": "User",
+			"email": other_email,
+			"first_name": "Plain",
+			"send_welcome_email": 0,
+		}).insert(ignore_permissions=True)
+		frappe.set_user(other_email)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				force_provision(request_name=self.req.name)
+		finally:
+			frappe.set_user("Administrator")
+
+
+class TestAdminMarkPaidOverride(FrappeTestCase):
+	"""admin_mark_paid_and_provision: System Manager-only override for unpaid PRRs."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.mobile = "082" + "".join(str(random.randint(0, 9)) for _ in range(7))
+		self.req = frappe.get_doc({
+			"doctype": "Practice Registration Request",
+			"practice_name": f"Override Practice {frappe.generate_hash(length=6)}",
+			"full_name": "Override Tester",
+			"email": f"override.{frappe.generate_hash(length=6)}@test.local",
+			"mobile": self.mobile,
+			"hpcsa_number": "MP66666",
+			"practice_number": "1234567",
+			"status": "Pending",
+			"payment_status": "Unpaid",
+		}).insert(ignore_permissions=True)
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def test_override_marks_paid_and_provisions_unpaid_request(self):
+		from medic_plus.api.yoco import admin_mark_paid_and_provision
+
+		result = admin_mark_paid_and_provision(
+			request_name=self.req.name,
+			reason="EFT received 2026-05-09, ref 12345",
+		)
+
+		self.assertEqual(result["status"], "ok")
+		self.assertTrue(result["override"], "override flag should be true for an unpaid request")
+		row = frappe.db.get_value(
+			"Practice Registration Request", self.req.name,
+			["payment_status", "yoco_paid_at", "status", "provisioned_practice"],
+			as_dict=True,
+		)
+		self.assertEqual(row.payment_status, "Paid")
+		self.assertTrue(row.yoco_paid_at, "yoco_paid_at must be stamped")
+		self.assertEqual(row.status, "Provisioned")
+		self.assertTrue(row.provisioned_practice)
+
+	def test_override_writes_audit_comment(self):
+		from medic_plus.api.yoco import admin_mark_paid_and_provision
+
+		admin_mark_paid_and_provision(
+			request_name=self.req.name,
+			reason="Complimentary demo for partner",
+		)
+
+		comments = frappe.get_all(
+			"Comment",
+			filters={
+				"reference_doctype": "Practice Registration Request",
+				"reference_name": self.req.name,
+				"comment_type": "Comment",
+			},
+			fields=["content"],
+		)
+		joined = " ".join(c["content"] or "" for c in comments)
+		self.assertIn("Admin payment override", joined)
+		self.assertIn("Complimentary demo for partner", joined)
+		self.assertIn("Administrator", joined)
+
+	def test_override_idempotent_for_already_paid_request(self):
+		"""Calling on an already-Paid (not-yet-provisioned) request still works
+		but flags override=False so the UI knows it wasn't a payment flip."""
+		from medic_plus.api.yoco import admin_mark_paid_and_provision
+
+		frappe.db.set_value(
+			"Practice Registration Request", self.req.name,
+			{"payment_status": "Paid", "yoco_paid_at": frappe.utils.now()},
+		)
+
+		result = admin_mark_paid_and_provision(request_name=self.req.name)
+
+		self.assertEqual(result["status"], "ok")
+		self.assertFalse(result["override"], "override flag should be false when already Paid")
+
+	def test_override_rejects_already_provisioned(self):
+		from medic_plus.api.yoco import admin_mark_paid_and_provision, _handle_payment_succeeded
+
+		frappe.db.set_value(
+			"Practice Registration Request", self.req.name,
+			{"payment_status": "Paid", "yoco_paid_at": frappe.utils.now()},
+		)
+		_handle_payment_succeeded({"metadata": {"request_name": self.req.name}})
+
+		with self.assertRaises(frappe.ValidationError):
+			admin_mark_paid_and_provision(request_name=self.req.name)
+
+	def test_override_requires_system_manager(self):
+		from medic_plus.api.yoco import admin_mark_paid_and_provision
+
+		other_email = f"plain.{frappe.generate_hash(length=6)}@test.local"
+		frappe.get_doc({
+			"doctype": "User",
+			"email": other_email,
+			"first_name": "Plain",
+			"send_welcome_email": 0,
+		}).insert(ignore_permissions=True)
+		frappe.set_user(other_email)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				admin_mark_paid_and_provision(request_name=self.req.name)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_override_rejects_unknown_request(self):
+		from medic_plus.api.yoco import admin_mark_paid_and_provision
+
+		with self.assertRaises(frappe.ValidationError):
+			admin_mark_paid_and_provision(request_name="PRR-DOES-NOT-EXIST")
+
+
 class TestRetryScheduler(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
