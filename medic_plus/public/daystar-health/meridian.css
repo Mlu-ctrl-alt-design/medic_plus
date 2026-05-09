@@ -67,4 +67,44 @@
   cursor: pointer;
 }
 .cal-event.urgent { background: var(--danger-soft); border-left-color: var(--danger); color: #b91c1c; }
+
+/* ── MTextArea ─────────────────────────────────────────────────────────── */
+.mta { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
+.mta-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.mta-required {
+  color: var(--danger, #ef4444);
+  margin-left: 2px;
+  font-weight: 600;
+}
+.mta-input {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.mta-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.mta-input::placeholder { color: var(--text-dim); }
+.mta-input[aria-invalid="true"] { border-color: var(--danger, #ef4444); }
+.mta-input:disabled { cursor: not-allowed; opacity: 0.6; }
+.mta-hint { font-size: 11px; color: var(--text-muted); }
+.mta-disabled .mta-label { opacity: 0.6; }
 .cal-event.followup { background: var(--info-soft); border-left-color: var(--info); }

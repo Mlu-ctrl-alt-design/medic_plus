@@ -391,50 +391,38 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
           aria-labelledby="new-visit-tab-soap"
           style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
         >
-          <NVField label="History of Presenting Illness">
-            <textarea
-              data-testid="new-visit-hopi"
-              rows={3}
-              value={form.hopi}
-              onChange={(e) => update('hopi', e.target.value)}
-              className="input"
-              style={{ resize: 'vertical', minHeight: 60 }}
-              placeholder="Background and history…"
-            />
-          </NVField>
-          <NVField label="Subjective (S)">
-            <textarea
-              data-testid="new-visit-subjective"
-              rows={3}
-              value={form.subjective}
-              onChange={(e) => update('subjective', e.target.value)}
-              className="input"
-              style={{ resize: 'vertical', minHeight: 60 }}
-              placeholder="Patient's description of symptoms…"
-            />
-          </NVField>
-          <NVField label="Objective (O)">
-            <textarea
-              data-testid="new-visit-objective"
-              rows={3}
-              value={form.objective}
-              onChange={(e) => update('objective', e.target.value)}
-              className="input"
-              style={{ resize: 'vertical', minHeight: 60 }}
-              placeholder="Vital signs, physical findings…"
-            />
-          </NVField>
-          <NVField label="Assessment (A)">
-            <textarea
-              data-testid="new-visit-assessment-text"
-              rows={2}
-              value={form.assessment_text}
-              onChange={(e) => update('assessment_text', e.target.value)}
-              className="input"
-              style={{ resize: 'vertical', minHeight: 48 }}
-              placeholder="Clinical impression / diagnosis…"
-            />
-          </NVField>
+          <window.MTextArea
+            data-testid="new-visit-hopi"
+            label="History of Presenting Illness"
+            rows={3}
+            value={form.hopi}
+            onChange={(v) => update('hopi', v)}
+            placeholder="Background and history…"
+          />
+          <window.MTextArea
+            data-testid="new-visit-subjective"
+            label="Subjective (S)"
+            rows={3}
+            value={form.subjective}
+            onChange={(v) => update('subjective', v)}
+            placeholder="Patient's description of symptoms…"
+          />
+          <window.MTextArea
+            data-testid="new-visit-objective"
+            label="Objective (O)"
+            rows={3}
+            value={form.objective}
+            onChange={(v) => update('objective', v)}
+            placeholder="Vital signs, physical findings…"
+          />
+          <window.MTextArea
+            data-testid="new-visit-assessment-text"
+            label="Assessment (A)"
+            rows={2}
+            value={form.assessment_text}
+            onChange={(v) => update('assessment_text', v)}
+            placeholder="Clinical impression / diagnosis…"
+          />
           <NVField label="ICD-10 Code">
             <div style={{ position: 'relative' }}>
               {form.assessment_code ? (
@@ -487,17 +475,14 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               )}
             </div>
           </NVField>
-          <NVField label="Plan (P)">
-            <textarea
-              data-testid="new-visit-plan"
-              rows={3}
-              value={form.plan}
-              onChange={(e) => update('plan', e.target.value)}
-              className="input"
-              style={{ resize: 'vertical', minHeight: 60 }}
-              placeholder="Treatment plan, follow-up, referrals…"
-            />
-          </NVField>
+          <window.MTextArea
+            data-testid="new-visit-plan"
+            label="Plan (P)"
+            rows={3}
+            value={form.plan}
+            onChange={(v) => update('plan', v)}
+            placeholder="Treatment plan, follow-up, referrals…"
+          />
         </div>
       )}
 
