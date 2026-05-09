@@ -112,9 +112,18 @@ def update_checklist_on_member_status(doc, method=None):
 
 
 def update_checklist_on_schedule_created(doc, method=None):
-	"""Step 5 — tick when a Practitioner Schedule is created for this practice."""
+	"""Step 5 — tick when a Healthcare Practitioner has at least one schedule attached.
+
+	Practitioner Schedule itself is a global template doctype with no link back
+	to a practitioner; the relationship lives in
+	Healthcare Practitioner.practitioner_schedules (child table of type
+	Practitioner Service Unit Schedule). So this handler runs on
+	Healthcare Practitioner.on_update and reads that child table.
+	"""
+	if not doc.get("practitioner_schedules"):
+		return
 	practice = frappe.db.get_value(
-		"Practice Member", {"practitioner": doc.practitioner, "role": "Doctor"}, "practice"
+		"Practice Member", {"practitioner": doc.name, "role": "Doctor"}, "practice"
 	)
 	if practice:
 		on_schedule_created(practice)
