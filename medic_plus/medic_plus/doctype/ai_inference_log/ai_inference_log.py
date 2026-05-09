@@ -2,7 +2,7 @@ import frappe
 from frappe.model.document import Document
 
 
-class AiInferenceLog(Document):
+class AIInferenceLog(Document):
     def before_insert(self):
         # Append-only: never update existing rows
         pass
