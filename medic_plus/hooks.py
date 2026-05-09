@@ -227,6 +227,7 @@ doc_events = {
 		"on_update": [
 			"medic_plus.api.doc_events.provision_dispensary_on_update",
 			"medic_plus.api.doc_events.update_checklist_on_signature",
+			"medic_plus.api.doc_events.update_checklist_on_schedule_created",
 		],
 	},
 	# Practice Setup Checklist — steps 1–6
@@ -243,9 +244,6 @@ doc_events = {
 	"Practice Member": {
 		"after_insert": "medic_plus.api.doc_events.update_checklist_on_member_status",
 		"on_update": "medic_plus.api.doc_events.update_checklist_on_member_status",
-	},
-	"Practitioner Schedule": {
-		"after_insert": "medic_plus.api.doc_events.update_checklist_on_schedule_created",
 	},
 	"Sales Invoice": {
 		"after_insert": "medic_plus.api.doc_events.update_checklist_on_first_invoice",
