@@ -1,6 +1,86 @@
 [
  {
   "app": "medic_plus",
+  "charts": [],
+  "content": "[{\"id\":\"mp_h_welcome\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Welcome to Medic Plus</span>\",\"col\":12}},{\"id\":\"mp_h_choose\",\"type\":\"header\",\"data\":{\"text\":\"Choose your workspace below, or use the shortcuts to jump straight to common tasks.\",\"level\":5,\"col\":12}},{\"id\":\"mp_sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mp_h_workspaces\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Workspaces</span>\",\"col\":12}},{\"id\":\"mp_sc_practice\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open Practice Workspace\",\"col\":4}},{\"id\":\"mp_sc_platform\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open Platform Overview\",\"col\":4}},{\"id\":\"mp_sp2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mp_h_quick\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Quick Actions</span>\",\"col\":12}},{\"id\":\"mp_sc_appt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Patient Appointment\",\"col\":3}},{\"id\":\"mp_sc_enc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Patient Encounter\",\"col\":3}},{\"id\":\"mp_sc_pat\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"All Patients\",\"col\":3}},{\"id\":\"mp_sc_today\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Today's Schedule\",\"col\":3}}]",
+  "custom_blocks": [],
+  "docstatus": 0,
+  "doctype": "Workspace",
+  "external_link": null,
+  "for_user": null,
+  "hide_custom": 0,
+  "icon": "briefcase-medical",
+  "indicator_color": "blue",
+  "is_hidden": 0,
+  "label": "Medic Plus",
+  "link_to": null,
+  "link_type": "DocType",
+  "links": [],
+  "modified": "2026-05-09 22:30:00.000000",
+  "module": "Medic Plus",
+  "name": "Medic Plus",
+  "number_cards": [],
+  "parent_page": null,
+  "public": 0,
+  "quick_lists": [],
+  "restrict_to_domain": null,
+  "roles": [
+   {"role": "Healthcare Administrator"},
+   {"role": "Administrator"},
+   {"role": "Practice Admin"},
+   {"role": "Practice Doctor"},
+   {"role": "Practice Receptionist"}
+  ],
+  "sequence_id": 0.5,
+  "shortcuts": [
+   {
+    "color": "Blue", "doc_view": "", "format": null, "icon": null,
+    "kanban_board": null, "label": "Open Practice Workspace",
+    "link_to": "/app/medic-plus-practice", "report_ref_doctype": null,
+    "restrict_to_domain": null, "stats_filter": null,
+    "type": "URL", "url": "/app/medic-plus-practice"
+   },
+   {
+    "color": "Green", "doc_view": "", "format": null, "icon": null,
+    "kanban_board": null, "label": "Open Platform Overview",
+    "link_to": "/app/medic-plus-platform", "report_ref_doctype": null,
+    "restrict_to_domain": null, "stats_filter": null,
+    "type": "URL", "url": "/app/medic-plus-platform"
+   },
+   {
+    "color": "Cyan", "doc_view": "New", "format": null, "icon": null,
+    "kanban_board": null, "label": "New Patient Appointment",
+    "link_to": "Patient Appointment", "report_ref_doctype": null,
+    "restrict_to_domain": null, "stats_filter": null,
+    "type": "DocType", "url": null
+   },
+   {
+    "color": "Purple", "doc_view": "New", "format": null, "icon": null,
+    "kanban_board": null, "label": "New Patient Encounter",
+    "link_to": "Patient Encounter", "report_ref_doctype": null,
+    "restrict_to_domain": null, "stats_filter": null,
+    "type": "DocType", "url": null
+   },
+   {
+    "color": "Grey", "doc_view": "List", "format": null, "icon": null,
+    "kanban_board": null, "label": "All Patients",
+    "link_to": "Patient", "report_ref_doctype": null,
+    "restrict_to_domain": null, "stats_filter": null,
+    "type": "DocType", "url": null
+   },
+   {
+    "color": "Orange", "doc_view": "List", "format": null, "icon": null,
+    "kanban_board": null, "label": "Today's Schedule",
+    "link_to": "Patient Appointment", "report_ref_doctype": null,
+    "restrict_to_domain": null, "stats_filter": null,
+    "type": "DocType", "url": null
+   }
+  ],
+  "title": "Medic Plus",
+  "type": "Workspace"
+ },
+ {
+  "app": "medic_plus",
   "charts": [
    {
     "chart_name": "Appointments Over Time",
@@ -679,7 +759,7 @@
     "number_card_name": "Expected Discharges Today"
    }
   ],
-  "parent_page": null,
+  "parent_page": "Medic Plus",
   "public": 0,
   "quick_lists": [
    {
@@ -1461,7 +1541,7 @@
     "number_card_name": "Outstanding AR"
    }
   ],
-  "parent_page": null,
+  "parent_page": "Medic Plus",
   "public": 0,
   "quick_lists": [],
   "restrict_to_domain": null,
