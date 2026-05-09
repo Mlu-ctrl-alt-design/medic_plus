@@ -341,6 +341,78 @@ def force_provision(request_name: str) -> dict:
 	}
 
 
+@frappe.whitelist()
+def admin_mark_paid_and_provision(request_name: str, reason: str | None = None) -> dict:
+	"""Admin payment override: mark a PRR Paid and run provisioning.
+
+	Used when a customer paid out-of-band (EFT, complimentary, demo) and the
+	Yoco webhook will never arrive. Reuses the same _handle_payment_succeeded
+	path as the webhook so admin and webhook flows produce identical tenants.
+
+	An audit Comment is written to the PRR before provisioning runs, so the
+	override is traceable even if provisioning fails afterwards.
+
+	Strict prerequisites:
+	  - caller must be a System Manager
+	  - PRR must exist
+	  - PRR must not already be provisioned
+	"""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(
+			_("Only System Managers can override payment."), frappe.PermissionError
+		)
+
+	request_name = (request_name or "").strip()
+	if not request_name or not frappe.db.exists(
+		"Practice Registration Request", request_name
+	):
+		frappe.throw(_("Registration request not found."), frappe.ValidationError)
+
+	req = frappe.get_doc("Practice Registration Request", request_name)
+
+	if req.provisioned_practice:
+		frappe.throw(
+			_("This request is already provisioned ({0}).").format(
+				req.provisioned_practice
+			),
+			frappe.ValidationError,
+		)
+
+	actor = frappe.session.user
+	was_unpaid = req.payment_status != "Paid"
+	note = (reason or "").strip() or _("(no reason given)")
+
+	req.add_comment(
+		"Comment",
+		text=_("Admin payment override by {0}. Reason: {1}").format(actor, note),
+	)
+
+	_handle_payment_succeeded({"metadata": {"request_name": request_name}})
+
+	req.reload()
+	if req.status != "Provisioned" or not req.provisioned_practice:
+		frappe.throw(
+			_("Provisioning did not complete. Error: {0}").format(
+				req.provisioning_error or "unknown"
+			),
+			frappe.ValidationError,
+		)
+
+	if was_unpaid:
+		message = _("Practice {0} provisioned (admin payment override).").format(
+			req.practice_name
+		)
+	else:
+		message = _("Practice {0} provisioned successfully.").format(req.practice_name)
+
+	return {
+		"status": "ok",
+		"practice": req.provisioned_practice,
+		"message": message,
+		"override": was_unpaid,
+	}
+
+
 def _handle_payment_succeeded(data: dict) -> None:
 	"""Mark PRR as Paid, provision the doctor, issue a completion token.
 
