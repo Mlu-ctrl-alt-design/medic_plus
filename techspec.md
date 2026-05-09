@@ -1390,6 +1390,19 @@ Side-effect from cherry-pick `55bdf3b`: `create_practitioner` and `create_practi
 
 ---
 
+## 2026-05-09 — ehealth alias + FHIR base-URL fix
+
+Added `ehealth.thedaystar.co.za` as an nginx alias for the production Frappe site `medic-demo.thedaystar.co.za`, and `ehealth-staging.thedaystar.co.za` for `medic-demo-staging.thedaystar.co.za`. Both hostnames serve the same Frappe site; users can transition off the legacy `medic-demo` hostnames at their own pace.
+
+Implementation:
+- Staging: `bench setup add-domain` adds the alias to `site_config.json["domains"]`; LE cert (`booking-staging.thedaystar.co.za`) expanded to cover the new SAN.
+- Production: per-site SSL conf at `/etc/nginx/conf.d/frappe-sites-ssl.conf` updated to add `ehealth.thedaystar.co.za` to the `medic-demo` `server_name`; cert `medic-demo.thedaystar.co.za` expanded to cover both names.
+- Deploy workflow `.github/workflows/deploy-production.yml` health-check now hits both hostnames so an alias regression fails CI.
+
+Incidental fix: `medic_plus.api.fhir.capability_statement._FHIR_BASE_URL` and `medic_plus.api.fhir.mappers._FHIR_BASE_URL` were hard-coded to `https://medic-demo-staging.thedaystar.co.za/api/fhir/R4`. On production this meant FHIR `id` system URIs and CapabilityStatement `implementation.url` pointed at staging — wrong for any real client. Replaced both with `frappe.utils.get_url()` so the URL is derived per-request from the active host. Now correct on prod, staging, and aliases.
+
+---
+
 ## Roadmap
 
 - [ ] Prescription print format — Jinja, per-practice letterhead ✅ Done (Phase 1D)

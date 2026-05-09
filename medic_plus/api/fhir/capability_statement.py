@@ -7,7 +7,10 @@ AllergyIntolerance, Observation.
 
 from __future__ import annotations
 
-_FHIR_BASE_URL = "https://medic-demo-staging.thedaystar.co.za/api/fhir/R4"
+
+def _fhir_base_url() -> str:
+	import frappe
+	return f"{frappe.utils.get_url()}/api/fhir/R4"
 
 _RESOURCES = [
 	{
@@ -69,7 +72,7 @@ def build() -> dict:
 		},
 		"implementation": {
 			"description": "Medic Plus FHIR endpoint",
-			"url": _FHIR_BASE_URL,
+			"url": _fhir_base_url(),
 		},
 		"rest": [
 			{
