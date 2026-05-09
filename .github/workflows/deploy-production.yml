@@ -118,15 +118,17 @@ jobs:
       - name: Health check
         run: |
           sleep 5
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Host: medic-demo.thedaystar.co.za" \
-            http://${{ secrets.PROD_HOST }} || echo "000")
-          echo "Health check HTTP status: $STATUS"
-          if [[ "$STATUS" != "2"* && "$STATUS" != "3"* ]]; then
-            echo "HEALTH CHECK FAILED — status $STATUS"
-            exit 1
-          fi
-          echo "Health check passed."
+          for HOST in medic-demo.thedaystar.co.za ehealth.thedaystar.co.za; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Host: $HOST" \
+              http://${{ secrets.PROD_HOST }} || echo "000")
+            echo "Health check $HOST: HTTP $STATUS"
+            if [[ "$STATUS" != "2"* && "$STATUS" != "3"* ]]; then
+              echo "HEALTH CHECK FAILED for $HOST — status $STATUS"
+              exit 1
+            fi
+          done
+          echo "Health check passed (both hostnames)."
 
       - name: Notify Slack (optional)
         if: always()
