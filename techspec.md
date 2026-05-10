@@ -4,6 +4,14 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-05-10 — v2.2.3: Branded `MTextArea` in new-visit drawer
+
+UI consistency pass. Replaced the five native `<textarea>` SOAP fields (HOPI, Subjective, Objective, Assessment, Plan) in the daystar-health new-visit drawer with a new branded `window.MTextArea` component, mirroring the existing `MDatePicker` / `MTimePicker` / `MSelect` API (label, hint, isRequired, value, onChange-as-string). CSS prefixed `.mta-*` in `meridian.css`. Dropped `NVField` label wrappers — component owns its label. UI-only; no schema, fixture, or migration impact.
+
+Commits: `c61de49`, `9180060`, `1b069dc`. Release notes: `docs/releases/v2.2.3.md`.
+
+---
+
 ## 2026-05-02 — Phase 1D (Issue #27): Medication Safety (Drug Master + Safety Checks + HPCSA Booklet 8)
 
 ### Scope
