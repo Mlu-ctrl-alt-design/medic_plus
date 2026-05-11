@@ -4,6 +4,55 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-05-12 — v2.3.0: Phase 5.10 encounter templates + Phase 7B practice onboarding (DAY-14)
+
+### Phase 5.10 — Platform encounter templates for all appointment types
+
+Four new `Encounter Template` fixture records (ET-00004 through ET-00007) complete the suite of platform templates so that every standard appointment type has a default template. Previously only Antenatal (ET-00001), Chronic Disease Follow-up (ET-00002), and Well-Child Visit (ET-00003) were covered.
+
+| Name | Template | Appointment Type | Required Fields | Smart Orders |
+|------|----------|------------------|-----------------|--------------|
+| ET-00004 | General Consultation Template | Consultation | `custom_chief_complaint`, `custom_hopi` | HbA1c on E11, eGFR/U&E on N18, Fasting Lipogram on I10 |
+| ET-00005 | Follow-up Consultation Template | Follow-up | `custom_chief_complaint`, `custom_medication_adherence` | — |
+| ET-00006 | Emergency Encounter Template | Emergency | `custom_chief_complaint`, `custom_blood_pressure_systolic/diastolic`, `custom_weight_kg`, `custom_avpu_score` | FBC, Glucose POC, Urine Dipstick auto-ordered |
+| ET-00007 | Procedure Encounter Template | Procedure | `custom_chief_complaint`, `custom_plan` | — |
+
+All are `is_platform_template=1` and `practice=null` (global). Created in staging DB (ET- naming series counter advanced to 3 before creation to avoid collision with existing fixtures).
+
+**Files**: `medic_plus/fixtures/encounter_template.json`, `medic_plus/fixtures/appointment_type.json` (Consultation/Follow-up/Emergency/Procedure entries already present).
+
+### Phase 7B — Bulk staff invite + patient import + Yoco webhook registration
+
+**`medic_plus/api/invitations.py`** — `invite_staff_bulk(practice, csv_data)` (whitelisted, rate-limited 10/h):
+
+Accepts a CSV string with required headers `email`, `full_name`, `role` and optional `mobile`, `hpcsa_number`, `practice_number`. Each row runs in its own savepoint (`frappe.db.savepoint`) so a failed row is isolated. Returns `{"succeeded": [...], "failed": [{row, email, error}, ...], "message": "N invited, M failed."}`. Permission guard is the same `_caller_can_invite` as `invite_staff`.
+
+**`medic_plus/medic_plus/doctype/practice/practice.js`** — two new Actions menu buttons on the Practice form:
+
+- **Bulk Invite Staff (CSV)**: Dialog with a `<textarea>` CSV editor and a "Download Template" link (`STAFF_CSV_TEMPLATE` constant). On submit calls `invite_staff_bulk`; renders a per-row error/success table on completion.
+- **Import Patients**: Info dialog linking to `frappe.utils.get_url() + /app/data-import/new-data-import-1`. Explains the Frappe Data Import flow; a `before_insert` hook (see _provisioning.py) stamps `custom_practice` on any Patient created during import so they land in the right tenant.
+
+**`medic_plus/api/yoco.py`** — three new System Manager-only helpers:
+
+- `register_yoco_webhook(url)` — POSTs to `https://payments.yoco.com/api/webhooks` with the site's `secret_key`; stores the returned `webhookSecret` (distinct from the API secret key) in `Medic Plus Yoco Settings.webhook_secret` so signature verification stays correct. Handles the Yoco-imposed 3-webhook subscription limit by listing and deleting stale entries before registering.
+- `list_yoco_webhooks()` — GETs `/api/webhooks` and returns a normalised list of `{id, url, createdAt}`.
+- `delete_yoco_webhook(webhook_id)` — DELETEs a specific webhook by ID (used internally by `register_yoco_webhook` to clear stale subscriptions).
+
+**`medic_plus/api/test_invitations.py`** — two new test classes:
+
+- `TestInviteStaffBulk` (4 tests): happy path, partial-failure row isolation (second row fails; first is committed), missing-columns rejection, blank-line skipping.
+- `TestPatientPracticeStamping` (1 test): `before_insert` hook stamps `custom_practice` on Patient records created via Data Import path.
+
+**Why bulk invite**: practice owners frequently need to onboard 5–20 staff at once during practice setup. Single-invite UX creates friction; a CSV upload mirrors the Excel-fluent workflow typical of SA practice managers.
+
+**Why register_yoco_webhook**: Yoco's signing secret (returned only at webhook-creation time) is different from the API secret key. Previously the secret had to be pasted manually into the Yoco Settings doc. `register_yoco_webhook` automates the registration and secret capture, reducing ops friction for new practice onboarding.
+
+Commits (on `feature/phase-7b-bulk-import`): `046b51d` (bulk invite + patient stamping), `e5c65a0` (register_yoco_webhook), `0cb9643` (list/delete helpers). Merged to `develop` via direct API push (staging container filesystem read-only constraint; DAY-14 automation session).
+
+---
+
+
+
 ## 2026-05-02 — Phase 1D (Issue #27): Medication Safety (Drug Master + Safety Checks + HPCSA Booklet 8)
 
 ### Scope
