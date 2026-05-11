@@ -4,6 +4,29 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-05-11 — AI Acceptance Rate Dashboard (DAY-15, OMTM)
+
+Script Report `AI Acceptance Rate` on the `AI Inference Log` DocType. Instruments the leading indicator for the AI note-generation hypothesis: acceptance rate > 60% validates that practitioners find AI-generated notes useful. Without this dashboard there was no visibility into whether the core AI value claim held in production.
+
+**Report behaviour:**
+- Groups by practice × practitioner × feature; one row per combination
+- Counts: Total Calls, Accepted/Edited (combined as "acceptance"), Discarded, Pending
+- `acceptance_rate` = Accepted+Edited / Total × 100, rounded to 1 d.p.
+- Appends a "TOTAL" summary row at the bottom
+- Filters: `from_date`, `to_date`, `practice` (Link), `practitioner` (Link), `feature` (Select: note_gen/ddx/rx_check)
+- Shortcut added to both "Medic Plus" (main) and "Medic Plus Platform" workspaces
+
+**Files:**
+- `medic_plus/medic_plus/report/ai_acceptance_rate/ai_acceptance_rate.py` (execute fn)
+- `medic_plus/medic_plus/report/ai_acceptance_rate/ai_acceptance_rate.js` (filter UI)
+- `medic_plus/medic_plus/report/ai_acceptance_rate/ai_acceptance_rate.json` (report def)
+- `medic_plus/medic_plus/hooks.py` — added `{"dt": "Report", "filters": [["module","=","Medic Plus"]]}` to fixtures
+- `medic_plus/fixtures/workspace.json` — added AI Acceptance Rate shortcut to "Medic Plus" workspace
+
+**Deploy notes:** `bench migrate` will install the Report from the file definition (is_standard=Yes). The DB-side custom report created during staging testing will be overwritten by the file-based record on next migrate.
+
+---
+
 ## 2026-05-10 — v2.2.3: Branded `MTextArea` in new-visit drawer
 
 UI consistency pass. Replaced the five native `<textarea>` SOAP fields (HOPI, Subjective, Objective, Assessment, Plan) in the daystar-health new-visit drawer with a new branded `window.MTextArea` component, mirroring the existing `MDatePicker` / `MTimePicker` / `MSelect` API (label, hint, isRequired, value, onChange-as-string). CSS prefixed `.mta-*` in `meridian.css`. Dropped `NVField` label wrappers — component owns its label. UI-only; no schema, fixture, or migration impact.
