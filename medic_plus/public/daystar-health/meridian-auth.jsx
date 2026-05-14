@@ -61,11 +61,14 @@ function MLoginScreen({ go }) {
               <label className="label">Password</label>
               <button type="button" onClick={() => go('recover')} style={{ background: 'none', border: 'none', color: 'var(--accent-text)', fontSize: 12, fontWeight: 500 }}>Forgot?</button>
             </div>
-            <div style={{ position: 'relative' }}>
-              <window.MIcons.Lock size={15} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-dim)' }} />
+            <div style={{ position: 'relative', height: 38 }}>
+              <window.MIcons.Lock
+                size={15}
+                style={{ position: 'absolute', left: 12, top: 11, color: 'var(--text-dim)', pointerEvents: 'none' }}
+              />
               <input
                 className="input"
-                style={{ paddingLeft: 36, paddingRight: 36 }}
+                style={{ paddingLeft: 36, paddingRight: 40, height: 38, boxSizing: 'border-box' }}
                 value={pw}
                 onChange={e => setPw(e.target.value)}
                 type={show ? 'text' : 'password'}
@@ -79,9 +82,8 @@ function MLoginScreen({ go }) {
                 aria-label={show ? 'Hide password' : 'Show password'}
                 style={{
                   position: 'absolute',
-                  right: 6,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
+                  right: 5,
+                  top: 5,
                   width: 28,
                   height: 28,
                   display: 'inline-flex',
@@ -93,6 +95,7 @@ function MLoginScreen({ go }) {
                   color: 'var(--text-dim)',
                   cursor: 'pointer',
                   padding: 0,
+                  lineHeight: 0,
                 }}
               >
                 {show ? <window.MIcons.EyeOff size={15} /> : <window.MIcons.Eye size={15} />}
