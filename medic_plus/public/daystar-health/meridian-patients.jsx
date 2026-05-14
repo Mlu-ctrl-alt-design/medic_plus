@@ -150,16 +150,26 @@ function RegisterPatientDrawer({ open, practice, onClose, onCreated }) {
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 Sex
-                <select className="select" value={form.sex} onChange={e => set("sex", e.target.value)} data-testid="reg-sex">
-                  <option value="">— select —</option>
-                  <option>Male</option><option>Female</option><option>Other</option>
-                </select>
+                <window.MSelect
+                  data-testid="reg-sex"
+                  value={form.sex}
+                  onChange={(v) => set("sex", v)}
+                  options={[
+                    { value: "Male", label: "Male" },
+                    { value: "Female", label: "Female" },
+                    { value: "Other", label: "Other" },
+                  ]}
+                  placeholder="— select —"
+                />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 Date of Birth
-                <input className="input" type="date" value={form.dob}
-                  onChange={e => set("dob", e.target.value)}
-                  onBlur={checkDuplicates} data-testid="reg-dob" />
+                <window.MDatePicker
+                  data-testid="reg-dob"
+                  value={form.dob}
+                  onChange={(v) => { set("dob", v); checkDuplicates(); }}
+                  placeholder="YYYY-MM-DD"
+                />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 Email
@@ -177,9 +187,12 @@ function RegisterPatientDrawer({ open, practice, onClose, onCreated }) {
             <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 ID Type
-                <select className="select" value={form.id_type} onChange={e => set("id_type", e.target.value)} data-testid="reg-id-type">
-                  {ID_TYPES.map(t => <option key={t}>{t}</option>)}
-                </select>
+                <window.MSelect
+                  data-testid="reg-id-type"
+                  value={form.id_type}
+                  onChange={(v) => set("id_type", v)}
+                  options={ID_TYPES.map(t => ({ value: t, label: t }))}
+                />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 ID Number
@@ -209,21 +222,35 @@ function RegisterPatientDrawer({ open, practice, onClose, onCreated }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 Race
-                <select className="select" value={form.race} onChange={e => set("race", e.target.value)} data-testid="reg-race">
-                  {RACE_OPTIONS.map(r => <option key={r} value={r}>{r || "— select —"}</option>)}
-                </select>
+                <window.MSelect
+                  data-testid="reg-race"
+                  value={form.race}
+                  onChange={(v) => set("race", v)}
+                  options={RACE_OPTIONS.filter(Boolean).map(r => ({ value: r, label: r }))}
+                  placeholder="— select —"
+                />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 Home Language
-                <select className="select" value={form.home_language} onChange={e => set("home_language", e.target.value)} data-testid="reg-home-language">
-                  {LANG_OPTIONS.map(l => <option key={l} value={l}>{l || "— select —"}</option>)}
-                </select>
+                <window.MSelect
+                  data-testid="reg-home-language"
+                  value={form.home_language}
+                  onChange={(v) => set("home_language", v)}
+                  options={LANG_OPTIONS.filter(Boolean).map(l => ({ value: l, label: l }))}
+                  placeholder="— select —"
+                  searchable
+                />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 Preferred Language
-                <select className="select" value={form.preferred_language} onChange={e => set("preferred_language", e.target.value)} data-testid="reg-preferred-language">
-                  {LANG_OPTIONS.map(l => <option key={l} value={l}>{l || "— select —"}</option>)}
-                </select>
+                <window.MSelect
+                  data-testid="reg-preferred-language"
+                  value={form.preferred_language}
+                  onChange={(v) => set("preferred_language", v)}
+                  options={LANG_OPTIONS.filter(Boolean).map(l => ({ value: l, label: l }))}
+                  placeholder="— select —"
+                  searchable
+                />
               </label>
             </div>
           </section>
