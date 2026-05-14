@@ -48,6 +48,7 @@ const Icons = {
   Copy: (p) => <Icon {...p}><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8 V6 C16 4.9 15.1 4 14 4 H6 C4.9 4 4 4.9 4 6 V14 C4 15.1 4.9 16 6 16 H8" /></Icon>,
   More: (p) => <Icon {...p}><circle cx="6" cy="12" r="1.2" fill="currentColor" /><circle cx="12" cy="12" r="1.2" fill="currentColor" /><circle cx="18" cy="12" r="1.2" fill="currentColor" /></Icon>,
   Calendar: (p) => <Icon {...p}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10 H21 M8 3 V7 M16 3 V7" /></Icon>,
+  Clock: (p) => <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7 V12 L15 14" /></Icon>,
   Pin: (p) => <Icon {...p}><path d="M12 2 V12 L18 18 V21 H6 V18 L12 12" /><path d="M9 8 H15" /></Icon>,
   Truck: (p) => <Icon {...p}><rect x="2" y="7" width="13" height="10" rx="1" /><path d="M15 10 H19 L22 14 V17 H15" /><circle cx="6" cy="18" r="1.8" /><circle cx="18" cy="18" r="1.8" /></Icon>,
   AlertTriangle: (p) => <Icon {...p}><path d="M12 4 L22 20 H2 Z" /><path d="M12 10 V14 M12 17 V17.1" /></Icon>,
