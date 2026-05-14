@@ -316,7 +316,8 @@ function MDatePicker(props) {
         value={text}
         onChange={onInputChange}
         onBlur={onInputBlur}
-        onFocus={() => { /* don't auto-open — typists don't want it */ }}
+        onFocus={() => { /* don't auto-open on focus — typists don't want it */ }}
+        onClick={() => { if (!open) openWith(); }}
         onKeyDown={(e) => { if (e.key === "ArrowDown" && !open) { e.preventDefault(); openWith(); } }}
         disabled={disabled}
         {...rest}
