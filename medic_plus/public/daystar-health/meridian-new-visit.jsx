@@ -37,7 +37,7 @@ function nvInitialForm(today) {
 // Module-scope so React keeps a stable component identity across MNewVisitDrawer
 // re-renders. Defining this inside the parent caused every input to remount on
 // every keystroke (and lose focus, popover state, etc.).
-function NVField({ label, children, span = 1 }) {
+function NVField({ label, children, span = 1, required = false }) {
   return (
     <label
       style={{
@@ -49,7 +49,10 @@ function NVField({ label, children, span = 1 }) {
         gridColumn: span > 1 ? `span ${span}` : undefined,
       }}
     >
-      <span style={{ fontWeight: 500 }}>{label}</span>
+      <span style={{ fontWeight: 500 }}>
+        {label}
+        {required && <span className="nv-required" aria-hidden="true" style={{ color: 'var(--danger, #ef4444)', marginLeft: 3 }}>*</span>}
+      </span>
       {children}
     </label>
   );
@@ -319,7 +322,7 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
           aria-labelledby="new-visit-tab-schedule"
           style={{ display: 'grid', gap: 14, gridTemplateColumns: '1fr 1fr' }}
         >
-          <NVField label="Patient">
+          <NVField label="Patient" required>
             <window.MSelect
               data-testid="new-visit-patient"
               value={form.patient}
@@ -331,7 +334,7 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               aria-describedby={ariaDescribedBy('patient')}
             />
           </NVField>
-          <NVField label="Practitioner">
+          <NVField label="Practitioner" required>
             <window.MSelect
               data-testid="new-visit-practitioner"
               value={form.practitioner}
@@ -343,7 +346,7 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               aria-describedby={ariaDescribedBy('practitioner')}
             />
           </NVField>
-          <NVField label="Date">
+          <NVField label="Date" required>
             <window.MDatePicker
               data-testid="new-visit-date"
               value={form.encounter_date}
@@ -368,7 +371,7 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
               placeholder="Select type…"
             />
           </NVField>
-          <NVField label="Chief Complaint" span={2}>
+          <NVField label="Chief Complaint" span={2} required>
             <input
               type="text"
               data-testid="new-visit-chief-complaint"

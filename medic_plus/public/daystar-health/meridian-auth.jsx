@@ -73,7 +73,28 @@ function MLoginScreen({ go }) {
                 required
                 data-testid="login-password"
               />
-              <button type="button" onClick={() => setShow(!show)} style={{ position: 'absolute', right: 8, top: 8, background: 'transparent', border: 'none', color: 'var(--text-dim)', padding: 6 }}>
+              <button
+                type="button"
+                onClick={() => setShow(!show)}
+                aria-label={show ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 28,
+                  height: 28,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: 6,
+                  color: 'var(--text-dim)',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
                 {show ? <window.MIcons.EyeOff size={15} /> : <window.MIcons.Eye size={15} />}
               </button>
             </div>
