@@ -53,6 +53,7 @@ window.__DAYSTAR_HEALTH__ = {
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-new-visit.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-prescription.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-profile.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-practice.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/tweaks-panel.jsx"></script>
 
 <script type="text/babel">
@@ -181,7 +182,8 @@ function App() {
         {route === 'appointments' && <window.MAppointmentsScreen go={go} key={appointmentsRefreshKey} />}
         {route === 'records' && <window.MMedicalRecordsScreen go={go} />}
         {route === 'profile' && <window.MProfileScreen go={go} />}
-        {!['dashboard', 'patients', 'appointments', 'records', 'profile'].includes(route) && (
+        {route === 'practice' && <window.MPracticeScreen go={go} />}
+        {!['dashboard', 'patients', 'appointments', 'records', 'profile', 'practice'].includes(route) && (
           <Placeholder name={titles[route] || route} />
         )}
       </div>
