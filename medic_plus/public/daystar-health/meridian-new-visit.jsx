@@ -152,12 +152,13 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
     api.resource('Healthcare Practitioner', { fields: JSON.stringify(['name', 'practitioner_name']), order_by: 'practitioner_name asc', limit_page_length: 200 })
       .then((rows) => { if (!cancelled) setPractitioners((rows && rows.data) || []); })
       .catch(() => { if (!cancelled) setPractitioners([]); });
-    api.resource('Appointment Type', { fields: JSON.stringify(['name']), order_by: 'name asc', limit_page_length: 200 })
-      .then((rows) => {
+    api.call('medic_plus.api.daystar_health.list_appointment_types')
+      .then((res) => {
         if (cancelled) return;
-        const list = (rows && rows.data) || [];
+        const names = (res && res.message) || [];
+        const list = names.map((n) => ({ name: n }));
         setAppointmentTypes(list);
-        setForm((f) => f.appointment_type || !list.length ? f : { ...f, appointment_type: list[0].name });
+        setForm((f) => (f.appointment_type || !list.length) ? f : { ...f, appointment_type: list[0].name });
       })
       .catch(() => { if (!cancelled) setAppointmentTypes([]); });
     return () => { cancelled = true; };

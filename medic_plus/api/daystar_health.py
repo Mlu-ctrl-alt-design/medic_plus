@@ -399,6 +399,26 @@ def _search_code_values(*, system: str, query: str, limit) -> list:
 
 
 @frappe.whitelist()
+def list_appointment_types() -> list:
+	"""Return all Appointment Type names for the new-visit drawer.
+
+	Appointment Type is global reference data (no tenancy). The REST
+	/api/resource/Appointment Type call was returning an empty list for
+	some practice-doctor sessions even though they had read permission;
+	this endpoint bypasses that ambiguity by talking to the DB directly.
+	Auth is enforced by the caller's session — no allow_guest.
+	"""
+	rows = frappe.get_all(
+		"Appointment Type",
+		fields=["name"],
+		order_by="name asc",
+		limit_page_length=200,
+		ignore_permissions=True,
+	)
+	return [r["name"] for r in rows]
+
+
+@frappe.whitelist()
 def search_icd10(query: str = "", limit: int = 25) -> list:
 	"""Search ICD-10-ZA codes by code prefix or display substring.
 
