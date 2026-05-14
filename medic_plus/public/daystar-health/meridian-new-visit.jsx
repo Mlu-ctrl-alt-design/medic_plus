@@ -223,11 +223,11 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
     setMissingFields(new Set());
     try {
       const payload = {
-        doctype: 'Patient Encounter',
         patient: form.patient,
         practitioner: form.practitioner,
         encounter_date: form.encounter_date,
         encounter_time: form.encounter_time ? form.encounter_time + ':00' : '09:00:00',
+        appointment_type: form.appointment_type || '',
         custom_chief_complaint: form.chief_complaint,
         custom_hopi: form.hopi || '',
         custom_subjective: form.subjective || '',
@@ -238,34 +238,9 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
         custom_examination_findings: examFindings.filter((r) => r.body_part && r.finding),
         custom_encounter_orders: orders.filter((r) => r.order_name),
       };
-      if (form.appointment_type) payload.appointment_type = form.appointment_type;
 
-      const response = await fetch('/api/method/frappe.client.insert', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Frappe-CSRF-Token': (api.bootstrap && api.bootstrap.csrfToken) || '',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ doc: JSON.stringify(payload) }),
-      });
-      const text = await response.text();
-      let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-      if (!response.ok) {
-        let msg = `Create failed (${response.status})`;
-        if (data && data._server_messages) {
-          try {
-            const list = JSON.parse(data._server_messages);
-            if (list.length) msg = JSON.parse(list[0]).message || msg;
-          } catch {}
-        } else if (data && data.exception) {
-          msg = data.exception;
-        }
-        throw new Error(msg);
-      }
-      const created = (data && (data.message || data)) || null;
+      // create_visit returns {appointment, encounter} — both rows created in one transaction.
+      const created = await api.call('medic_plus.api.daystar_health.create_visit', { payload });
       if (onCreated) onCreated(created);
       setForm(nvInitialForm(today));
       setExamFindings([]);
