@@ -175,7 +175,7 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
     let cancelled = false;
     const timer = setTimeout(() => {
       api.call('medic_plus.api.daystar_health.search_icd10', { query: icd10Query, limit: 10 })
-        .then((res) => { if (!cancelled) setIcd10Results((res && res.message) || []); })
+        .then((res) => { if (!cancelled) setIcd10Results(Array.isArray(res) ? res : []); })
         .catch(() => { if (!cancelled) setIcd10Results([]); });
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
