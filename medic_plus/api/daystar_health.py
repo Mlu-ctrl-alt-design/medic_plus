@@ -472,6 +472,11 @@ def create_visit(payload: dict | str = None) -> dict:
 	payload = payload or {}
 
 	practice = get_active_practice()  # raises PermissionError if no Practice Member row
+	# Stamp the practice's ERPNext Company explicitly on both docs. Without
+	# this Frappe falls back to User Defaults → Global default_company,
+	# which the practice doctor has no read perm for → "Insufficient
+	# Permission for Company" at insert time.
+	company = frappe.db.get_value("Practice", practice, "company")
 
 	patient = payload.get("patient")
 	practitioner = payload.get("practitioner")
@@ -492,8 +497,10 @@ def create_visit(payload: dict | str = None) -> dict:
 		"appointment_time": encounter_time,
 		"appointment_type": appointment_type,
 		"status": "Open",
+		"company": company,
 		"custom_practice": practice,
 	})
+	appt.flags.ignore_permissions = True
 	appt.insert(ignore_permissions=True)
 
 	# 2. Patient Encounter linked to the appointment
@@ -505,6 +512,7 @@ def create_visit(payload: dict | str = None) -> dict:
 		"encounter_time": encounter_time,
 		"appointment": appt.name,
 		"appointment_type": appointment_type,
+		"company": company,
 		"custom_practice": practice,
 		"custom_chief_complaint": chief_complaint,
 		"custom_hopi": payload.get("custom_hopi") or "",
@@ -520,6 +528,7 @@ def create_visit(payload: dict | str = None) -> dict:
 	if isinstance(payload.get("custom_encounter_orders"), list):
 		enc_fields["custom_encounter_orders"] = payload["custom_encounter_orders"]
 	enc = frappe.get_doc(enc_fields)
+	enc.flags.ignore_permissions = True
 	enc.insert(ignore_permissions=True)
 
 	frappe.db.commit()
