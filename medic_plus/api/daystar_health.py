@@ -446,6 +446,87 @@ def get_active_practice_details() -> dict:
 
 
 @frappe.whitelist()
+def create_visit(payload: dict | str = None) -> dict:
+	"""Create a Patient Appointment + linked Patient Encounter in one shot.
+
+	The SPA's New Visit drawer is the doctor's single starting point for
+	an encounter — but a clinical encounter without a corresponding
+	Appointment doesn't show up on the schedule, which is wrong for a
+	practice management workflow. This wraps both inserts in one
+	transaction, linked via Patient Encounter.appointment.
+
+	`payload` carries: patient, practitioner, encounter_date,
+	encounter_time, appointment_type, chief_complaint, custom_* SOAP
+	fields, custom_examination_findings (list), custom_encounter_orders
+	(list). Returns {"appointment": <name>, "encounter": <name>}.
+
+	custom_practice is stamped explicitly on both (the before_insert hook
+	does this too, but we want to fail loudly here if the user has no
+	practice rather than silently inserting with no tenant scope).
+	"""
+	if isinstance(payload, str):
+		try:
+			payload = json.loads(payload)
+		except Exception:
+			payload = {}
+	payload = payload or {}
+
+	practice = get_active_practice()  # raises PermissionError if no Practice Member row
+
+	patient = payload.get("patient")
+	practitioner = payload.get("practitioner")
+	encounter_date = payload.get("encounter_date")
+	chief_complaint = (payload.get("custom_chief_complaint") or "").strip()
+	if not (patient and practitioner and encounter_date and chief_complaint):
+		frappe.throw(_("Patient, practitioner, date and chief complaint are required."))
+
+	encounter_time = payload.get("encounter_time") or "09:00:00"
+	appointment_type = payload.get("appointment_type") or "Consultation"
+
+	# 1. Patient Appointment
+	appt = frappe.get_doc({
+		"doctype": "Patient Appointment",
+		"patient": patient,
+		"practitioner": practitioner,
+		"appointment_date": encounter_date,
+		"appointment_time": encounter_time,
+		"appointment_type": appointment_type,
+		"status": "Open",
+		"custom_practice": practice,
+	})
+	appt.insert(ignore_permissions=True)
+
+	# 2. Patient Encounter linked to the appointment
+	enc_fields = {
+		"doctype": "Patient Encounter",
+		"patient": patient,
+		"practitioner": practitioner,
+		"encounter_date": encounter_date,
+		"encounter_time": encounter_time,
+		"appointment": appt.name,
+		"appointment_type": appointment_type,
+		"custom_practice": practice,
+		"custom_chief_complaint": chief_complaint,
+		"custom_hopi": payload.get("custom_hopi") or "",
+		"custom_subjective": payload.get("custom_subjective") or "",
+		"custom_objective": payload.get("custom_objective") or "",
+		"custom_assessment_text": payload.get("custom_assessment_text") or "",
+		"custom_assessment_code": payload.get("custom_assessment_code") or "",
+		"custom_plan": payload.get("custom_plan") or "",
+	}
+	# Pass-through child tables
+	if isinstance(payload.get("custom_examination_findings"), list):
+		enc_fields["custom_examination_findings"] = payload["custom_examination_findings"]
+	if isinstance(payload.get("custom_encounter_orders"), list):
+		enc_fields["custom_encounter_orders"] = payload["custom_encounter_orders"]
+	enc = frappe.get_doc(enc_fields)
+	enc.insert(ignore_permissions=True)
+
+	frappe.db.commit()
+	return {"appointment": appt.name, "encounter": enc.name}
+
+
+@frappe.whitelist()
 def list_appointment_types() -> list:
 	"""Return all Appointment Type names for the new-visit drawer.
 
