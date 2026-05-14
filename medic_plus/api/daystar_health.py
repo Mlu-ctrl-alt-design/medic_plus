@@ -477,6 +477,11 @@ def create_visit(payload: dict | str = None) -> dict:
 	# which the practice doctor has no read perm for → "Insufficient
 	# Permission for Company" at insert time.
 	company = frappe.db.get_value("Practice", practice, "company")
+	if not company:
+		frappe.throw(
+			_("Your practice has no linked ERPNext Company. Ask an admin to provision the company before creating visits."),
+			frappe.ValidationError,
+		)
 
 	patient = payload.get("patient")
 	practitioner = payload.get("practitioner")
@@ -488,50 +493,55 @@ def create_visit(payload: dict | str = None) -> dict:
 	encounter_time = payload.get("encounter_time") or "09:00:00"
 	appointment_type = payload.get("appointment_type") or "Consultation"
 
-	# 1. Patient Appointment
-	appt = frappe.get_doc({
-		"doctype": "Patient Appointment",
-		"patient": patient,
-		"practitioner": practitioner,
-		"appointment_date": encounter_date,
-		"appointment_time": encounter_time,
-		"appointment_type": appointment_type,
-		"status": "Open",
-		"company": company,
-		"custom_practice": practice,
-	})
-	appt.flags.ignore_permissions = True
-	appt.insert(ignore_permissions=True)
+	# Both inserts in one logical unit. Frappe runs each insert in its own
+	# autocommit-ish flush, so if the Encounter fails after the Appointment
+	# lands, we'd orphan the appointment. Roll back explicitly on error.
+	try:
+		appt = frappe.get_doc({
+			"doctype": "Patient Appointment",
+			"patient": patient,
+			"practitioner": practitioner,
+			"appointment_date": encounter_date,
+			"appointment_time": encounter_time,
+			"appointment_type": appointment_type,
+			"status": "Open",
+			"company": company,
+			"custom_practice": practice,
+		})
+		appt.flags.ignore_permissions = True
+		appt.insert(ignore_permissions=True)
 
-	# 2. Patient Encounter linked to the appointment
-	enc_fields = {
-		"doctype": "Patient Encounter",
-		"patient": patient,
-		"practitioner": practitioner,
-		"encounter_date": encounter_date,
-		"encounter_time": encounter_time,
-		"appointment": appt.name,
-		"appointment_type": appointment_type,
-		"company": company,
-		"custom_practice": practice,
-		"custom_chief_complaint": chief_complaint,
-		"custom_hopi": payload.get("custom_hopi") or "",
-		"custom_subjective": payload.get("custom_subjective") or "",
-		"custom_objective": payload.get("custom_objective") or "",
-		"custom_assessment_text": payload.get("custom_assessment_text") or "",
-		"custom_assessment_code": payload.get("custom_assessment_code") or "",
-		"custom_plan": payload.get("custom_plan") or "",
-	}
-	# Pass-through child tables
-	if isinstance(payload.get("custom_examination_findings"), list):
-		enc_fields["custom_examination_findings"] = payload["custom_examination_findings"]
-	if isinstance(payload.get("custom_encounter_orders"), list):
-		enc_fields["custom_encounter_orders"] = payload["custom_encounter_orders"]
-	enc = frappe.get_doc(enc_fields)
-	enc.flags.ignore_permissions = True
-	enc.insert(ignore_permissions=True)
+		enc_fields = {
+			"doctype": "Patient Encounter",
+			"patient": patient,
+			"practitioner": practitioner,
+			"encounter_date": encounter_date,
+			"encounter_time": encounter_time,
+			"appointment": appt.name,
+			"appointment_type": appointment_type,
+			"company": company,
+			"custom_practice": practice,
+			"custom_chief_complaint": chief_complaint,
+			"custom_hopi": payload.get("custom_hopi") or "",
+			"custom_subjective": payload.get("custom_subjective") or "",
+			"custom_objective": payload.get("custom_objective") or "",
+			"custom_assessment_text": payload.get("custom_assessment_text") or "",
+			"custom_assessment_code": payload.get("custom_assessment_code") or "",
+			"custom_plan": payload.get("custom_plan") or "",
+		}
+		if isinstance(payload.get("custom_examination_findings"), list):
+			enc_fields["custom_examination_findings"] = payload["custom_examination_findings"]
+		if isinstance(payload.get("custom_encounter_orders"), list):
+			enc_fields["custom_encounter_orders"] = payload["custom_encounter_orders"]
+		enc = frappe.get_doc(enc_fields)
+		enc.flags.ignore_permissions = True
+		enc.insert(ignore_permissions=True)
 
-	frappe.db.commit()
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		raise
+
 	return {"appointment": appt.name, "encounter": enc.name}
 
 
