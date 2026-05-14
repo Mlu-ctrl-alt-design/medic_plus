@@ -1,6 +1,26 @@
 // Meridian Practice screen — read-only display of the active practice's
 // fields, mirroring what's visible on the Desk Practice form.
 
+// Practice.logo and Practice.color are admin-controlled DB values; treat
+// them as untrusted. Only allow http(s) / relative / data-image URLs for
+// the logo (no javascript:, no vbscript:) and only allow #RRGGBB(AA),
+// 3/6/8-digit hex or rgb()/rgba() for the brand colour.
+function safeImageSrc(value) {
+  if (typeof value !== "string" || !value) return null;
+  const v = value.trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith("/")) return v;
+  if (/^data:image\//i.test(v)) return v;
+  return null;
+}
+function safeCssColor(value) {
+  if (typeof value !== "string" || !value) return null;
+  const v = value.trim();
+  if (/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
+  if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)$/i.test(v)) return v;
+  return null;
+}
+
 function MPracticeScreen({ go }) {
   const [state, setState] = mUseState({ status: "loading", practice: null, error: null });
 
@@ -43,13 +63,15 @@ function MPracticeScreen({ go }) {
   const p = state.practice || {};
   const fmt = (v) => (v === null || v === undefined || v === "") ? "—" : v;
   const planLabel = (s) => fmt(s);
+  const logoSrc = safeImageSrc(p.logo);
+  const brandColor = safeCssColor(p.color);
 
   return (
     <div className="page fade-in" data-testid="practice-page">
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-        {p.logo ? (
+        {logoSrc ? (
           <img
-            src={p.logo}
+            src={logoSrc}
             alt={p.practice_name || "Practice logo"}
             style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", border: "1px solid var(--border)" }}
           />
@@ -58,7 +80,7 @@ function MPracticeScreen({ go }) {
             aria-hidden="true"
             style={{
               width: 56, height: 56, borderRadius: 10,
-              background: p.color || "var(--accent-soft)",
+              background: brandColor || "var(--accent-soft)",
               color: "var(--accent-text)", display: "grid", placeItems: "center",
               fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em",
               border: "1px solid var(--border)",
@@ -100,10 +122,10 @@ function MPracticeScreen({ go }) {
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Branding & Owner</div>
           <DetailRow label="Owner / Primary Doctor" value={fmt(p.owner_practitioner_name || p.owner_practitioner)} />
           <DetailRow label="Brand colour" value={
-            p.color ? (
+            brandColor ? (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 3, background: p.color, border: "1px solid var(--border)" }} />
-                <span style={{ fontFamily: "var(--font-mono)" }}>{p.color}</span>
+                <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 3, background: brandColor, border: "1px solid var(--border)" }} />
+                <span style={{ fontFamily: "var(--font-mono)" }}>{brandColor}</span>
               </span>
             ) : "—"
           } />
