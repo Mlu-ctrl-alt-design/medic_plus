@@ -108,3 +108,129 @@
 .mta-hint { font-size: 11px; color: var(--text-muted); }
 .mta-disabled .mta-label { opacity: 0.6; }
 .cal-event.followup { background: var(--info-soft); border-left-color: var(--info); }
+
+/* ── Branded pickers: MSelect / MDatePicker / MTimePicker ─────────────── */
+/* Portaled popovers were rendering as static blocks at end of <body> with
+   no styling — fixed positioning + z-index + visible chrome here. */
+
+.msel, .mdp, .mtp { position: relative; width: 100%; }
+.msel-disabled, .mdp-disabled, .mtp-disabled { opacity: 0.6; pointer-events: none; }
+
+.msel-trigger, .mdp-trigger, .mtp-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+.msel-trigger:disabled, .mdp-trigger:disabled, .mtp-trigger:disabled { cursor: not-allowed; }
+
+.msel-value { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msel-placeholder { color: var(--text-dim); }
+.msel-chevron, .mtp-chevron, .mdp-chevron {
+  display: inline-flex; align-items: center; color: var(--text-dim); flex-shrink: 0;
+}
+
+.msel-popover, .mdp-popover, .mtp-popover {
+  position: fixed;
+  z-index: 10000;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 8px;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* MSelect */
+.msel-search { padding: 2px 2px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.msel-search .input { height: 32px; }
+.msel-list { overflow-y: auto; max-height: 280px; }
+.msel-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.msel-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msel-item:hover, .msel-item-highlight { background: var(--bg-subtle); }
+.msel-item-selected { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+.msel-item-check { color: var(--accent); font-weight: 600; }
+.msel-empty { padding: 12px; text-align: center; color: var(--text-dim); font-size: 13px; }
+
+/* MDatePicker */
+.mdp-popover { padding: 12px; width: 280px; }
+.mdp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.mdp-nav {
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+.mdp-nav:hover { background: var(--bg-subtle); }
+.mdp-month-label { font-weight: 600; font-size: 14px; }
+.mdp-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 4px; }
+.mdp-weekdays > * {
+  text-align: center; font-size: 11px; color: var(--text-dim);
+  text-transform: uppercase; padding: 4px 0;
+}
+.mdp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.mdp-cell {
+  height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.mdp-cell:hover { background: var(--bg-subtle); }
+.mdp-cell-empty { cursor: default; }
+.mdp-cell-today { border-color: var(--border-strong); }
+.mdp-cell-selected { background: var(--accent); color: white; }
+.mdp-cell-selected:hover { background: var(--accent-hover); }
+.mdp-footer { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+/* MTimePicker */
+.mtp-popover { padding: 8px; width: 220px; }
+.mtp-cols { display: flex; gap: 4px; height: 200px; }
+.mtp-col { flex: 1; overflow-y: auto; padding: 4px; display: flex; flex-direction: column; gap: 2px; }
+.mtp-col > button {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  cursor: pointer;
+}
+.mtp-col > button:hover { background: var(--bg-subtle); }
+.mtp-col > button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+.mtp-footer { display: flex; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+
+/* Mobile: full-width pickers below 480px (popover position is JS-driven, but
+   keep the trigger row predictable). */
+@media (max-width: 480px) {
+  .msel-popover, .mdp-popover, .mtp-popover {
+    max-width: calc(100vw - 16px);
+  }
+}
