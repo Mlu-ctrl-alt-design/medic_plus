@@ -132,6 +132,31 @@
   display: inline-flex; align-items: center; color: var(--text-dim); flex-shrink: 0;
 }
 
+/* Date/Time picker: typed input + icon overlay inside the field */
+.mdp-input, .mtp-input {
+  padding-right: 36px;
+  cursor: pointer;
+}
+.mdp-icon-btn, .mtp-icon-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+.mdp-icon-btn:hover, .mtp-icon-btn:hover { background: var(--bg-subtle); color: var(--text); }
+.mdp-icon-btn:disabled, .mtp-icon-btn:disabled { cursor: not-allowed; opacity: 0.6; }
+
 .msel-popover, .mdp-popover, .mtp-popover {
   position: fixed;
   z-index: 10000;

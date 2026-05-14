@@ -254,6 +254,7 @@ function MTimePicker(props) {
         value={text}
         onChange={onInputChange}
         onBlur={onInputBlur}
+        onClick={() => { if (!open) openIfClosed(); }}
         onKeyDown={(e) => { if (e.key === "ArrowDown" && !open) { e.preventDefault(); openIfClosed(); } }}
         disabled={disabled}
         {...rest}
