@@ -28,10 +28,20 @@ const BLANK_FORM = {
   duplicate_warning: null,
 };
 
-function RegisterPatientDrawer({ practice, onClose, onCreated }) {
+function RegisterPatientDrawer({ open, practice, onClose, onCreated }) {
   const [form, setForm] = mUseState(BLANK_FORM);
   const [saving, setSaving] = mUseState(false);
   const [error, setError] = mUseState(null);
+
+  // Reset state when the drawer reopens so a previous abandoned form
+  // doesn't leak into the next session.
+  mUseEffect(() => {
+    if (open) {
+      setForm(BLANK_FORM);
+      setError(null);
+      setSaving(false);
+    }
+  }, [open]);
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val, duplicate_warning: null }));
 
@@ -92,23 +102,27 @@ function RegisterPatientDrawer({ practice, onClose, onCreated }) {
     });
   };
 
-  return ReactDOM.createPortal(
-    <div data-testid="register-patient-drawer" style={{
-      position: "fixed", inset: 0, zIndex: 1000,
-      display: "flex", justifyContent: "flex-end",
-    }}>
-      <div onClick={onClose} style={{ flex: 1, background: "rgba(0,0,0,0.3)" }} />
-      <div style={{
-        width: 480, maxWidth: "100vw", background: "var(--bg-card)", height: "100%",
-        boxShadow: "-4px 0 24px rgba(0,0,0,0.18)", overflowY: "auto",
-        display: "flex", flexDirection: "column",
-      }}>
-        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-          <h2 style={{ flex: 1, margin: 0, fontSize: 17, fontWeight: 600 }}>Register Patient</h2>
-          <button className="btn btn-secondary btn-sm" onClick={onClose}>✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ padding: "20px 24px", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+  return (
+    <window.MDrawer
+      open={open}
+      onClose={onClose}
+      title="Register Patient"
+      footer={
+        <>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} disabled={saving}>Cancel</button>
+          <button
+            type="submit"
+            form="register-patient-form"
+            className="btn btn-primary btn-sm"
+            disabled={saving}
+            data-testid="reg-submit"
+          >
+            {saving ? "Registering…" : "Register Patient"}
+          </button>
+        </>
+      }
+    >
+      <form id="register-patient-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }} data-testid="register-patient-drawer">
 
           {/* Duplicate warning */}
           {form.duplicate_warning && (
@@ -215,21 +229,12 @@ function RegisterPatientDrawer({ practice, onClose, onCreated }) {
           </section>
 
           {error && (
-            <div data-testid="reg-error" style={{ padding: "10px 14px", background: "var(--danger-soft)", border: "1px solid var(--danger)", borderRadius: 8, color: "#b91c1c", fontSize: 13 }}>
+            <div data-testid="reg-error" role="alert" style={{ padding: "10px 14px", background: "var(--danger-soft)", border: "1px solid var(--danger)", borderRadius: 8, color: "#b91c1c", fontSize: 13 }}>
               {error}
             </div>
           )}
-
-          <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 8 }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 1 }} data-testid="reg-submit">
-              {saving ? "Registering…" : "Register Patient"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body
+      </form>
+    </window.MDrawer>
   );
 }
 
@@ -376,16 +381,15 @@ function MPatientsScreen({ go }) {
 
   return (
     <div className="page fade-in" data-testid="patients-page">
-      {showRegister && practice && (
-        <RegisterPatientDrawer
-          practice={practice}
-          onClose={() => setShowRegister(false)}
-          onCreated={(name) => {
-            setShowRegister(false);
-            go("patient", name);
-          }}
-        />
-      )}
+      <RegisterPatientDrawer
+        open={showRegister && Boolean(practice)}
+        practice={practice}
+        onClose={() => setShowRegister(false)}
+        onCreated={(name) => {
+          setShowRegister(false);
+          go("patient", name);
+        }}
+      />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 16, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: "0 0 4px", letterSpacing: "-0.02em" }}>Patients</h1>
