@@ -6,16 +6,13 @@ const MIcon = ({ d, children, size = 18, fill = 'none', stroke = 'currentColor',
 );
 
 const MeridianLogo = ({ size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#mhg)" />
-    <path d="M5 14 L8 14 L10 10 L13 16 L15 12 L19 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    <defs>
-      <linearGradient id="mhg" x1="0" y1="0" x2="24" y2="24">
-        <stop offset="0" stopColor="#3b82f6" />
-        <stop offset="1" stopColor="#2563eb" />
-      </linearGradient>
-    </defs>
-  </svg>
+  <img
+    src="/assets/medic_plus/daystar-health/daystar-medical-icon.png"
+    alt="Daystar Health"
+    width={size}
+    height={size}
+    style={{ display: 'block', objectFit: 'contain' }}
+  />
 );
 
 window.MIcons = {
