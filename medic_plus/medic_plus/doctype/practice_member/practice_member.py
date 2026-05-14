@@ -18,7 +18,11 @@ class PracticeMember(Document):
 		self._prevent_duplicate()
 
 	def after_insert(self):
-		if self.status == "Pending":
+		# The invitation fields (status, email, full_name, ...) live on a richer
+		# schema that hasn't been migrated yet — guard against the field missing
+		# so direct provisioning (no invitation flow) keeps working.
+		status = getattr(self, "status", None)
+		if status == "Pending":
 			self._run_invitation_flow()
 		elif self.user:
 			self._assign_frappe_role()
