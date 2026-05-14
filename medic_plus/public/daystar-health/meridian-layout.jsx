@@ -1,6 +1,19 @@
 // Meridian shared layout
 const { useState: mUseState, useMemo: mUseMemo, useEffect: mUseEffect } = React;
 
+// User.user_image is admin-controllable via the Desk; only allow same-origin
+// /files/... paths or http(s) URLs as <img src> to block javascript: / data:
+// vectors. Private files (/private/) need an authenticated proxy that the
+// SPA doesn't have, so skip those too.
+function safeAvatarSrc(value) {
+  if (typeof value !== 'string' || !value) return null;
+  const v = value.trim();
+  if (v.startsWith('/private/')) return null;
+  if (v.startsWith('/files/') || v.startsWith('/')) return v;
+  if (/^https?:\/\//i.test(v)) return v;
+  return null;
+}
+
 function MSidebar({ route, go, open, onClose }) {
   const items = [
     { key: 'dashboard', icon: 'Home', label: 'Today' },
@@ -113,8 +126,8 @@ function MTopbar({ go, crumbs = [], onToggleSidebar, onNewVisit }) {
         </button>
         <div className="topbar-divider" style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 6px' }} />
         <button data-testid="topbar-profile" onClick={() => go('profile')} className="topbar-profile-btn" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: '4px 8px 4px 4px', borderRadius: 8, cursor: 'pointer' }}>
-          {user.user_image && !user.user_image.startsWith('/private/') ? (
-            <img src={user.user_image} alt="" className="avatar avatar-sm" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+          {safeAvatarSrc(user.user_image) ? (
+            <img src={safeAvatarSrc(user.user_image)} alt="" className="avatar avatar-sm" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
           ) : (
             <div className="avatar avatar-sm" style={{ width: 28, height: 28, fontSize: 11 }}>{initials}</div>
           )}

@@ -81,9 +81,14 @@ function DashboardReady({ go, data }) {
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{data.today_label} · {today.length} patients on your schedule today.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <a className="btn btn-secondary btn-sm" href={data.view_full_schedule_url} target="_blank" rel="noreferrer" data-testid="view-full-schedule">
+          <button
+            className="btn btn-secondary btn-sm"
+            type="button"
+            onClick={() => go('appointments')}
+            data-testid="view-full-schedule"
+          >
             <window.MIcons.Calendar size={14} /> View full schedule
-          </a>
+          </button>
         </div>
       </div>
 

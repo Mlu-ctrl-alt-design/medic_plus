@@ -327,7 +327,7 @@ function NotesTab({ notes, link }) {
                 <span style={{ fontWeight: 500 }}>{n.author || '—'}</span>
                 <span style={{ color: 'var(--text-dim)' }}>{n.when || ''}</span>
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }} dangerouslySetInnerHTML={{ __html: n.body || '' }} />
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>{n.body || ''}</div>
             </div>
           ))}
         </div>
