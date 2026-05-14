@@ -92,14 +92,14 @@ function RegisterPatientDrawer({ practice, onClose, onCreated }) {
     });
   };
 
-  return (
+  return ReactDOM.createPortal(
     <div data-testid="register-patient-drawer" style={{
       position: "fixed", inset: 0, zIndex: 1000,
       display: "flex", justifyContent: "flex-end",
     }}>
       <div onClick={onClose} style={{ flex: 1, background: "rgba(0,0,0,0.3)" }} />
       <div style={{
-        width: 480, background: "var(--bg-card)", height: "100%",
+        width: 480, maxWidth: "100vw", background: "var(--bg-card)", height: "100%",
         boxShadow: "-4px 0 24px rgba(0,0,0,0.18)", overflowY: "auto",
         display: "flex", flexDirection: "column",
       }}>
@@ -228,7 +228,8 @@ function RegisterPatientDrawer({ practice, onClose, onCreated }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
