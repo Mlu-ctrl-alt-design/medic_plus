@@ -399,6 +399,53 @@ def _search_code_values(*, system: str, query: str, limit) -> list:
 
 
 @frappe.whitelist()
+def get_active_practice_details() -> dict:
+	"""Return the active practice's fields for the daystar-health Practice screen.
+
+	Mirrors what's visible on the Desk Practice form, minus sensitive
+	subscription identifiers (yoco_*, raw payment refs). Auth is enforced
+	by session; practice scope is the caller's Practice Member row.
+	"""
+	user = frappe.session.user
+	practice_name = frappe.db.get_value("Practice Member", {"user": user}, "practice")
+	if not practice_name:
+		frappe.throw(_("No practice associated with your account."), frappe.PermissionError)
+
+	doc = frappe.get_doc("Practice", practice_name)
+	visible = (
+		"name", "practice_name", "slug", "is_active",
+		"subscription_plan", "subscription_status",
+		"trial_ends_on", "current_period_end",
+		"phone", "email", "address",
+		"logo", "color", "owner_practitioner",
+		"company",
+	)
+	out = {k: doc.get(k) for k in visible}
+
+	# Owner practitioner display name (if set).
+	if out.get("owner_practitioner"):
+		out["owner_practitioner_name"] = frappe.db.get_value(
+			"Healthcare Practitioner", out["owner_practitioner"], "practitioner_name"
+		)
+
+	# Doctor list — practice doctors via Practice Member rows.
+	doctors = frappe.get_all(
+		"Practice Member",
+		filters={"practice": practice_name, "role": ("in", ("Doctor", "Admin"))},
+		fields=["name", "user", "role", "practitioner"],
+		order_by="role asc, creation asc",
+		ignore_permissions=True,
+	)
+	for d in doctors:
+		if d.get("practitioner"):
+			d["practitioner_name"] = frappe.db.get_value(
+				"Healthcare Practitioner", d["practitioner"], "practitioner_name"
+			)
+	out["doctors"] = doctors
+	return out
+
+
+@frappe.whitelist()
 def list_appointment_types() -> list:
 	"""Return all Appointment Type names for the new-visit drawer.
 

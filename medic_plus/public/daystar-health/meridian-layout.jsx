@@ -105,7 +105,6 @@ function MTopbar({ go, crumbs = [], onToggleSidebar, onNewVisit }) {
       <div className="topbar-search search">
         <window.MIcons.Search size={15} />
         <input placeholder="Search patients, MRN, appointments…" />
-        <kbd>⌘K</kbd>
       </div>
       <div className="topbar-actions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
         <button className="btn btn-secondary btn-sm topbar-new-visit" data-testid="topbar-new-visit" onClick={onNewVisit}><window.MIcons.Plus size={14} /> <span className="topbar-new-visit-label">New visit</span></button>

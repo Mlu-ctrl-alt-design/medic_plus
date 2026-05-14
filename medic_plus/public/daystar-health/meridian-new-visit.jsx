@@ -155,7 +155,8 @@ function MNewVisitDrawer({ open, onClose, onCreated, prefillPatient }) {
     api.call('medic_plus.api.daystar_health.list_appointment_types')
       .then((res) => {
         if (cancelled) return;
-        const names = (res && res.message) || [];
+        // api.call already unwraps payload.message — `res` is the list itself.
+        const names = Array.isArray(res) ? res : [];
         const list = names.map((n) => ({ name: n }));
         setAppointmentTypes(list);
         setForm((f) => (f.appointment_type || !list.length) ? f : { ...f, appointment_type: list[0].name });

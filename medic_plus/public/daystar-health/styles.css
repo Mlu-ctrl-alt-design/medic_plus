@@ -629,8 +629,10 @@ input, select, textarea { font-family: inherit; }
   z-index: 19;
 }
 
+.topbar-search { flex: 1; min-width: 0; max-width: 480px; }
+
 @media (max-width: 1024px) {
-  .topbar-search { width: 220px; }
+  .topbar-search { max-width: 320px; }
 }
 
 @media (max-width: 768px) {
