@@ -127,22 +127,20 @@ function MMedicalRecordsScreen({ go }) {
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
           <span style={{ fontWeight: 500 }}>From</span>
-          <input
-            type="date"
+          <window.MDatePicker
             data-testid="pmr-filter-from"
-            value={filters.date_from}
-            onChange={(e) => update('date_from', e.target.value)}
-            className="input"
+            value={filters.date_from || ''}
+            onChange={(v) => update('date_from', v)}
+            placeholder="YYYY-MM-DD"
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
           <span style={{ fontWeight: 500 }}>To</span>
-          <input
-            type="date"
+          <window.MDatePicker
             data-testid="pmr-filter-to"
-            value={filters.date_to}
-            onChange={(e) => update('date_to', e.target.value)}
-            className="input"
+            value={filters.date_to || ''}
+            onChange={(v) => update('date_to', v)}
+            placeholder="YYYY-MM-DD"
           />
         </label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignSelf: 'center' }} data-testid="pmr-filter-types">

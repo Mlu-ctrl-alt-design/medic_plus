@@ -157,26 +157,22 @@ function MAppointmentsScreen({ go }) {
       {/* ── Toolbar ── */}
       <div className="card" style={{ marginBottom: "var(--gap)", padding: 14 }}>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div>
+          <div style={{ width: 148 }}>
             <label style={{ fontSize: 11.5, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>From</label>
-            <input
+            <window.MDatePicker
               data-testid="appointments-date-from"
-              type="date"
-              className="input"
-              style={{ width: 148 }}
               value={dateFrom}
-              onChange={e => setDateFrom(e.target.value)}
+              onChange={(v) => setDateFrom(v)}
+              placeholder="YYYY-MM-DD"
             />
           </div>
-          <div>
+          <div style={{ width: 148 }}>
             <label style={{ fontSize: 11.5, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>To</label>
-            <input
+            <window.MDatePicker
               data-testid="appointments-date-to"
-              type="date"
-              className="input"
-              style={{ width: 148 }}
               value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
+              onChange={(v) => setDateTo(v)}
+              placeholder="YYYY-MM-DD"
             />
           </div>
           <div>
