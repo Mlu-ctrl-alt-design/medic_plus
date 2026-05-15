@@ -27,6 +27,18 @@ def _get_practice_or_throw(practice_slug: str) -> dict:
 	return practice
 
 
+def _practice_display_name(practice: dict) -> str:
+	"""Patient-facing name for a practice.
+
+	Prefers the matching ERPNext Company name so emails reflect the legal
+	entity; falls back to the practice's own name when no Company matches.
+	"""
+	company_name = frappe.db.get_value(
+		"Company", {"company_name": practice.practice_name}, "company_name"
+	)
+	return company_name or practice.practice_name
+
+
 # ---------------------------------------------------------------------------
 # OTP: request
 # ---------------------------------------------------------------------------
@@ -60,11 +72,12 @@ def request_booking_otp(practice_slug: str, email: str) -> dict:
 
 
 def _send_otp_email(email: str, otp: str, practice: dict):
-	subject = frappe._("Your booking verification code — {0}").format(practice.practice_name)
+	display_name = _practice_display_name(practice)
+	subject = frappe._("Your booking verification code — {0}").format(display_name)
 	message = f"""
 	<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e5e7eb;border-radius:8px;">
-		{"<img src='" + practice.logo + "' style='height:48px;margin-bottom:24px;display:block;' alt='" + practice.practice_name + "'>" if practice.logo else ""}
-		<h2 style="margin:0 0 8px;font-size:1.2rem;color:#111;">{practice.practice_name}</h2>
+		{"<img src='" + practice.logo + "' style='height:48px;margin-bottom:24px;display:block;' alt='" + display_name + "'>" if practice.logo else ""}
+		<h2 style="margin:0 0 8px;font-size:1.2rem;color:#111;">{display_name}</h2>
 		<p style="color:#555;margin:0 0 24px;">Use the code below to confirm your appointment booking. It expires in <strong>10 minutes</strong>.</p>
 		<div style="background:#f3f4f6;border-radius:8px;padding:20px;text-align:center;letter-spacing:0.3em;font-size:2rem;font-weight:700;color:#111;">
 			{otp}
@@ -189,14 +202,15 @@ def verify_and_book(
 
 
 def _send_confirmation_email(email: str, patient_name: str, appointment, practice: dict):
-	subject = frappe._("Appointment Confirmed — {0}").format(practice.practice_name)
+	display_name = _practice_display_name(practice)
+	subject = frappe._("Appointment Confirmed — {0}").format(display_name)
 	message = f"""
 	<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e5e7eb;border-radius:8px;">
-		{"<img src='" + practice.logo + "' style='height:48px;margin-bottom:24px;display:block;' alt='" + practice.practice_name + "'>" if practice.logo else ""}
+		{"<img src='" + practice.logo + "' style='height:48px;margin-bottom:24px;display:block;' alt='" + display_name + "'>" if practice.logo else ""}
 		<h2 style="margin:0 0 8px;font-size:1.2rem;color:#111;">Appointment Confirmed</h2>
 		<p style="color:#555;margin:0 0 24px;">Hi {patient_name}, your appointment has been booked successfully.</p>
 		<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
-			<tr><td style="padding:8px 0;color:#888;width:40%;">Practice</td><td style="color:#111;font-weight:500;">{practice.practice_name}</td></tr>
+			<tr><td style="padding:8px 0;color:#888;width:40%;">Practice</td><td style="color:#111;font-weight:500;">{display_name}</td></tr>
 			<tr><td style="padding:8px 0;color:#888;">Date</td><td style="color:#111;font-weight:500;">{appointment.appointment_date}</td></tr>
 			<tr><td style="padding:8px 0;color:#888;">Time</td><td style="color:#111;font-weight:500;">{str(appointment.appointment_time)[:5]}</td></tr>
 			<tr><td style="padding:8px 0;color:#888;">Reference</td><td style="color:#111;font-weight:500;">{appointment.name}</td></tr>
