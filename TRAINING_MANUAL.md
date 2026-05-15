@@ -729,12 +729,12 @@ Types: `feat`, `fix`, `test`, `docs`, `refactor`, `chore`
 
 ### Two-server setup
 
-| Server | Role | URL |
-|--------|------|-----|
-| This VPS (staging) | Development & testing | `medic-demo-staging.thedaystar.co.za` |
-| Remote VPS (production) | Live site | `medic-demo.thedaystar.co.za` |
+| Server | Role | URL | Aliases |
+|--------|------|-----|---------|
+| This VPS (staging) | Development & testing | `medic-demo-staging.thedaystar.co.za` | `selfserve.thedaystar.co.za`, `ehealth-staging.thedaystar.co.za` |
+| Remote VPS (production) | Live site | `medic-demo.thedaystar.co.za` | `ehealth.thedaystar.co.za` |
 
-Code moves only via Git. Databases are never synced between environments.
+Code moves only via Git. Databases are never synced between environments. Aliases are nginx-level — both hostnames hit the same Frappe site, so users can transition off the legacy hostname without coordination.
 
 ### Production deploy
 

@@ -51,6 +51,8 @@ window.__DAYSTAR_HEALTH__ = {
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-code-picker.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-icd10-picker.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-new-visit.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-encounter.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-billing.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-prescription.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-profile.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-practice.jsx"></script>
@@ -65,7 +67,7 @@ const TWEAK_DEFAULTS = {
 };
 
 const VALID_ROUTES = ['dashboard','patients','profile','appointments','records','labs','medications','billing','practice','login','recover','no-practice'];
-const VALID_DRAWERS = ['patient','newVisit'];
+const VALID_DRAWERS = ['patient','newVisit','encounter'];
 
 function readUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -87,7 +89,7 @@ function initialRouteState() {
   return {
     route: u.route || 'dashboard',
     drawer: u.drawer || null,
-    drawerArg: u.drawer === 'patient' ? u.id : null,
+    drawerArg: (u.drawer === 'patient' || u.drawer === 'encounter') ? u.id : null,
   };
 }
 
@@ -96,7 +98,7 @@ function syncUrl({ route, drawer, drawerArg }, replace) {
   if (route && route !== 'dashboard') params.set('screen', route);
   if (drawer) {
     params.set('drawer', drawer);
-    if (drawer === 'patient' && drawerArg) params.set('id', drawerArg);
+    if ((drawer === 'patient' || drawer === 'encounter') && drawerArg) params.set('id', drawerArg);
   }
   const qs = params.toString();
   const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
@@ -126,7 +128,7 @@ function App() {
       setAppState({
         route: u.route || 'dashboard',
         drawer: u.drawer || null,
-        drawerArg: u.drawer === 'patient' ? u.id : null,
+        drawerArg: (u.drawer === 'patient' || u.drawer === 'encounter') ? u.id : null,
       });
     };
     window.addEventListener('popstate', handler);
@@ -143,6 +145,12 @@ function App() {
     }
     if (r === 'newVisit') {
       const next = { ...appState, drawer: 'newVisit', drawerArg: null };
+      setAppState(next);
+      syncUrl(next, false);
+      return;
+    }
+    if (r === 'encounter') {
+      const next = { ...appState, drawer: 'encounter', drawerArg: arg };
       setAppState(next);
       syncUrl(next, false);
       return;
@@ -183,7 +191,10 @@ function App() {
         {route === 'records' && <window.MMedicalRecordsScreen go={go} />}
         {route === 'profile' && <window.MProfileScreen go={go} />}
         {route === 'practice' && <window.MPracticeScreen go={go} />}
-        {!['dashboard', 'patients', 'appointments', 'records', 'profile', 'practice'].includes(route) && (
+        {route === 'billing' && <window.MBillingScreen go={go} />}
+        {route === 'labs' && <ComingSoon icon="Beaker" name="Labs & Imaging" description="Order lab tests, view results, and track imaging studies — coming in a future release." />}
+        {route === 'medications' && <ComingSoon icon="Pill" name="Prescriptions" description="Issue and manage prescriptions directly from Daystar Health — coming in a future release." />}
+        {!['dashboard', 'patients', 'appointments', 'records', 'profile', 'practice', 'billing', 'labs', 'medications'].includes(route) && (
           <Placeholder name={titles[route] || route} />
         )}
       </div>
@@ -201,7 +212,33 @@ function App() {
         onClose={closeDrawer}
         onCreated={() => setAppointmentsRefreshKey((k) => k + 1)}
       />
+      <window.MDrawer
+        open={drawer === 'encounter'}
+        onClose={closeDrawer}
+        title={drawerArg ? `Encounter · ${drawerArg}` : 'Encounter'}
+      >
+        {drawer === 'encounter' && drawerArg && (
+          <window.MEncounterScreen encounterId={drawerArg} go={go} />
+        )}
+      </window.MDrawer>
       <Tweaks tweaks={tweaks} setTweak={setTweak} />
+    </div>
+  );
+}
+
+function ComingSoon({ icon, name, description }) {
+  const Ic = window.MIcons[icon];
+  return (
+    <div className="page fade-in">
+      <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 16 }}>{name}</h1>
+      <div className="card" style={{ textAlign: 'center', padding: '64px 40px' }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--bg-subtle)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+          {Ic && <Ic size={24} />}
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, letterSpacing: '-0.01em' }}>Coming Soon</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 340, margin: '0 auto 20px' }}>{description}</div>
+        <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'var(--bg-subtle)', color: 'var(--text-dim)', padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)' }}>Soon</span>
+      </div>
     </div>
   );
 }
