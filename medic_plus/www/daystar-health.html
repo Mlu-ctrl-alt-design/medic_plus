@@ -52,6 +52,7 @@ window.__DAYSTAR_HEALTH__ = {
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-icd10-picker.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-new-visit.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-encounter.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-billing.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-prescription.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-profile.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-practice.jsx"></script>
@@ -190,9 +191,10 @@ function App() {
         {route === 'records' && <window.MMedicalRecordsScreen go={go} />}
         {route === 'profile' && <window.MProfileScreen go={go} />}
         {route === 'practice' && <window.MPracticeScreen go={go} />}
+        {route === 'billing' && <window.MBillingScreen go={go} />}
         {route === 'labs' && <ComingSoon icon="Beaker" name="Labs & Imaging" description="Order lab tests, view results, and track imaging studies — coming in a future release." />}
         {route === 'medications' && <ComingSoon icon="Pill" name="Prescriptions" description="Issue and manage prescriptions directly from Daystar Health — coming in a future release." />}
-        {!['dashboard', 'patients', 'appointments', 'records', 'profile', 'practice', 'labs', 'medications'].includes(route) && (
+        {!['dashboard', 'patients', 'appointments', 'records', 'profile', 'practice', 'billing', 'labs', 'medications'].includes(route) && (
           <Placeholder name={titles[route] || route} />
         )}
       </div>
