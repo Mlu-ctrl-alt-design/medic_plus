@@ -120,6 +120,7 @@ fixtures = [
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Workspace",       "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Page",            "filters": [["module", "=", "Medic Plus"]]},
+	{"dt": "Page",            "filters": [["name", "=", "patient_history"]]},
 	{"dt": "Client Script",   "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency", "Antenatal", "Chronic Disease Follow-up", "Well-Child Visit"]]]},
 	# Phase 5.7 — Encounter Templates (platform-level templates)
