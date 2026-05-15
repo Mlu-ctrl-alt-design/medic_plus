@@ -467,3 +467,17 @@ def get_fhir_access_token_permission_query(user: str = None) -> str:
 		return ""
 	resolved = user or frappe.session.user
 	return f"`tabFHIR Access Token`.`issued_to` = {frappe.db.escape(resolved)}"
+
+
+# ---------------------------------------------------------------------------
+# Calendar — Practice Time Block
+# ---------------------------------------------------------------------------
+
+def get_practice_time_block_permission_query(user: str = None) -> str:
+	"""A doctor sees only their own practice's time blocks."""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabPractice Time Block`.`practice` = {frappe.db.escape(practice)}"

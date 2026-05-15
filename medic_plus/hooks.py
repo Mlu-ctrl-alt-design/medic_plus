@@ -199,6 +199,8 @@ permission_query_conditions = {
 	"Journal Entry": "medic_plus.api.permissions.get_journal_entry_permission_query",
 	# Help & Support — practice members raise platform support issues
 	"Issue": "medic_plus.api.permissions.get_issue_permission_query",
+	# Calendar — practitioner self-managed time blocks
+	"Practice Time Block": "medic_plus.api.permissions.get_practice_time_block_permission_query",
 }
 
 # Document event hooks

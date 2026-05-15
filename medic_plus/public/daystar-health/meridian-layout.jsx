@@ -23,6 +23,7 @@ function MSidebar({ route, go, open, onClose }) {
     { key: 'labs', icon: 'Beaker', label: 'Labs & Imaging', soon: true },
     { key: 'medications', icon: 'Pill', label: 'Prescriptions', soon: true },
     { key: 'billing', icon: 'Tag', label: 'Billing & Claims' },
+    { key: 'my-calendar', icon: 'CalendarDays', label: 'My Calendar' },
     { key: 'practice', icon: 'Building', label: 'Practice' },
     { key: 'help', icon: 'LifeBuoy', label: 'Help & Support' },
   ];

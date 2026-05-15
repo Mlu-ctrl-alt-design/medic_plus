@@ -26,4 +26,5 @@ window.MIcons = {
   Activity: (p) => <MIcon {...p}><path d="M3 12 H7 L9 6 L13 18 L15 12 L17 14 H21" /></MIcon>,
   Menu: (p) => <MIcon {...p}><path d="M4 7 H20 M4 12 H20 M4 17 H20" /></MIcon>,
   LifeBuoy: (p) => <MIcon {...p}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" /><path d="M6.36 6.36 L9.17 9.17 M14.83 14.83 L17.64 17.64 M17.64 6.36 L14.83 9.17 M9.17 14.83 L6.36 17.64" /></MIcon>,
+  CalendarDays: (p) => <MIcon {...p}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2 V6 M8 2 V6 M3 10 H21" /><circle cx="8" cy="15" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none" /><circle cx="16" cy="15" r="1" fill="currentColor" stroke="none" /></MIcon>,
 };
