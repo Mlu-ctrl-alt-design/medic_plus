@@ -20,8 +20,8 @@ function MSidebar({ route, go, open, onClose }) {
     { key: 'appointments', icon: 'Calendar', label: 'Appointments' },
     { key: 'patients', icon: 'Users', label: 'Patients' },
     { key: 'records', icon: 'ClipBoard', label: 'Medical Records' },
-    { key: 'labs', icon: 'Beaker', label: 'Labs & Imaging' },
-    { key: 'medications', icon: 'Pill', label: 'Prescriptions' },
+    { key: 'labs', icon: 'Beaker', label: 'Labs & Imaging', soon: true },
+    { key: 'medications', icon: 'Pill', label: 'Prescriptions', soon: true },
     { key: 'billing', icon: 'Tag', label: 'Billing & Claims' },
     { key: 'practice', icon: 'Building', label: 'Practice' },
   ];
@@ -57,6 +57,7 @@ function MSidebar({ route, go, open, onClose }) {
           return (
             <button key={it.key} data-testid={`nav-${it.key}`} className={`nav-item ${route === it.key ? 'active' : ''}`} onClick={() => navTo(it.key)}>
               <Ic size={17} /><span>{it.label}</span>
+              {it.soon && <span style={{ marginLeft: 'auto', fontSize: 9.5, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', background: 'var(--bg-subtle)', color: 'var(--text-dim)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>Soon</span>}
             </button>
           );
         })}
