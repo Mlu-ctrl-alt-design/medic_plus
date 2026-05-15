@@ -15,6 +15,7 @@ import json
 from datetime import date, timedelta
 
 import frappe
+from frappe.utils import getdate
 
 from medic_plus.api.dashboard_aggregator import build_dashboard
 from medic_plus.api.patient_summary import build_patient_summary
@@ -102,7 +103,7 @@ _APPOINTMENT_FIELDS = (
     "status",
 )
 
-_DEFAULT_STATUSES = ["Scheduled", "Open"]
+_DEFAULT_STATUSES = ["Scheduled", "Open", "Checked In"]
 
 
 def _format_appointments(rows: list, enc_by_appt: dict | None = None) -> list:
@@ -549,6 +550,17 @@ def create_visit(payload: dict | str = None) -> dict:
 		enc = frappe.get_doc(enc_fields)
 		enc.flags.ignore_permissions = True
 		enc.insert(ignore_permissions=True)
+
+		# Healthcare's PatientEncounter.on_update fires on every save (including
+		# insert) and unconditionally sets the linked appointment to "Closed".
+		# That is wrong for a draft encounter: the appointment is still active.
+		# Override the status to reflect the actual appointment date:
+		#   - today or past  → "Checked In"  (doctor is actively seeing the patient)
+		#   - future         → "Scheduled"   (pre-created encounter for upcoming visit)
+		correct_appt_status = (
+			"Checked In" if getdate(encounter_date) <= getdate() else "Scheduled"
+		)
+		frappe.db.set_value("Patient Appointment", appt.name, "status", correct_appt_status)
 
 		frappe.db.commit()
 	except Exception:

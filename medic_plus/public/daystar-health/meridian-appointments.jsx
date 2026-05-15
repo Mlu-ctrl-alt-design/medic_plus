@@ -3,7 +3,7 @@
 // Clicking a row navigates to the patient detail screen.
 
 const APPT_STORAGE_KEY = "daystar.appointments.filters";
-const STATUS_OPTIONS = ["Scheduled", "Open", "Closed", "Cancelled"];
+const STATUS_OPTIONS = ["Scheduled", "Open", "Checked In", "Closed", "Cancelled"];
 
 function _todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -23,7 +23,7 @@ function _loadInitialFilters() {
       return {
         dateFrom: p.dateFrom || _todayStr(),
         dateTo: p.dateTo || _plusDaysStr(7),
-        status: Array.isArray(p.status) && p.status.length ? p.status : ["Scheduled", "Open"],
+        status: Array.isArray(p.status) && p.status.length ? p.status : ["Scheduled", "Open", "Checked In"],
         practitioner: p.practitioner || "",
       };
     }
@@ -31,7 +31,7 @@ function _loadInitialFilters() {
   return {
     dateFrom: _todayStr(),
     dateTo: _plusDaysStr(7),
-    status: ["Scheduled", "Open"],
+    status: ["Scheduled", "Open", "Checked In"],
     practitioner: "",
   };
 }
@@ -45,6 +45,7 @@ function _saveFilters(f) {
 function _apptBadgeClass(status) {
   if (status === "Scheduled") return "badge-info";
   if (status === "Open") return "badge-success";
+  if (status === "Checked In") return "badge-success";
   if (status === "Cancelled") return "badge-danger";
   return "badge-neutral"; // Closed and anything else
 }

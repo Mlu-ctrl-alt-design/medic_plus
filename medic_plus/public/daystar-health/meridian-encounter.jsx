@@ -58,7 +58,7 @@ function MEncounterScreen({ encounterId, go }) {
   const { encounter, problem_list } = state.data || {};
   if (!encounter) return null;
 
-  const deskUrl = `/healthcare/patient-encounter/${encounterId}`;
+  const deskUrl = `/app/patient-encounter/${encounterId}`;
   const assessmentBody = [
     encounter.assessment_code ? `ICD-10: ${encounter.assessment_code}` : '',
     encounter.assessment_text || '',
