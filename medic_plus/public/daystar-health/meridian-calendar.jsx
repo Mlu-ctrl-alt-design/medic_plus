@@ -250,7 +250,7 @@ function BlockModal({ onClose, onSave, saving, defaultDate }) {
 // ---------------------------------------------------------------------------
 // Main screen
 // ---------------------------------------------------------------------------
-function MCalendarScreen({ go }) {
+function MCalendarScreen({ go, embedded = false }) {
   const [weekStart, setWeekStart] = mUseState(() => _isoDate(_weekMonday()));
   const [calData, setCalData] = mUseState(null);
   const [status, setStatus] = mUseState('loading');   // loading | no-practitioner | ready | error
@@ -354,19 +354,21 @@ function MCalendarScreen({ go }) {
     return `${_fmtDate(_isoDate(start))} – ${_fmtDate(_isoDate(end))}`;
   })();
 
-  return (
-    <div className="page fade-in" data-testid="calendar-page">
+  const inner = (
+    <>
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px', letterSpacing: '-0.02em' }}>My Calendar</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-            {status === 'ready' && calData
-              ? calData.practitioner_name || calData.practitioner
-              : status === 'loading' ? 'Loading…' : ''}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {!embedded && (
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px', letterSpacing: '-0.02em' }}>My Calendar</h1>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+              {status === 'ready' && calData
+                ? calData.practitioner_name || calData.practitioner
+                : status === 'loading' ? 'Loading…' : ''}
+            </p>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginLeft: embedded ? 'auto' : undefined }}>
           <button className="btn btn-secondary btn-sm" onClick={() => goWeek(-1)} aria-label="Previous week">← Prev</button>
           <button className="btn btn-secondary btn-sm" onClick={goToday}>Today</button>
           <button className="btn btn-secondary btn-sm" onClick={() => goWeek(1)} aria-label="Next week">Next →</button>
@@ -535,8 +537,11 @@ function MCalendarScreen({ go }) {
           onSave={handleBlockSave}
         />
       )}
-    </div>
+    </>
   );
+
+  if (embedded) return inner;
+  return <div className="page fade-in" data-testid="calendar-page">{inner}</div>;
 }
 
 window.MCalendarScreen = MCalendarScreen;
