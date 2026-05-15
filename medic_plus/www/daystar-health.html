@@ -51,6 +51,7 @@ window.__DAYSTAR_HEALTH__ = {
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-code-picker.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-icd10-picker.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-new-visit.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-encounter.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-prescription.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-profile.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-practice.jsx"></script>
@@ -65,7 +66,7 @@ const TWEAK_DEFAULTS = {
 };
 
 const VALID_ROUTES = ['dashboard','patients','profile','appointments','records','labs','medications','billing','practice','login','recover','no-practice'];
-const VALID_DRAWERS = ['patient','newVisit'];
+const VALID_DRAWERS = ['patient','newVisit','encounter'];
 
 function readUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -87,7 +88,7 @@ function initialRouteState() {
   return {
     route: u.route || 'dashboard',
     drawer: u.drawer || null,
-    drawerArg: u.drawer === 'patient' ? u.id : null,
+    drawerArg: (u.drawer === 'patient' || u.drawer === 'encounter') ? u.id : null,
   };
 }
 
@@ -96,7 +97,7 @@ function syncUrl({ route, drawer, drawerArg }, replace) {
   if (route && route !== 'dashboard') params.set('screen', route);
   if (drawer) {
     params.set('drawer', drawer);
-    if (drawer === 'patient' && drawerArg) params.set('id', drawerArg);
+    if ((drawer === 'patient' || drawer === 'encounter') && drawerArg) params.set('id', drawerArg);
   }
   const qs = params.toString();
   const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
@@ -126,7 +127,7 @@ function App() {
       setAppState({
         route: u.route || 'dashboard',
         drawer: u.drawer || null,
-        drawerArg: u.drawer === 'patient' ? u.id : null,
+        drawerArg: (u.drawer === 'patient' || u.drawer === 'encounter') ? u.id : null,
       });
     };
     window.addEventListener('popstate', handler);
@@ -143,6 +144,12 @@ function App() {
     }
     if (r === 'newVisit') {
       const next = { ...appState, drawer: 'newVisit', drawerArg: null };
+      setAppState(next);
+      syncUrl(next, false);
+      return;
+    }
+    if (r === 'encounter') {
+      const next = { ...appState, drawer: 'encounter', drawerArg: arg };
       setAppState(next);
       syncUrl(next, false);
       return;
@@ -201,6 +208,15 @@ function App() {
         onClose={closeDrawer}
         onCreated={() => setAppointmentsRefreshKey((k) => k + 1)}
       />
+      <window.MDrawer
+        open={drawer === 'encounter'}
+        onClose={closeDrawer}
+        title={drawerArg ? `Encounter · ${drawerArg}` : 'Encounter'}
+      >
+        {drawer === 'encounter' && drawerArg && (
+          <window.MEncounterScreen encounterId={drawerArg} go={go} />
+        )}
+      </window.MDrawer>
       <Tweaks tweaks={tweaks} setTweak={setTweak} />
     </div>
   );

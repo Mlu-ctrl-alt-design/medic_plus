@@ -105,11 +105,14 @@ _APPOINTMENT_FIELDS = (
 _DEFAULT_STATUSES = ["Scheduled", "Open"]
 
 
-def _format_appointments(rows: list) -> list:
+def _format_appointments(rows: list, enc_by_appt: dict | None = None) -> list:
     """Shape raw Patient Appointment dicts into SPA-ready dicts.
 
     Pure transformation — no DB calls, no session access. Tested in isolation.
+    enc_by_appt maps appointment name → encounter name for appointments that
+    already have a linked Patient Encounter.
     """
+    enc_by_appt = enc_by_appt or {}
     return [
         {
             "name": r.get("name"),
@@ -121,6 +124,7 @@ def _format_appointments(rows: list) -> list:
             "practitioner_name": r.get("practitioner_name"),
             "appointment_type": r.get("appointment_type"),
             "status": r.get("status"),
+            "encounter": enc_by_appt.get(r.get("name")),
         }
         for r in rows
     ]
@@ -167,7 +171,16 @@ def get_appointments(filters=None) -> list:
         order_by="appointment_date asc, appointment_time asc",
         limit=200,
     )
-    return _format_appointments(rows)
+    enc_by_appt: dict = {}
+    if rows:
+        encs = frappe.get_all(
+            "Patient Encounter",
+            filters={"appointment": ["in", [r["name"] for r in rows]]},
+            fields=["name", "appointment"],
+            limit=len(rows) * 2,
+        )
+        enc_by_appt = {e["appointment"]: e["name"] for e in encs}
+    return _format_appointments(rows, enc_by_appt)
 
 
 _MEDICAL_RECORD_FIELDS = (
@@ -563,6 +576,58 @@ def list_appointment_types() -> list:
 		ignore_permissions=True,
 	)
 	return [r["name"] for r in rows]
+
+
+@frappe.whitelist()
+def start_consultation_from_appointment(appointment: str) -> dict:
+	"""Create a Patient Encounter from an existing Patient Appointment.
+
+	Called when the doctor clicks 'Start' on a pre-booked appointment in the
+	Appointments screen.  Sets the appointment status to 'Checked In'.
+
+	If an encounter already exists (race-condition or double-click), returns it
+	directly with ``existing: true`` so the SPA can open it without re-creating.
+	Returns ``{encounter: <name>, existing: <bool>}``.
+	"""
+	practice = get_active_practice()
+
+	appt = frappe.get_doc("Patient Appointment", appointment)
+	if appt.get("custom_practice") != practice:
+		raise frappe.PermissionError("Appointment does not belong to your practice.")
+
+	existing = frappe.db.get_value("Patient Encounter", {"appointment": appointment}, "name")
+	if existing:
+		return {"encounter": existing, "existing": True}
+
+	company = frappe.db.get_value("Practice", practice, "company")
+	if not company:
+		frappe.throw(
+			_("Your practice has no linked ERPNext Company."),
+			frappe.ValidationError,
+		)
+
+	try:
+		enc = frappe.get_doc({
+			"doctype": "Patient Encounter",
+			"patient": appt.patient,
+			"practitioner": appt.practitioner,
+			"encounter_date": appt.appointment_date,
+			"encounter_time": str(appt.appointment_time or "09:00:00"),
+			"appointment": appointment,
+			"appointment_type": appt.appointment_type,
+			"company": company,
+			"custom_practice": practice,
+		})
+		enc.flags.ignore_permissions = True
+		enc.insert(ignore_permissions=True)
+
+		frappe.db.set_value("Patient Appointment", appointment, "status", "Checked In")
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		raise
+
+	return {"encounter": enc.name, "existing": False}
 
 
 @frappe.whitelist()
