@@ -59,6 +59,7 @@ def _get_practitioner_schedule(practitioner: str) -> list:
 				"from_time": str(slot.from_time or ""),
 				"to_time": str(slot.to_time or ""),
 				"schedule_name": sched.schedule_name or sched.name,
+				"doc_name": sched.name,
 			})
 	return slots
 

@@ -528,6 +528,11 @@ function MCalendarScreen({ go, embedded = false }) {
         </div>
       )}
 
+      {/* ── Weekly schedule summary ── */}
+      {status === 'ready' && calData && (
+        <SchedulePanel schedule={calData.schedule} />
+      )}
+
       {/* ── Block-time modal ── */}
       {showBlock && (
         <BlockModal
@@ -542,6 +547,117 @@ function MCalendarScreen({ go, embedded = false }) {
 
   if (embedded) return inner;
   return <div className="page fade-in" data-testid="calendar-page">{inner}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// Weekly schedule summary
+// ---------------------------------------------------------------------------
+
+const ORDERED_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+function _fmtSlotTime(t) {
+  if (!t) return '';
+  const p = String(t).split(':');
+  return `${p[0]}:${p[1]}`;
+}
+
+function SchedulePanel({ schedule }) {
+  if (!schedule) return null;
+
+  // Group slots by day — one day can have multiple slots (split shifts)
+  const byDay = {};
+  ORDERED_DAYS.forEach(d => { byDay[d] = []; });
+  schedule.forEach(s => {
+    if (byDay[s.day] !== undefined) byDay[s.day].push(s);
+  });
+
+  // Collect unique schedule documents for the Desk links
+  const docs = {};
+  schedule.forEach(s => {
+    if (s.doc_name && !docs[s.doc_name]) docs[s.doc_name] = s.schedule_name || s.doc_name;
+  });
+  const docEntries = Object.entries(docs); // [[doc_name, label], ...]
+
+  const hasAnySlot = schedule.length > 0;
+
+  return (
+    <div className="card" style={{ marginTop: 20 }} data-testid="schedule-panel">
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '10px 16px', borderBottom: '1px solid var(--border-color)',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Weekly Schedule</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {docEntries.map(([docName, label]) => (
+            <a
+              key={docName}
+              href={`/app/practitioner-schedule/${encodeURIComponent(docName)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-ghost btn-xs"
+              style={{ fontSize: 11 }}
+            >
+              {label} ↗
+            </a>
+          ))}
+          {!hasAnySlot && (
+            <a
+              href="/app/practitioner-schedule/new-practitioner-schedule-1"
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary btn-xs"
+              style={{ fontSize: 11 }}
+            >
+              + Set up schedule
+            </a>
+          )}
+        </div>
+      </div>
+
+      {!hasAnySlot ? (
+        <div style={{ padding: '20px 16px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
+          No schedule configured yet. Create a Practitioner Schedule in Desk and link it to your practitioner profile.
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-subtle)' }}>
+              <th style={{ padding: '7px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', width: 100 }}>Day</th>
+              <th style={{ padding: '7px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Working Hours</th>
+              <th style={{ padding: '7px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Schedule</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ORDERED_DAYS.map((day, i) => {
+              const slots = byDay[day];
+              const isWorking = slots.length > 0;
+              return (
+                <tr key={day} style={{ borderTop: '1px solid var(--border-color)', background: isWorking ? 'transparent' : 'var(--bg-subtle)' }}>
+                  <td style={{ padding: '9px 16px', fontWeight: isWorking ? 500 : 400, color: isWorking ? 'var(--text-color)' : 'var(--text-muted)' }}>
+                    {day.slice(0, 3)}
+                  </td>
+                  <td style={{ padding: '9px 16px', color: isWorking ? 'var(--text-color)' : 'var(--text-muted)' }}>
+                    {isWorking
+                      ? slots.map((s, si) => (
+                          <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: si < slots.length - 1 ? 12 : 0 }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                              {_fmtSlotTime(s.from_time)} – {_fmtSlotTime(s.to_time)}
+                            </span>
+                          </span>
+                        ))
+                      : <span style={{ fontSize: 12 }}>—</span>}
+                  </td>
+                  <td style={{ padding: '9px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+                    {slots.length > 0 ? [...new Set(slots.map(s => s.schedule_name))].join(', ') : ''}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 }
 
 window.MCalendarScreen = MCalendarScreen;
