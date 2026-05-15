@@ -59,6 +59,7 @@ window.__DAYSTAR_HEALTH__ = {
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-help.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-calendar.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/tweaks-panel.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-release-notes.jsx"></script>
 
 <script type="text/babel">
 const { useState, useEffect } = React;
@@ -114,6 +115,7 @@ function App() {
   const [tweaks, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [appointmentsRefreshKey, setAppointmentsRefreshKey] = useState(0);
+  const [releaseNotes, setReleaseNotes] = useState([]);
 
   useEffect(() => {
     document.body.dataset.theme = tweaks.theme;
@@ -135,6 +137,15 @@ function App() {
     };
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
+  }, []);
+
+  // Fetch unseen release notes once on load — drives the "What's New" modal.
+  useEffect(() => {
+    if (!window.meridianApi || !window.meridianApi.isAuthenticated) return;
+    window.meridianApi
+      .call('medic_plus.api.release_notes.get_unseen_release_notes')
+      .then((notes) => { if (Array.isArray(notes) && notes.length) setReleaseNotes(notes); })
+      .catch((e) => console.error('[release-notes] fetch failed', e));
   }, []);
 
   const go = (r, arg = null) => {
@@ -226,6 +237,12 @@ function App() {
         )}
       </window.MDrawer>
       <Tweaks tweaks={tweaks} setTweak={setTweak} />
+      {releaseNotes.length > 0 && (
+        <window.MReleaseNotesModal
+          notes={releaseNotes}
+          onClose={() => setReleaseNotes([])}
+        />
+      )}
     </div>
   );
 }

@@ -113,6 +113,8 @@ fixtures = [
 			"Patient Encounter-custom_claim_nappi_code",
 			# Help & Support — practice scoping on ERPNext Issue
 			"Issue-custom_practice",
+			# Release notes — per-user "seen" tracking for the app modal
+			"User-custom_release_notes_seen_at",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},

@@ -4,6 +4,40 @@ Living technical specification. Every feature, bugfix, refactor, and design deci
 
 ---
 
+## 2026-05-15 — Release notes "What's New" modal
+
+Daystar Health SPA users now see a one-time "What's New" modal on their next login whenever a new release note is published.
+
+**Backend.** New `Release Note` DocType (`REL-.#####`, module Medic Plus) — `title`, `version`, `published_on`, `is_published`, `body` (Text Editor). Authored from the Desk by System Manager / Healthcare Administrator. Comes with a Form Tour (`Release Note Form Tour`) and `release_note.js` tour trigger per the project's DocType conventions.
+
+Per-user "seen" state is tracked server-side on a new hidden `User.custom_release_notes_seen_at` Datetime custom field (fixtures `custom_field.json` + `hooks.py`). New whitelisted API `medic_plus/api/release_notes.py`:
+- `get_unseen_release_notes()` — returns published notes with `creation > seen_at`. On a user's first-ever call (null `seen_at`) it records "caught up as of now" and returns `[]`, so new users are not shown the full historical changelog.
+- `mark_release_notes_seen()` — sets `seen_at = now()` on dismissal.
+
+**Frontend.** New `meridian-release-notes.jsx` defines `window.MReleaseNotesModal` (overlay + scrollable note list + "Got it" button). `daystar-health.html` loads it and `App()` fetches unseen notes on mount; login does a full page reload, so the mount fetch reliably fires on the next login. Dismissal calls `mark_release_notes_seen` then clears the modal.
+
+**Design notes.** Content source is a Desk-managed DocType (chosen over reusing `docs/releases/*.md`). Seen-tracking is server-side per user, so a dismissal sticks across devices. Scope is the daystar-health SPA only — Desk users do not get the modal. Modal body is rendered with `dangerouslySetInnerHTML`; content is authored only by trusted platform admins and sanitised by Frappe's Text Editor on save.
+
+**Tests.** Unit tests in `test_release_note.py` (published/draft filtering, mark-seen, null-seen-at init) — verified by exercising the API in `bench console`, all four cases pass. Playwright UI tests in `medic_plus/tests/ui/test_release_notes.py` cover modal appearance, title/version/body render, the `get_unseen_release_notes` payload shape, dismissal, dismissal-persists-across-reload, and the caught-up no-modal case. The UI suite could not be run in this environment (no `playwright`/`pytest` installed) — run it on staging before tagging.
+
+**Files**: `medic_plus/medic_plus/doctype/release_note/*`, `medic_plus/medic_plus/form_tour/release_note_form_tour/*`, `medic_plus/api/release_notes.py`, `medic_plus/public/daystar-health/meridian-release-notes.jsx`, `medic_plus/www/daystar-health.html`, `medic_plus/fixtures/custom_field.json`, `medic_plus/hooks.py`, `medic_plus/tests/ui/test_release_notes.py`.
+
+---
+
+## 2026-05-15 — Booking emails display the Company name
+
+Patient-facing booking emails previously showed `Practice.practice_name` directly. Per request, they now show the practice's ERPNext **Company** name so emails reflect the legal entity.
+
+`api/booking.py` gains a `_practice_display_name(practice)` helper that looks up a Company by `company_name == practice.practice_name` and returns its `company_name`, falling back to `practice.practice_name` when no Company matches. Both `_send_otp_email` and `_send_confirmation_email` now use this resolved name in the subject, heading, logo alt-text, and (for the confirmation) the "Practice" table row.
+
+**Resolution is by name match, not a link field.** A `company` Link field on `Practice` was considered and declined to avoid a schema change. Consequence: if a Company is renamed so it no longer matches `practice_name`, the lookup misses and the email falls back to `practice_name`. On `medic-demo` both practices (`PRAC-00001`, `PRAC-00002`) currently match their Company exactly.
+
+**Latent bug noted, not fixed:** `api/_provisioning.py:227` does `frappe.db.set_value("Practice", practice.name, "company", company_name)`, but `Practice` has no `company` field — that write targets a non-existent column. The intended Practice→Company link was never added to `practice.json`. Left untouched since the email fix uses name-matching; worth addressing if a real link is added later.
+
+**Files**: `medic_plus/api/booking.py`.
+
+---
+
 ## 2026-05-12 — v2.3.0: Phase 5.10 encounter templates + Phase 7B practice onboarding (DAY-14)
 
 ### Phase 5.10 — Platform encounter templates for all appointment types

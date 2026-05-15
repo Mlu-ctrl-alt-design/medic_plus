@@ -133,6 +133,15 @@ MIT
 
 ## Changelog
 
+### 2026-05-15 — Release notes "What's New" modal
+- New `Release Note` DocType (Desk-managed) — published notes surface to Daystar Health SPA users via a one-time modal on their next login.
+- Per-user "seen" state tracked server-side on `User.custom_release_notes_seen_at`; dismissal sticks across devices.
+- New API `medic_plus/api/release_notes.py` (`get_unseen_release_notes`, `mark_release_notes_seen`) and frontend `meridian-release-notes.jsx` (`window.MReleaseNotesModal`).
+
+### 2026-05-15 — Booking emails use Company name
+- Patient-facing booking emails (OTP verification, appointment confirmation) now display the matching ERPNext Company name instead of the raw `Practice.practice_name`.
+- New `_practice_display_name()` helper in `api/booking.py` resolves the Company by `company_name == practice_name`, falling back to `practice_name` when no Company matches.
+
 ### 2026-05-08 — v2.0.0: SA EMR Phase 1 close + Phase 4 + POPIA + FHIR R4
 - First major version. Rolls up Phase 1C (SOAP encounter), Phase 1D (drug safety), Phase 1E (insurance claims + POPIA + FHIR), and Phase 4 (telemedicine + AI augmentation). 16 commits, 15 new doctypes, ~11k lines added. Full release notes in `docs/releases/v2.0.0.md`.
 - **Phase 1C — Structured SOAP encounter (#26):** `Examination Finding` (child of Patient Encounter) and `Patient Problem List` doctypes; SPA encounter drawer captures Subjective / Objective / Assessment / Plan with ICD-10-ZA picker.
