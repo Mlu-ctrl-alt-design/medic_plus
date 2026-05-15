@@ -315,6 +315,16 @@ def get_purchase_invoice_permission_query(user: str = None) -> str:
 	return _get_company_filter(user, "Purchase Invoice")
 
 
+def get_issue_permission_query(user: str = None) -> str:
+	"""PQC for the ERPNext Issue doctype — scopes to the user's practice."""
+	if _is_platform_admin(user):
+		return ""
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return f"`tabIssue`.`custom_practice` = {frappe.db.escape(practice)}"
+
+
 def get_journal_entry_permission_query(user: str = None) -> str:
 	return _get_company_filter(user, "Journal Entry")
 

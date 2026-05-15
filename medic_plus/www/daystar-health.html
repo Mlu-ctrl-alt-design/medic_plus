@@ -56,6 +56,7 @@ window.__DAYSTAR_HEALTH__ = {
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-prescription.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-profile.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-practice.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-help.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/tweaks-panel.jsx"></script>
 
 <script type="text/babel">
@@ -66,7 +67,7 @@ const TWEAK_DEFAULTS = {
   "density": "comfortable"
 };
 
-const VALID_ROUTES = ['dashboard','patients','profile','appointments','records','labs','medications','billing','practice','login','recover','no-practice'];
+const VALID_ROUTES = ['dashboard','patients','profile','appointments','records','labs','medications','billing','practice','help','login','recover','no-practice'];
 const VALID_DRAWERS = ['patient','newVisit','encounter'];
 
 function readUrl() {
@@ -174,7 +175,8 @@ function App() {
   const titles = {
     dashboard: 'Today', patients: 'Patients', appointments: 'Appointments',
     records: 'Medical Records', labs: 'Labs & Imaging', medications: 'Prescriptions',
-    billing: 'Billing & Claims', practice: 'Practice', profile: 'Account'
+    billing: 'Billing & Claims', practice: 'Practice', profile: 'Account',
+    help: 'Help & Support'
   };
   let crumbs = [{ label: 'Daystar Health', go: () => go('dashboard') }];
   if (titles[route]) crumbs.push({ label: titles[route] });
@@ -192,9 +194,10 @@ function App() {
         {route === 'profile' && <window.MProfileScreen go={go} />}
         {route === 'practice' && <window.MPracticeScreen go={go} />}
         {route === 'billing' && <window.MBillingScreen go={go} />}
+        {route === 'help' && <window.MHelpScreen go={go} />}
         {route === 'labs' && <ComingSoon icon="Beaker" name="Labs & Imaging" description="Order lab tests, view results, and track imaging studies — coming in a future release." />}
         {route === 'medications' && <ComingSoon icon="Pill" name="Prescriptions" description="Issue and manage prescriptions directly from Daystar Health — coming in a future release." />}
-        {!['dashboard', 'patients', 'appointments', 'records', 'profile', 'practice', 'billing', 'labs', 'medications'].includes(route) && (
+        {!['dashboard', 'patients', 'appointments', 'records', 'profile', 'practice', 'billing', 'help', 'labs', 'medications'].includes(route) && (
           <Placeholder name={titles[route] || route} />
         )}
       </div>

@@ -111,6 +111,8 @@ fixtures = [
 			"Patient Encounter-custom_claim_diagnosis_code",
 			"Patient Encounter-custom_claim_tariff_code",
 			"Patient Encounter-custom_claim_nappi_code",
+			# Help & Support — practice scoping on ERPNext Issue
+			"Issue-custom_practice",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -195,6 +197,8 @@ permission_query_conditions = {
 	"Payment Entry": "medic_plus.api.permissions.get_payment_entry_permission_query",
 	"Purchase Invoice": "medic_plus.api.permissions.get_purchase_invoice_permission_query",
 	"Journal Entry": "medic_plus.api.permissions.get_journal_entry_permission_query",
+	# Help & Support — practice members raise platform support issues
+	"Issue": "medic_plus.api.permissions.get_issue_permission_query",
 }
 
 # Document event hooks

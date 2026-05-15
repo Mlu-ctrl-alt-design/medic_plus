@@ -24,6 +24,7 @@ function MSidebar({ route, go, open, onClose }) {
     { key: 'medications', icon: 'Pill', label: 'Prescriptions', soon: true },
     { key: 'billing', icon: 'Tag', label: 'Billing & Claims' },
     { key: 'practice', icon: 'Building', label: 'Practice' },
+    { key: 'help', icon: 'LifeBuoy', label: 'Help & Support' },
   ];
   const Logo = window.MIcons.Logo;
   const navTo = (k) => { go(k); if (onClose) onClose(); };
