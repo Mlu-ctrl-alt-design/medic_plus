@@ -352,12 +352,10 @@ Confirmed at line 154.
 
 - [ ] **Step 2: Add entries**
 
-Modify `medic_plus/hooks.py` — add inside the `permission_query_conditions` dict (alphabetical ordering preferred to match existing style):
+Note: Patient Problem List and Sales Invoice PQCs are already registered in hooks.py from prior work. Only Medication Request is a net-new entry. Add to `medic_plus/hooks.py` inside the `permission_query_conditions` dict (alphabetical ordering preferred to match existing style):
 
 ```python
-"Patient Problem List": "medic_plus.api.permissions.get_patient_problem_list_permission_query",
 "Medication Request": "medic_plus.api.permissions.get_medication_request_permission_query",
-"Sales Invoice": "medic_plus.api.permissions.get_sales_invoice_permission_query",
 ```
 
 - [ ] **Step 3: Clear cache + restart so hooks reload**
