@@ -1,0 +1,33 @@
+name: Linters
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frappe-semgrep:
+    name: Frappe Semgrep Rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Clone Frappe semgrep rules
+        run: git clone --depth 1 https://github.com/frappe/semgrep-rules.git /tmp/frappe-semgrep-rules
+
+      - name: Install semgrep
+        run: pip install --quiet semgrep
+
+      - name: Run Frappe semgrep rules (errors fail the build)
+        run: semgrep --config /tmp/frappe-semgrep-rules/rules --severity=ERROR --error .
+
+      - name: Run Frappe semgrep rules (warnings, informational)
+        if: always()
+        run: semgrep --config /tmp/frappe-semgrep-rules/rules --severity=WARNING .
