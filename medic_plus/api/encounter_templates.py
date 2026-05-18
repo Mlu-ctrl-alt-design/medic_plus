@@ -202,15 +202,16 @@ def validate_template_fields(doc) -> None:
 		return
 
 	required = _load_json(template.get("required_fields"), [])
-	for field in required:
-		if not doc.get(field):
-			label = frappe.get_meta("Patient Encounter").get_label(field) or field
-			frappe.throw(
-				frappe._(
-					"Field <b>{0}</b> is required for {1} encounters before submission."
-				).format(label, doc.get("appointment_type")),
-				frappe.ValidationError,
-			)
+	meta = frappe.get_meta("Patient Encounter")
+	missing = [meta.get_label(f) or f for f in required if not doc.get(f)]
+	if missing:
+		labels = ", ".join(f"<b>{m}</b>" for m in missing)
+		frappe.throw(
+			frappe._(
+				"Required for {0} encounters before submission: {1}."
+			).format(doc.get("appointment_type"), labels),
+			frappe.ValidationError,
+		)
 
 	check_hypertensive_urgency(doc)
 

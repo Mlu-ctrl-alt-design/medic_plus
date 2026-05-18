@@ -21,7 +21,46 @@ function safeCssColor(value) {
   return null;
 }
 
+const PRACTICE_TABS = [
+  { key: "overview",    label: "Overview" },
+  { key: "my-calendar", label: "My Calendar" },
+];
+
+function PracticeTabBar({ active, onChange }) {
+  return (
+    <div
+      role="tablist"
+      style={{
+        display: "flex", gap: 0, borderBottom: "1px solid var(--border-color)",
+        marginBottom: 20,
+      }}
+    >
+      {PRACTICE_TABS.map(t => {
+        const isActive = t.key === active;
+        return (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(t.key)}
+            style={{
+              padding: "10px 18px", fontSize: 13, fontWeight: isActive ? 600 : 400,
+              color: isActive ? "var(--accent, #2563eb)" : "var(--text-muted)",
+              background: "none", border: "none", cursor: "pointer",
+              borderBottom: isActive ? "2px solid var(--accent, #2563eb)" : "2px solid transparent",
+              marginBottom: -1, transition: "color 0.15s, border-color 0.15s",
+            }}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function MPracticeScreen({ go }) {
+  const [activeTab, setActiveTab] = mUseState("overview");
   const [state, setState] = mUseState({ status: "loading", practice: null, error: null });
 
   mUseEffect(() => {
@@ -41,8 +80,9 @@ function MPracticeScreen({ go }) {
   if (state.status === "loading") {
     return (
       <div className="page fade-in" data-testid="practice-page">
-        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}>Practice</h1>
-        <div className="card card-pad" style={{ marginTop: 16 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", marginBottom: 20 }}>Practice</h1>
+        <PracticeTabBar active={activeTab} onChange={setActiveTab} />
+        <div className="card card-pad">
           <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Loading practice details…</div>
         </div>
       </div>
@@ -52,8 +92,9 @@ function MPracticeScreen({ go }) {
   if (state.status === "error") {
     return (
       <div className="page fade-in" data-testid="practice-page">
-        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}>Practice</h1>
-        <div className="card card-pad" style={{ marginTop: 16, background: "var(--danger-soft)", borderColor: "var(--danger)" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", marginBottom: 20 }}>Practice</h1>
+        <PracticeTabBar active={activeTab} onChange={setActiveTab} />
+        <div className="card card-pad" style={{ background: "var(--danger-soft)", borderColor: "var(--danger)" }}>
           <div style={{ fontSize: 13, color: "#b91c1c" }}>{state.error}</div>
         </div>
       </div>
@@ -68,21 +109,22 @@ function MPracticeScreen({ go }) {
 
   return (
     <div className="page fade-in" data-testid="practice-page">
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+      {/* Page header — always visible */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
         {logoSrc ? (
           <img
             src={logoSrc}
             alt={p.practice_name || "Practice logo"}
-            style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", border: "1px solid var(--border)" }}
+            style={{ width: 48, height: 48, borderRadius: 10, objectFit: "cover", border: "1px solid var(--border)" }}
           />
         ) : (
           <div
             aria-hidden="true"
             style={{
-              width: 56, height: 56, borderRadius: 10,
+              width: 48, height: 48, borderRadius: 10,
               background: brandColor || "var(--accent-soft)",
               color: "var(--accent-text)", display: "grid", placeItems: "center",
-              fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em",
+              fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em",
               border: "1px solid var(--border)",
             }}
           >
@@ -101,6 +143,16 @@ function MPracticeScreen({ go }) {
         </div>
       </div>
 
+      {/* Tab bar */}
+      <PracticeTabBar active={activeTab} onChange={setActiveTab} />
+
+      {/* My Calendar tab */}
+      {activeTab === "my-calendar" && (
+        <window.MCalendarScreen go={go} embedded={true} />
+      )}
+
+      {/* Overview tab */}
+      {activeTab === "overview" && (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
 
         <section className="card card-pad" data-testid="practice-contact">
@@ -158,6 +210,7 @@ function MPracticeScreen({ go }) {
           )}
         </section>
       </div>
+      )}
     </div>
   );
 }

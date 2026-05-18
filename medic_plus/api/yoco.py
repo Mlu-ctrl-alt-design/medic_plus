@@ -36,6 +36,7 @@ from frappe.rate_limiter import rate_limit
 from medic_plus.api._provisioning import create_user, provision_doctor
 
 _YOCO_CHECKOUT_URL = "https://payments.yoco.com/api/checkouts"
+_YOCO_WEBHOOKS_URL = "https://payments.yoco.com/api/webhooks"
 #: Reject webhooks older than this (replay protection).
 _WEBHOOK_MAX_AGE_SECONDS = 5 * 60
 
@@ -201,6 +202,141 @@ def create_signup_checkout(request_name: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Admin helper — register a webhook with Yoco and capture the signing secret
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def list_yoco_webhooks() -> dict:
+	"""GET /api/webhooks — list all currently-registered subscriptions.
+
+	Yoco caps the number of active subscriptions per business. Use this to
+	see what's already registered before calling register_yoco_webhook.
+	"""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(_("Only System Managers can read Yoco webhooks."), frappe.PermissionError)
+	secret = _get_secret_key()
+	if not secret:
+		frappe.throw(_("Yoco secret_key is not configured."), frappe.ValidationError)
+
+	import requests
+	resp = requests.get(
+		_YOCO_WEBHOOKS_URL,
+		headers={"Authorization": f"Bearer {secret}"},
+		timeout=15,
+	)
+	if not resp.ok:
+		frappe.throw(
+			_("Yoco rejected the list request: {0}").format(resp.text[:300]),
+			frappe.ValidationError,
+		)
+	data = resp.json()
+	# Yoco wraps the list under "subscriptions" or returns a top-level list.
+	subs = data.get("subscriptions") if isinstance(data, dict) else data
+	return {"subscriptions": subs or [], "raw": data}
+
+
+@frappe.whitelist()
+def delete_yoco_webhook(webhook_id: str) -> dict:
+	"""DELETE /api/webhooks/<id> — remove an existing subscription.
+
+	Useful when subscription_limit_exceeded blocks a fresh registration:
+	delete a stale subscription with this, then re-run register_yoco_webhook.
+	"""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(_("Only System Managers can delete Yoco webhooks."), frappe.PermissionError)
+	webhook_id = (webhook_id or "").strip()
+	if not webhook_id:
+		frappe.throw(_("webhook_id is required."), frappe.ValidationError)
+	secret = _get_secret_key()
+	if not secret:
+		frappe.throw(_("Yoco secret_key is not configured."), frappe.ValidationError)
+
+	import requests
+	resp = requests.delete(
+		f"{_YOCO_WEBHOOKS_URL}/{webhook_id}",
+		headers={"Authorization": f"Bearer {secret}"},
+		timeout=15,
+	)
+	if resp.status_code not in (200, 204):
+		frappe.throw(
+			_("Yoco rejected the delete: {0} {1}").format(resp.status_code, resp.text[:300]),
+			frappe.ValidationError,
+		)
+	return {"status": "ok", "deleted": webhook_id}
+
+
+@frappe.whitelist()
+def register_yoco_webhook(name: str = "Medic Plus signup") -> dict:
+	"""Call Yoco's POST /api/webhooks to register our handler URL.
+
+	Yoco returns the signing secret exactly once in the create response; we
+	persist it to Medic Plus Yoco Settings.webhook_secret so subsequent
+	payment.succeeded events pass HMAC verification.
+
+	Run from Desk's Bench Console as Administrator (or any System Manager).
+	Idempotent on the medic_plus side, but Yoco may reject duplicate
+	registrations for the same URL — delete the old subscription first via
+	their API or dashboard if you re-run.
+	"""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(
+			_("Only System Managers can register the Yoco webhook."),
+			frappe.PermissionError,
+		)
+	secret = _get_secret_key()
+	if not secret:
+		frappe.throw(
+			_("Yoco secret_key is not configured."),
+			frappe.ValidationError,
+		)
+
+	import requests
+	url = f"{frappe.utils.get_url()}/api/method/medic_plus.api.yoco.yoco_webhook"
+	resp = requests.post(
+		_YOCO_WEBHOOKS_URL,
+		json={"name": name, "url": url},
+		headers={
+			"Authorization": f"Bearer {secret}",
+			"Content-Type": "application/json",
+		},
+		timeout=15,
+	)
+	if resp.status_code not in (200, 201):
+		frappe.log_error(
+			title="Yoco webhook registration failed",
+			message=f"status={resp.status_code} body={resp.text[:1000]}",
+		)
+		frappe.throw(
+			_("Yoco rejected the webhook registration: {0}").format(resp.text[:300]),
+			frappe.ValidationError,
+		)
+
+	data = resp.json()
+	signing_secret = data.get("secret")
+	if not signing_secret:
+		frappe.throw(
+			_("Yoco did not return a signing secret. Response: {0}").format(resp.text[:300]),
+			frappe.ValidationError,
+		)
+
+	# Persist the secret. Falls back to Medic Plus Yoco Settings (canonical
+	# row) — accessor reads from there. Keep id around for later deletion.
+	doc = frappe.get_doc("Medic Plus Yoco Settings", "Medic Plus Yoco Settings")
+	doc.webhook_secret = signing_secret
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {
+		"status": "ok",
+		"webhook_id": data.get("id"),
+		"url": url,
+		"message": _(
+			"Webhook registered with Yoco and signing secret saved. Future payment.succeeded events will provision automatically."
+		),
+	}
+
+
+# ---------------------------------------------------------------------------
 # Webhook — flips payment_status on payment.succeeded
 # ---------------------------------------------------------------------------
 
@@ -289,128 +425,6 @@ def _verify_webhook_signature(
 		if sig and hmac.compare_digest(sig, expected):
 			return True
 	return False
-
-
-@frappe.whitelist()
-def force_provision(request_name: str) -> dict:
-	"""Admin-initiated provisioning for a PRR that has already been paid.
-
-	Used when the Yoco webhook failed to land (network hiccup, signature error
-	on legacy config, etc.) and the admin needs to finish the flow by hand.
-	Strict prerequisites:
-	  - caller must be a System Manager
-	  - PRR must exist
-	  - PRR.payment_status must be "Paid" (no forcing through unpaid requests)
-	  - PRR must not already be provisioned
-	"""
-	if "System Manager" not in frappe.get_roles():
-		frappe.throw(_("Only System Managers can force provisioning."), frappe.PermissionError)
-
-	request_name = (request_name or "").strip()
-	if not request_name or not frappe.db.exists("Practice Registration Request", request_name):
-		frappe.throw(_("Registration request not found."), frappe.ValidationError)
-
-	req = frappe.get_doc("Practice Registration Request", request_name)
-
-	if req.provisioned_practice:
-		frappe.throw(
-			_("This request is already provisioned ({0}).").format(req.provisioned_practice),
-			frappe.ValidationError,
-		)
-	if req.payment_status != "Paid":
-		frappe.throw(
-			_("Force Provision requires payment_status=Paid. Current: {0}.").format(
-				req.payment_status or "Unpaid"
-			),
-			frappe.ValidationError,
-		)
-
-	_handle_payment_succeeded({"metadata": {"request_name": request_name}})
-
-	req.reload()
-	if req.status != "Provisioned" or not req.provisioned_practice:
-		frappe.throw(
-			_("Provisioning did not complete. Error: {0}").format(req.provisioning_error or "unknown"),
-			frappe.ValidationError,
-		)
-
-	return {
-		"status": "ok",
-		"practice": req.provisioned_practice,
-		"message": _("Practice {0} provisioned successfully.").format(req.practice_name),
-	}
-
-
-@frappe.whitelist()
-def admin_mark_paid_and_provision(request_name: str, reason: str | None = None) -> dict:
-	"""Admin payment override: mark a PRR Paid and run provisioning.
-
-	Used when a customer paid out-of-band (EFT, complimentary, demo) and the
-	Yoco webhook will never arrive. Reuses the same _handle_payment_succeeded
-	path as the webhook so admin and webhook flows produce identical tenants.
-
-	An audit Comment is written to the PRR before provisioning runs, so the
-	override is traceable even if provisioning fails afterwards.
-
-	Strict prerequisites:
-	  - caller must be a System Manager
-	  - PRR must exist
-	  - PRR must not already be provisioned
-	"""
-	if "System Manager" not in frappe.get_roles():
-		frappe.throw(
-			_("Only System Managers can override payment."), frappe.PermissionError
-		)
-
-	request_name = (request_name or "").strip()
-	if not request_name or not frappe.db.exists(
-		"Practice Registration Request", request_name
-	):
-		frappe.throw(_("Registration request not found."), frappe.ValidationError)
-
-	req = frappe.get_doc("Practice Registration Request", request_name)
-
-	if req.provisioned_practice:
-		frappe.throw(
-			_("This request is already provisioned ({0}).").format(
-				req.provisioned_practice
-			),
-			frappe.ValidationError,
-		)
-
-	actor = frappe.session.user
-	was_unpaid = req.payment_status != "Paid"
-	note = (reason or "").strip() or _("(no reason given)")
-
-	req.add_comment(
-		"Comment",
-		text=_("Admin payment override by {0}. Reason: {1}").format(actor, note),
-	)
-
-	_handle_payment_succeeded({"metadata": {"request_name": request_name}})
-
-	req.reload()
-	if req.status != "Provisioned" or not req.provisioned_practice:
-		frappe.throw(
-			_("Provisioning did not complete. Error: {0}").format(
-				req.provisioning_error or "unknown"
-			),
-			frappe.ValidationError,
-		)
-
-	if was_unpaid:
-		message = _("Practice {0} provisioned (admin payment override).").format(
-			req.practice_name
-		)
-	else:
-		message = _("Practice {0} provisioned successfully.").format(req.practice_name)
-
-	return {
-		"status": "ok",
-		"practice": req.provisioned_practice,
-		"message": message,
-		"override": was_unpaid,
-	}
 
 
 def _handle_payment_succeeded(data: dict) -> None:

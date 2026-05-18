@@ -1,0 +1,71 @@
+[
+ {
+  "content": null,
+  "docstatus": 0,
+  "doctype": "Page",
+  "icon": null,
+  "modified": "2026-05-14 23:05:49.512169",
+  "module": "Medic Plus",
+  "name": "inpatient-dashboard",
+  "page_name": "inpatient-dashboard",
+  "restrict_to_domain": null,
+  "roles": [
+   {
+    "role": "System Manager"
+   },
+   {
+    "role": "Healthcare Administrator"
+   },
+   {
+    "role": "Practice Admin"
+   },
+   {
+    "role": "Practice Doctor"
+   },
+   {
+    "role": "Practice Receptionist"
+   }
+  ],
+  "script": null,
+  "standard": "Yes",
+  "style": null,
+  "system_page": 0,
+  "title": "Inpatient Dashboard"
+ },
+ {
+  "content": null,
+  "docstatus": 0,
+  "doctype": "Page",
+  "icon": null,
+  "modified": "2026-05-15 00:00:00.000000",
+  "module": "Healthcare",
+  "name": "patient_history",
+  "page_name": "patient_history",
+  "restrict_to_domain": null,
+  "roles": [
+   {
+    "role": "System Manager"
+   },
+   {
+    "role": "Healthcare Administrator"
+   },
+   {
+    "role": "Physician"
+   },
+   {
+    "role": "Practice Admin"
+   },
+   {
+    "role": "Practice Doctor"
+   },
+   {
+    "role": "Practice Receptionist"
+   }
+  ],
+  "script": null,
+  "standard": "Yes",
+  "style": null,
+  "system_page": 0,
+  "title": "Patient History"
+ }
+]

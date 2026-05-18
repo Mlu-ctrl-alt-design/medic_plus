@@ -15,6 +15,7 @@ import json
 from datetime import date, timedelta
 
 import frappe
+from frappe.utils import getdate
 
 from medic_plus.api.dashboard_aggregator import build_dashboard
 from medic_plus.api.patient_summary import build_patient_summary
@@ -102,14 +103,17 @@ _APPOINTMENT_FIELDS = (
     "status",
 )
 
-_DEFAULT_STATUSES = ["Scheduled", "Open"]
+_DEFAULT_STATUSES = ["Scheduled", "Open", "Checked In"]
 
 
-def _format_appointments(rows: list) -> list:
+def _format_appointments(rows: list, enc_by_appt: dict | None = None) -> list:
     """Shape raw Patient Appointment dicts into SPA-ready dicts.
 
     Pure transformation — no DB calls, no session access. Tested in isolation.
+    enc_by_appt maps appointment name → encounter name for appointments that
+    already have a linked Patient Encounter.
     """
+    enc_by_appt = enc_by_appt or {}
     return [
         {
             "name": r.get("name"),
@@ -121,6 +125,7 @@ def _format_appointments(rows: list) -> list:
             "practitioner_name": r.get("practitioner_name"),
             "appointment_type": r.get("appointment_type"),
             "status": r.get("status"),
+            "encounter": enc_by_appt.get(r.get("name")),
         }
         for r in rows
     ]
@@ -167,7 +172,16 @@ def get_appointments(filters=None) -> list:
         order_by="appointment_date asc, appointment_time asc",
         limit=200,
     )
-    return _format_appointments(rows)
+    enc_by_appt: dict = {}
+    if rows:
+        encs = frappe.get_all(
+            "Patient Encounter",
+            filters={"appointment": ["in", [r["name"] for r in rows]]},
+            fields=["name", "appointment"],
+            limit=len(rows) * 2,
+        )
+        enc_by_appt = {e["appointment"]: e["name"] for e in encs}
+    return _format_appointments(rows, enc_by_appt)
 
 
 _MEDICAL_RECORD_FIELDS = (
@@ -537,6 +551,17 @@ def create_visit(payload: dict | str = None) -> dict:
 		enc.flags.ignore_permissions = True
 		enc.insert(ignore_permissions=True)
 
+		# Healthcare's PatientEncounter.on_update fires on every save (including
+		# insert) and unconditionally sets the linked appointment to "Closed".
+		# That is wrong for a draft encounter: the appointment is still active.
+		# Override the status to reflect the actual appointment date:
+		#   - today or past  → "Checked In"  (doctor is actively seeing the patient)
+		#   - future         → "Scheduled"   (pre-created encounter for upcoming visit)
+		correct_appt_status = (
+			"Checked In" if getdate(encounter_date) <= getdate() else "Scheduled"
+		)
+		frappe.db.set_value("Patient Appointment", appt.name, "status", correct_appt_status)
+
 		frappe.db.commit()
 	except Exception:
 		frappe.db.rollback()
@@ -563,6 +588,58 @@ def list_appointment_types() -> list:
 		ignore_permissions=True,
 	)
 	return [r["name"] for r in rows]
+
+
+@frappe.whitelist()
+def start_consultation_from_appointment(appointment: str) -> dict:
+	"""Create a Patient Encounter from an existing Patient Appointment.
+
+	Called when the doctor clicks 'Start' on a pre-booked appointment in the
+	Appointments screen.  Sets the appointment status to 'Checked In'.
+
+	If an encounter already exists (race-condition or double-click), returns it
+	directly with ``existing: true`` so the SPA can open it without re-creating.
+	Returns ``{encounter: <name>, existing: <bool>}``.
+	"""
+	practice = get_active_practice()
+
+	appt = frappe.get_doc("Patient Appointment", appointment)
+	if appt.get("custom_practice") != practice:
+		raise frappe.PermissionError("Appointment does not belong to your practice.")
+
+	existing = frappe.db.get_value("Patient Encounter", {"appointment": appointment}, "name")
+	if existing:
+		return {"encounter": existing, "existing": True}
+
+	company = frappe.db.get_value("Practice", practice, "company")
+	if not company:
+		frappe.throw(
+			_("Your practice has no linked ERPNext Company."),
+			frappe.ValidationError,
+		)
+
+	try:
+		enc = frappe.get_doc({
+			"doctype": "Patient Encounter",
+			"patient": appt.patient,
+			"practitioner": appt.practitioner,
+			"encounter_date": appt.appointment_date,
+			"encounter_time": str(appt.appointment_time or "09:00:00"),
+			"appointment": appointment,
+			"appointment_type": appt.appointment_type,
+			"company": company,
+			"custom_practice": practice,
+		})
+		enc.flags.ignore_permissions = True
+		enc.insert(ignore_permissions=True)
+
+		frappe.db.set_value("Patient Appointment", appointment, "status", "Checked In")
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		raise
+
+	return {"encounter": enc.name, "existing": False}
 
 
 @frappe.whitelist()
@@ -777,3 +854,145 @@ def get_drug_master_by_nappi(nappi_code_value: str) -> dict | None:
         ["name", "drug_name", "nappi_code", "atc_code", "schedule", "strength", "dosage_form"],
         as_dict=True,
     )
+
+
+# ── Billing & Claims ──────────────────────────────────────────────────────────
+
+_INVOICE_PAGE_DEFAULT = 50
+_INVOICE_PAGE_MAX = 200
+_INVOICE_STATUS_OPTIONS = ["Draft", "Submitted", "Unpaid", "Overdue", "Paid", "Return", "Credit Note Issued"]
+
+
+@frappe.whitelist()
+def get_invoices(filters=None, limit_start=0, limit_page_length=None) -> dict:
+	"""Return Sales Invoices for the active Practice, paginated.
+
+	Scoped by Practice.company — the same field used by the Sales Invoice PQC.
+	Only non-cancelled (docstatus != 2) invoices are returned.
+
+	Filters (dict or JSON string):
+	  ``status``      — str or list of statuses
+	  ``date_from``   — YYYY-MM-DD
+	  ``date_to``     — YYYY-MM-DD
+	  ``patient``     — single Patient name
+
+	Returns:
+	  {rows, total, limit_start, limit_page_length,
+	   summary: {total_invoiced, total_paid, total_outstanding}}
+	"""
+	if isinstance(filters, str):
+		try:
+			filters = json.loads(filters)
+		except Exception:
+			filters = {}
+	filters = filters or {}
+
+	try:
+		limit_start = int(limit_start or 0)
+	except (TypeError, ValueError):
+		limit_start = 0
+	try:
+		limit_page_length = int(limit_page_length or _INVOICE_PAGE_DEFAULT)
+	except (TypeError, ValueError):
+		limit_page_length = _INVOICE_PAGE_DEFAULT
+	limit_page_length = max(1, min(limit_page_length, _INVOICE_PAGE_MAX))
+
+	practice = get_active_practice()
+	company = frappe.db.get_value("Practice", practice, "company")
+	if not company:
+		return {"rows": [], "total": 0, "limit_start": limit_start,
+				"limit_page_length": limit_page_length,
+				"summary": {"total_invoiced": 0, "total_paid": 0, "total_outstanding": 0}}
+
+	today = date.today()
+	date_from = filters.get("date_from") or str(today.replace(month=1, day=1))
+	date_to = filters.get("date_to") or str(today)
+
+	inv_filters = {
+		"company": company,
+		"docstatus": ["!=", 2],
+		"posting_date": ["between", [date_from, date_to]],
+	}
+
+	status_filter = filters.get("status")
+	if status_filter:
+		if isinstance(status_filter, str):
+			status_filter = [status_filter]
+		inv_filters["status"] = ["in", status_filter]
+
+	patient_filter = filters.get("patient")
+	if patient_filter:
+		inv_filters["patient"] = patient_filter
+
+	total = frappe.db.count("Sales Invoice", filters=inv_filters)
+
+	rows = frappe.get_all(
+		"Sales Invoice",
+		filters=inv_filters,
+		fields=[
+			"name", "patient", "patient_name", "posting_date",
+			"grand_total", "outstanding_amount", "status",
+			"currency", "due_date",
+		],
+		order_by="posting_date desc, name desc",
+		limit_start=limit_start,
+		limit_page_length=limit_page_length,
+	)
+
+	# Batch-lookup appointments that reference these invoices.
+	appt_by_inv: dict = {}
+	if rows:
+		inv_names = [r["name"] for r in rows]
+		appts = frappe.get_all(
+			"Patient Appointment",
+			filters={"ref_sales_invoice": ["in", inv_names]},
+			fields=["name", "ref_sales_invoice", "appointment_date", "appointment_type"],
+			limit=len(inv_names) * 2,
+		)
+		appt_by_inv = {a["ref_sales_invoice"]: a for a in appts}
+
+	# Summary totals over the full filtered set (not just this page).
+	summary_rows = frappe.db.sql(
+		"""SELECT SUM(grand_total) AS total_invoiced,
+		          SUM(grand_total - outstanding_amount) AS total_paid,
+		          SUM(outstanding_amount) AS total_outstanding
+		   FROM `tabSales Invoice`
+		   WHERE company = %(company)s
+		     AND docstatus != 2
+		     AND posting_date BETWEEN %(date_from)s AND %(date_to)s
+		""",
+		{"company": company, "date_from": date_from, "date_to": date_to},
+		as_dict=True,
+	)
+	s = summary_rows[0] if summary_rows else {}
+
+	formatted = [
+		{
+			"name": r["name"],
+			"patient": r.get("patient"),
+			"patient_name": r.get("patient_name"),
+			"posting_date": str(r.get("posting_date") or ""),
+			"due_date": str(r.get("due_date") or ""),
+			"grand_total": float(r.get("grand_total") or 0),
+			"outstanding_amount": float(r.get("outstanding_amount") or 0),
+			"paid_amount": float(r.get("grand_total") or 0) - float(r.get("outstanding_amount") or 0),
+			"status": r.get("status"),
+			"currency": r.get("currency") or "ZAR",
+			"appointment": appt_by_inv.get(r["name"], {}).get("name"),
+			"appointment_date": str(appt_by_inv.get(r["name"], {}).get("appointment_date") or ""),
+			"appointment_type": appt_by_inv.get(r["name"], {}).get("appointment_type"),
+		}
+		for r in rows
+	]
+
+	return {
+		"rows": formatted,
+		"total": total,
+		"limit_start": limit_start,
+		"limit_page_length": limit_page_length,
+		"summary": {
+			"total_invoiced": float(s.get("total_invoiced") or 0),
+			"total_paid": float(s.get("total_paid") or 0),
+			"total_outstanding": float(s.get("total_outstanding") or 0),
+		},
+	}

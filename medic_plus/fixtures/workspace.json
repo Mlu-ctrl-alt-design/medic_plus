@@ -16,7 +16,7 @@
   "link_to": null,
   "link_type": "DocType",
   "links": [],
-  "modified": "2026-05-09 22:30:00.000000",
+  "modified": "2026-05-09 22:30:00",
   "module": "Medic Plus",
   "name": "Medic Plus",
   "number_cards": [],
@@ -25,55 +25,107 @@
   "quick_lists": [],
   "restrict_to_domain": null,
   "roles": [
-   {"role": "Healthcare Administrator"},
-   {"role": "Administrator"},
-   {"role": "Practice Admin"},
-   {"role": "Practice Doctor"},
-   {"role": "Practice Receptionist"}
+   {
+    "role": "Healthcare Administrator"
+   },
+   {
+    "role": "Administrator"
+   },
+   {
+    "role": "Practice Admin"
+   },
+   {
+    "role": "Practice Doctor"
+   },
+   {
+    "role": "Practice Receptionist"
+   }
   ],
   "sequence_id": 0.5,
   "shortcuts": [
    {
-    "color": "Blue", "doc_view": "", "format": null, "icon": null,
-    "kanban_board": null, "label": "Open Practice Workspace",
-    "link_to": "/app/medic-plus-practice", "report_ref_doctype": null,
-    "restrict_to_domain": null, "stats_filter": null,
-    "type": "URL", "url": "/app/medic-plus-practice"
+    "color": "Blue",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Open Practice Workspace",
+    "link_to": "/app/medic-plus-practice",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "URL",
+    "url": "/app/medic-plus-practice"
    },
    {
-    "color": "Green", "doc_view": "", "format": null, "icon": null,
-    "kanban_board": null, "label": "Open Platform Overview",
-    "link_to": "/app/medic-plus-platform", "report_ref_doctype": null,
-    "restrict_to_domain": null, "stats_filter": null,
-    "type": "URL", "url": "/app/medic-plus-platform"
+    "color": "Green",
+    "doc_view": "",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Open Platform Overview",
+    "link_to": "/app/medic-plus-platform",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "URL",
+    "url": "/app/medic-plus-platform"
    },
    {
-    "color": "Cyan", "doc_view": "New", "format": null, "icon": null,
-    "kanban_board": null, "label": "New Patient Appointment",
-    "link_to": "Patient Appointment", "report_ref_doctype": null,
-    "restrict_to_domain": null, "stats_filter": null,
-    "type": "DocType", "url": null
+    "color": "Cyan",
+    "doc_view": "New",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "New Patient Appointment",
+    "link_to": "Patient Appointment",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
    },
    {
-    "color": "Purple", "doc_view": "New", "format": null, "icon": null,
-    "kanban_board": null, "label": "New Patient Encounter",
-    "link_to": "Patient Encounter", "report_ref_doctype": null,
-    "restrict_to_domain": null, "stats_filter": null,
-    "type": "DocType", "url": null
+    "color": "Purple",
+    "doc_view": "New",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "New Patient Encounter",
+    "link_to": "Patient Encounter",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
    },
    {
-    "color": "Grey", "doc_view": "List", "format": null, "icon": null,
-    "kanban_board": null, "label": "All Patients",
-    "link_to": "Patient", "report_ref_doctype": null,
-    "restrict_to_domain": null, "stats_filter": null,
-    "type": "DocType", "url": null
+    "color": "Grey",
+    "doc_view": "List",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "All Patients",
+    "link_to": "Patient",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
    },
    {
-    "color": "Orange", "doc_view": "List", "format": null, "icon": null,
-    "kanban_board": null, "label": "Today's Schedule",
-    "link_to": "Patient Appointment", "report_ref_doctype": null,
-    "restrict_to_domain": null, "stats_filter": null,
-    "type": "DocType", "url": null
+    "color": "Orange",
+    "doc_view": "List",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Today's Schedule",
+    "link_to": "Patient Appointment",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": null,
+    "type": "DocType",
+    "url": null
    }
   ],
   "title": "Medic Plus",
@@ -718,7 +770,7 @@
     "type": "Link"
    }
   ],
-  "modified": "2026-05-09 21:50:00.000000",
+  "modified": "2026-05-09 21:50:00",
   "module": "Medic Plus",
   "name": "Medic Plus Platform",
   "number_cards": [
@@ -1512,7 +1564,7 @@
     "type": "Link"
    }
   ],
-  "modified": "2026-05-09 21:50:00.000000",
+  "modified": "2026-05-09 21:50:00",
   "module": "Medic Plus",
   "name": "Medic Plus Practice",
   "number_cards": [

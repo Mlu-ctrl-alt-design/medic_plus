@@ -1,5 +1,4 @@
 import frappe
-from frappe.utils import today
 
 
 def get_context(context):
@@ -7,58 +6,34 @@ def get_context(context):
 	context.no_breadcrumbs = 1
 	context.sitemap = 0
 
-	if frappe.session.user == "Guest":
-		frappe.local.flags.redirect_location = "/login?redirect-to=/portal"
-		raise frappe.Redirect
+	slug = (frappe.form_dict.get("slug") or "").strip()
+	context.slug = slug
+	context.session_user = frappe.session.user if frappe.session.user != "Guest" else None
+	csrf = ""
+	session = getattr(frappe.local, "session", None)
+	if session and getattr(session, "data", None):
+		csrf = session.data.get("csrf_token") or ""
+	context.csrf_token = csrf
 
-	patient = frappe.db.get_value(
-		"Patient",
-		{"email": frappe.session.user},
-		["name", "patient_name", "custom_practice"],
-		as_dict=True,
-	)
-
-	context.patient = patient
-
-	if not patient:
-		context.upcoming = []
-		context.past = []
-		context.sick_notes = []
-		context.practice_name = None
+	# If no slug — render the resolver page; the SPA boot script handles routing.
+	if not slug:
+		context.practice = None
+		context.is_authed = bool(context.session_user)
+		context.has_patient = False
 		return
 
-	context.upcoming = frappe.get_all(
-		"Patient Appointment",
-		filters={
-			"patient": patient.name,
-			"appointment_date": [">=", today()],
-			"status": ["not in", ["Cancelled"]],
-		},
-		fields=["name", "practitioner_name", "appointment_date", "appointment_time", "status"],
-		order_by="appointment_date asc",
-		limit=20,
+	practice = frappe.db.get_value(
+		"Practice",
+		{"slug": slug, "is_active": 1},
+		["name", "practice_name", "logo", "color", "email", "slug"],
+		as_dict=True,
 	)
+	context.practice = practice
 
-	context.past = frappe.get_all(
-		"Patient Appointment",
-		filters={
-			"patient": patient.name,
-			"appointment_date": ["<", today()],
-		},
-		fields=["name", "practitioner_name", "appointment_date", "appointment_time", "status"],
-		order_by="appointment_date desc",
-		limit=20,
-	)
-
-	context.sick_notes = frappe.get_all(
-		"Sick Note",
-		filters={"patient": patient.name, "docstatus": 1},
-		fields=["name", "date_issued", "practitioner", "diagnosis", "days_off", "fit_for_work_date"],
-		order_by="date_issued desc",
-		limit=50,
-	)
-
-	context.practice_name = (
-		frappe.db.get_value("Practice", patient.custom_practice, "practice_name")
-		if patient.custom_practice else None
-	)
+	context.is_authed = bool(context.session_user)
+	context.has_patient = False
+	if practice and context.session_user:
+		context.has_patient = bool(frappe.db.exists(
+			"Patient",
+			{"email": context.session_user, "custom_practice": practice.name},
+		))
