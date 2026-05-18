@@ -1516,3 +1516,23 @@ Renamed the three classes in `medic_plus/medic_plus/doctype/{ai_inference_log,fh
 - [ ] Medical aid integration (Pro plan feature)
 - [ ] Advanced reports (Pro plan feature)
 - [ ] Phase 6 — Doctor self-registration approval flow
+
+## 2026-05-18 — Patient Portal (v2.3.0)
+
+**Summary:** Practice-scoped patient portal at `/portal/<slug>` — Babel-in-browser React SPA reusing the Meridian design system from `/daystar-health`. Email-OTP passwordless auth (10-min TTL, 5 sends/10min, 5 verify attempts). Seven screens: Home, Appointments, Book, Records, Documents, Billing, Profile.
+
+**Module:** `medic_plus.api.patient_portal` (13 endpoints: `request_portal_otp`, `verify_portal_otp`, `get_me`, `update_me`, `list_my_appointments`, `cancel_my_appointment`, `book_for_authed_patient`, `resolve_my_practices`, `get_boot`, `list_my_records`, `get_my_record_detail`, `list_my_documents`, `download_my_document`, `list_my_invoices`, `download_my_invoice`).
+
+**Route hook:** `website_route_rules` entry maps `/portal/<slug>` → `/portal` with slug in `form_dict`. `medic_plus/www/portal/index.py` is the boot resolver; `index.html` is the Jinja shell that injects `window.__DAYSTAR_PORTAL__` and loads the SPA assets.
+
+**PQCs added:** `Medication Request`. **PQCs extended:** `Patient Encounter`, `Patient Problem List`, `Sales Invoice` (Patient role branches in `api/permissions.py`); helper `_get_customer_for_user` added.
+
+**Refactor:** `medic_plus.api.booking._book_slot` shared helper extracted from `verify_and_book`; both guest booking and authed portal booking now share it.
+
+**Frontend bundle:** `medic_plus/public/portal/` (13 files: portal-app.jsx, portal-layout.jsx, portal-login.jsx, portal-practice-picker.jsx, portal-home.jsx, portal-appointments.jsx, portal-book.jsx, portal-profile.jsx, portal-records.jsx, portal-documents.jsx, portal-billing.jsx, portal-api.js, portal-styles.css). Loads parent-icons.jsx + meridian-icons.jsx and bridges `window.Icons` into `window.MIcons` so MSelect/MDatePicker have Chevron/Calendar.
+
+**Tests:** 18 Python (in `medic_plus/api/test_patient_portal.py`) + 5 Playwright (in `medic_plus/tests/ui/test_patient_portal.py`, including cross-tenant isolation + 375 px mobile no-horizontal-scroll).
+
+**Spec:** `docs/superpowers/specs/2026-05-18-patient-portal-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-18-patient-portal.md`
+**Release notes:** `docs/releases/v2.3.0.md`
