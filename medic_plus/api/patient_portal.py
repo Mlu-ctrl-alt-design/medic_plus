@@ -393,7 +393,7 @@ def list_my_records(slug: str) -> dict:
 		frappe.get_all(
 			"Patient Problem List",
 			filters={"patient": patient["name"]},
-			fields=["name", "problem", "status", "onset_date"],
+			fields=["name", "description", "status", "onset_date"],
 			order_by="onset_date desc",
 			limit=50,
 		) if frappe.db.exists("DocType", "Patient Problem List") else []
@@ -402,7 +402,7 @@ def list_my_records(slug: str) -> dict:
 		frappe.get_all(
 			"Patient Allergy",
 			filters={"patient": patient["name"]},
-			fields=["name", "allergen", "severity", "reaction", "onset_date"],
+			fields=["name", "substance", "severity", "reaction", "onset_date"],
 			order_by="onset_date desc",
 			limit=50,
 		) if frappe.db.exists("DocType", "Patient Allergy") else []
@@ -411,8 +411,8 @@ def list_my_records(slug: str) -> dict:
 		frappe.get_all(
 			"Patient Chronic Condition",
 			filters={"patient": patient["name"]},
-			fields=["name", "condition", "status", "onset_date"],
-			order_by="onset_date desc",
+			fields=["name", "diagnosis", "chronic_status", "started_on"],
+			order_by="started_on desc",
 			limit=50,
 		) if frappe.db.exists("DocType", "Patient Chronic Condition") else []
 	)
@@ -461,8 +461,8 @@ def list_my_documents(slug: str) -> dict:
 		frappe.get_all(
 			"Medication Request",
 			filters={"patient": patient["name"], "docstatus": 1},
-			fields=["name", "medication_request_date", "practitioner", "status"],
-			order_by="medication_request_date desc",
+			fields=["name", "order_date", "practitioner", "status"],
+			order_by="order_date desc",
 			limit=100,
 		) if frappe.db.exists("DocType", "Medication Request") else []
 	)

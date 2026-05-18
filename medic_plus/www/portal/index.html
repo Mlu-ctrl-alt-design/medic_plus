@@ -33,8 +33,12 @@ window.__DAYSTAR_PORTAL__ = {
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
-<!-- Reuse Meridian pickers + icons from /daystar-health -->
+<!-- Reuse Meridian pickers + icons from /daystar-health. parent-icons supplies
+     Chevron*/Calendar that meridian-*.jsx reference as window.MIcons; we
+     bridge after both load so MIcons inherits all of Icons. -->
+<script type="text/babel" src="/assets/medic_plus/daystar-health/parent-icons.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-icons.jsx"></script>
+<script type="text/babel">window.MIcons = Object.assign({}, window.Icons || {}, window.MIcons || {});</script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-date-picker.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-time-picker.jsx"></script>
 <script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-select.jsx"></script>

@@ -45,7 +45,7 @@
         : data.prescriptions.map(d => (
           <div key={d.name} className="portal-card" style={{padding: 16, marginBottom: 8, display: "flex", alignItems: "center", gap: 12}}>
             <div style={{flex: 1}}>
-              <div style={{fontWeight: 600}}>{d.medication_request_date}</div>
+              <div style={{fontWeight: 600}}>{d.order_date}</div>
               <div style={{fontSize: 12, color: "var(--text-muted)"}}>{d.status}</div>
             </div>
             <a href={downloadHref("Medication Request", d.name)} target="_blank" rel="noopener noreferrer"

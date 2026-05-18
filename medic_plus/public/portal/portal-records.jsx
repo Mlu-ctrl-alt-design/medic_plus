@@ -46,7 +46,7 @@
           data.problems.length === 0 ? <window.PortalEmpty title="No problems on record" />
           : data.problems.map(p => (
             <div key={p.name} className="portal-card" style={{padding: 16, marginBottom: 8}}>
-              <div style={{fontWeight: 600}}>{p.problem}</div>
+              <div style={{fontWeight: 600}}>{p.description}</div>
               <div style={{fontSize: 12, color: "var(--text-muted)"}}>{p.status} · {p.onset_date || ""}</div>
             </div>
           ))
@@ -56,7 +56,7 @@
           data.allergies.length === 0 ? <window.PortalEmpty title="No allergies on record" />
           : data.allergies.map(a => (
             <div key={a.name} className="portal-card" style={{padding: 16, marginBottom: 8}}>
-              <div style={{fontWeight: 600}}>{a.allergen}</div>
+              <div style={{fontWeight: 600}}>{a.substance}</div>
               <div style={{fontSize: 12, color: "var(--text-muted)"}}>{a.severity} · {a.reaction}</div>
             </div>
           ))
@@ -66,8 +66,8 @@
           data.chronic_conditions.length === 0 ? <window.PortalEmpty title="No chronic conditions on record" />
           : data.chronic_conditions.map(c => (
             <div key={c.name} className="portal-card" style={{padding: 16, marginBottom: 8}}>
-              <div style={{fontWeight: 600}}>{c.condition}</div>
-              <div style={{fontSize: 12, color: "var(--text-muted)"}}>{c.status} · {c.onset_date || ""}</div>
+              <div style={{fontWeight: 600}}>{c.diagnosis}</div>
+              <div style={{fontSize: 12, color: "var(--text-muted)"}}>{c.chronic_status} · {c.started_on || ""}</div>
             </div>
           ))
         )}
