@@ -174,6 +174,18 @@ def verify_and_book(
 	}
 
 
+def _fmt_time(t) -> str:
+	"""Normalise a time value (str | datetime.time | datetime.timedelta) to "HH:MM:SS"."""
+	from datetime import timedelta
+	if isinstance(t, timedelta):
+		total = int(t.total_seconds())
+		return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
+	s = str(t)
+	if len(s) == 5:
+		s += ":00"
+	return s[:8]
+
+
 def _book_slot(
 	*,
 	patient_name: str,
@@ -190,16 +202,16 @@ def _book_slot(
 	practitioner belongs to the practice) and creates the Patient Appointment.
 	Caller is responsible for Patient resolution + commit.
 
+	Parameters:
+	    reason: optional free-text reason from the patient. Written to the
+	        Patient Appointment ``notes`` field. Currently unused by the guest
+	        booking flow (`verify_and_book`); wired up by the authed portal
+	        booking flow in `medic_plus.api.patient_portal.book_for_authed_patient`.
+
 	Returns the inserted Patient Appointment doc.
 	"""
 	available = get_availability(practice["slug"], practitioner, appointment_date)
-	# Normalise the requested time to HH:MM:SS for comparison.
-	# get_availability returns "HH:MM:SS" strings; callers may pass "HH:MM"
-	# (from <input type="time">) or "HH:MM:SS".
-	requested = str(appointment_time)
-	if len(requested) == 5:
-		requested = requested + ":00"
-	requested = requested[:8]
+	requested = _fmt_time(appointment_time)
 	if requested not in available:
 		frappe.throw(
 			frappe._("That time slot is no longer available. Please pick another."),
@@ -309,12 +321,6 @@ def get_availability(practice_slug: str, practitioner: str, date: str) -> list:
 	# appointment_time as datetime.timedelta, whose str() drops the leading
 	# zero on hours < 10 ("8:00:00" not "08:00:00"), so naive comparison
 	# against slot strings like "08:00:00" never matches.
-	def _fmt_time(t):
-		if isinstance(t, timedelta):
-			total = int(t.total_seconds())
-			return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
-		return str(t)[:8]
-
 	booked_set = {_fmt_time(t) for t in booked_times}
 
 	available = []
