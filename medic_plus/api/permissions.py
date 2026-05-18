@@ -25,6 +25,11 @@ def _get_patient_name_for_user(user: str = None) -> str | None:
 	return frappe.db.get_value("Patient", {"email": user or frappe.session.user}, "name")
 
 
+def _get_customer_for_user(user: str = None) -> str | None:
+	"""Return the Customer link from the Patient record matching the session user's email."""
+	return frappe.db.get_value("Patient", {"email": user or frappe.session.user}, "customer")
+
+
 def get_practice_permission_query(user: str = None) -> str:
 	"""PQC for the Practice doctype — filters by practice name."""
 	if _is_platform_admin(user):
@@ -75,6 +80,9 @@ def get_patient_appointment_permission_query(user: str = None) -> str:
 def get_patient_encounter_permission_query(user: str = None) -> str:
 	if _is_platform_admin(user):
 		return ""
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		patient = _get_patient_name_for_user(user)
+		return f"`tabPatient Encounter`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
 	practice = _get_user_practice(user)
 	if not practice:
 		return "1=0"
@@ -300,7 +308,20 @@ def get_patient_identifier_permission_query(user: str = None) -> str:
 
 
 def get_sales_invoice_permission_query(user: str = None) -> str:
-	return _get_company_filter(user, "Sales Invoice")
+	if _is_platform_admin(user):
+		return ""
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		customer = _get_customer_for_user(user)
+		return f"`tabSales Invoice`.`customer` = {frappe.db.escape(customer)}" if customer else "1=0"
+	# Staff: scope by practice via the Patient → Customer chain.
+	practice = _get_user_practice(user)
+	if not practice:
+		return ""  # No practice — defer to ERPNext default scoping
+	return (
+		f"`tabSales Invoice`.`customer` IN ("
+		f"SELECT `customer` FROM `tabPatient` WHERE `custom_practice` = {frappe.db.escape(practice)} AND `customer` IS NOT NULL"
+		f") OR `tabSales Invoice`.`customer` IS NULL"
+	)
 
 
 def get_pos_profile_permission_query(user: str = None) -> str:
@@ -330,20 +351,35 @@ def get_journal_entry_permission_query(user: str = None) -> str:
 
 
 def get_patient_problem_list_permission_query(user: str = None) -> str:
-	"""PQC for Patient Problem List — scopes via patient.custom_practice."""
 	if _is_platform_admin(user):
 		return ""
-	roles = frappe.get_roles(user or frappe.session.user)
-	if "Patient" in roles:
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
 		patient = _get_patient_name_for_user(user)
-		return (
-			f"`tabPatient Problem List`.`patient` = {frappe.db.escape(patient)}"
-			if patient else "1=0"
-		)
+		return f"`tabPatient Problem List`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
 	practice = _get_user_practice(user)
 	if not practice:
 		return "1=0"
-	return f"`tabPatient Problem List`.`custom_practice` = {frappe.db.escape(practice)}"
+	return (
+		f"`tabPatient Problem List`.`patient` IN ("
+		f"SELECT `name` FROM `tabPatient` WHERE `custom_practice` = {frappe.db.escape(practice)}"
+		f")"
+	)
+
+
+def get_medication_request_permission_query(user: str = None) -> str:
+	if _is_platform_admin(user):
+		return ""
+	if "Patient" in frappe.get_roles(user or frappe.session.user):
+		patient = _get_patient_name_for_user(user)
+		return f"`tabMedication Request`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
+	practice = _get_user_practice(user)
+	if not practice:
+		return "1=0"
+	return (
+		f"`tabMedication Request`.`patient` IN ("
+		f"SELECT `name` FROM `tabPatient` WHERE `custom_practice` = {frappe.db.escape(practice)}"
+		f")"
+	)
 
 
 def get_prescription_override_reason_permission_query(user: str = None) -> str:
