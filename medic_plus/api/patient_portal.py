@@ -170,3 +170,87 @@ def verify_portal_otp(slug: str, email: str, code: str) -> dict:
 		"slug": slug,
 		"csrf_token": csrf_token,
 	}
+
+
+# ---------------------------------------------------------------------------
+# Ownership + allowlist helpers
+# ---------------------------------------------------------------------------
+
+PATIENT_EDITABLE_FIELDS = {
+	"first_name", "middle_name", "last_name", "dob", "sex",
+	"mobile", "phone", "email", "blood_group",
+	"marital_status", "occupation",
+	"address_line1", "address_line2", "city", "state", "zip_code", "country",
+	"allergies", "medication",
+	"custom_preferred_language", "custom_ai_consent",
+}
+
+
+def _require_authed():
+	if frappe.session.user == "Guest":
+		frappe.throw(frappe._("Please sign in."), frappe.PermissionError)
+
+
+def _resolve_my_patient(slug: str) -> dict:
+	"""Resolve the session user's Patient record at the given practice.
+
+	Throws PermissionError if no match — never reveals practice/patient existence.
+	"""
+	_require_authed()
+	practice = _resolve_practice(slug)
+	if not practice:
+		frappe.throw(frappe._("No patient record."), frappe.PermissionError)
+	patient = frappe.db.get_value(
+		"Patient",
+		{"email": frappe.session.user, "custom_practice": practice["name"]},
+		["name", "first_name", "middle_name", "last_name", "dob", "sex",
+		 "mobile", "phone", "email", "blood_group", "marital_status", "occupation",
+		 "address_line1", "address_line2", "city", "state", "zip_code", "country",
+		 "allergies", "medication", "custom_preferred_language", "custom_ai_consent",
+		 "custom_practice", "customer", "custom_nhid"],
+		as_dict=True,
+	)
+	if not patient:
+		frappe.throw(frappe._("No patient record."), frappe.PermissionError)
+	return patient
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_me(slug: str) -> dict:
+	"""Return the session user's Patient record (editable fields + masked NHID)."""
+	patient = _resolve_my_patient(slug)
+	# Mask NHID (SA national health ID equivalent) — only last 4 visible
+	nhid = patient.get("custom_nhid")
+	if nhid:
+		patient["custom_nhid_masked"] = "•" * max(len(nhid) - 4, 0) + nhid[-4:]
+	patient.pop("custom_nhid", None)
+	return patient
+
+
+@frappe.whitelist(methods=["POST"])
+def update_me(slug: str, payload: dict) -> dict:
+	"""PATCH the session user's Patient record using only fields on the allowlist."""
+	patient = _resolve_my_patient(slug)
+
+	if not isinstance(payload, dict):
+		try:
+			payload = frappe.parse_json(payload)
+		except Exception:
+			frappe.throw(frappe._("Invalid payload."))
+
+	rejected = [k for k in payload.keys() if k not in PATIENT_EDITABLE_FIELDS]
+	if rejected:
+		frappe.throw(
+			frappe._("Cannot edit fields: {0}").format(", ".join(rejected)),
+			title=frappe._("Forbidden Fields"),
+		)
+
+	pdoc = frappe.get_doc("Patient", patient["name"])
+	for k, v in payload.items():
+		setattr(pdoc, k, v)
+	# Ownership already validated above; the Patient role intentionally does not
+	# have write perms on Patient (would expose cross-tenant editing via Desk).
+	pdoc.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return get_me(slug)
