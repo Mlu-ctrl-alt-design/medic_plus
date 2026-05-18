@@ -51,8 +51,13 @@ Commits (on `feature/phase-7b-bulk-import`): `046b51d` (bulk invite + patient st
 
 ---
 
+## 2026-05-10 — v2.2.3: Branded `MTextArea` in new-visit drawer
 
+UI consistency pass. Replaced the five native `<textarea>` SOAP fields (HOPI, Subjective, Objective, Assessment, Plan) in the daystar-health new-visit drawer with a new branded `window.MTextArea` component, mirroring the existing `MDatePicker` / `MTimePicker` / `MSelect` API (label, hint, isRequired, value, onChange-as-string). CSS prefixed `.mta-*` in `meridian.css`. Dropped `NVField` label wrappers — component owns its label. UI-only; no schema, fixture, or migration impact.
 
+Commits: `c61de49`, `9180060`, `1b069dc`. Release notes: `docs/releases/v2.2.3.md`.
+
+---
 ## 2026-05-02 — Phase 1D (Issue #27): Medication Safety (Drug Master + Safety Checks + HPCSA Booklet 8)
 
 ### Scope
@@ -1344,6 +1349,82 @@ Closing slice of Phase 1. Lands three verticals on `develop` in 8 atomic commits
 
 ---
 
+## 2026-05-08 — v2.0.1 hotfix: corrupted fixtures + missing custom fields
+
+### What broke
+
+A previous Claude Code session that produced commit `e49c3ef` (Phase 4 telemedicine + AI) did not write actual file contents to 13 files — it piped `git show 37fa176...` *diff output* (with `@@`, `+`, `-`, file headers) into:
+
+- `medic_plus/api/{ai,tele,test_ai,test_tele}.py`
+- `medic_plus/medic_plus/doctype/{ai_inference_log,practice_ai_settings,telemedicine_consent}/*.{py,json}`
+- `medic_plus/tests/ui/test_telemedicine_ai.py`
+- `medic_plus/www/teleconsult/{index.html,index.py}`
+
+The corruption was syntactically catastrophic but invisible to git — it merged to `main` and was tagged `v2.0.0`. The deploy workflow `bench migrate` failed at `import_file_by_path` → `orjson.loads()` on the first corrupted DocType JSON, leaving prod in a half-deployed state (code on disk = v2.0.0 broken, supervisor workers in memory = v0.4.0).
+
+Independently, `custom_field.json` had four pre-existing problems that surfaced once migrate ran cleanly:
+
+1. Four records lacked `doctype: "Custom Field"`
+2. Six records had `name` not matching the canonical `{dt}-{fieldname}` pattern
+3. `custom_section_claims` was on **Drug Prescription** (wrong) with `insert_after` pointing to a field that didn't exist on that doctype
+4. Five `insert_after` references pointed to fields that didn't exist anywhere in the fixture (dangling)
+
+`sub_processor_register.json` and `tariff_code.json` had no explicit `name` field — Frappe's `import_file_by_path` requires `name` even when autoname is `field:<x>`.
+
+### Recovery
+
+- 13 corrupted files: extracted real content from `+`-prefixed diff lines after `@@ -0,0` hunk markers (script preserved in commit `84084ef`).
+- Custom Field fixtures: regenerated `name` from `dt-fieldname`; relocated `custom_section_claims` Drug Prescription → Patient Encounter; reconstructed 4 missing records (`custom_repeats_remaining`, `custom_video_section`, `custom_video_room_id`, `custom_prescription_override_reasons`) by inferring intent from dangling `insert_after` references and Phase 4 commit message.
+- Seed fixtures: added explicit `name` to 30 records (10 Sub-Processor + 20 Tariff Code).
+- Cleaned 3 stale orphan rows from staging `tabCustom Field` where `name != CONCAT(dt, "-", fieldname)`.
+
+Tagged as `v2.0.1`, deployed cleanly via GitHub Actions workflow run `25542178492` (3m49s).
+
+### Pre-merge gates (NEW — required before any release branch merges to main)
+
+A class of corruption like this is invisible to `git diff` review but trivial to catch with parsing. **Before merging a release branch into main**, run:
+
+```bash
+# 1. Every fixture parses as JSON
+python3 -c "
+import json
+from pathlib import Path
+for p in Path('medic_plus/fixtures').glob('*.json'):
+    json.loads(p.read_text())
+    print(f'OK {p.name}')
+"
+
+# 2. Every DocType definition parses as JSON
+find medic_plus -path '*/doctype/*/*.json' -exec python3 -c "
+import json, sys
+json.loads(open(sys.argv[1]).read())
+print(f'OK {sys.argv[1]}')
+" {} \;
+
+# 3. Every Python file compiles
+python3 -m compileall -q medic_plus/
+
+# 4. Smoke-test the migrate path on staging BEFORE tagging
+bench --site medic-demo-staging.thedaystar.co.za migrate
+```
+
+A future `pre-commit` hook (suggested for `.pre-commit-config.yaml`) should automate (1)–(3) so this can never reach `main` again. (4) cannot be a hook — it has to run on staging — but it's the only check that catches fixture-shape problems like dangling `insert_after`.
+
+### Custom Field fixture invariants (forced by this incident)
+
+- Every record has `doctype: "Custom Field"` and `module: "Medic Plus"`
+- Every record has `name == f"{dt}-{fieldname}"`
+- Every `insert_after` value either (a) is a standard Frappe field on `dt`, or (b) corresponds to another fixture record `(dt, fieldname)`
+- Records in `fixtures/sub_processor_register.json` and `fixtures/tariff_code.json` carry an explicit `name` even though the doctype autoname is `field:<x>` — fixtures bypass the autoname pipeline
+
+A repeatable validator lives at the structural-check end of `/frappe-agent-validator`; run it after any manual fixture edit.
+
+### Why the v2.0.0 tag wasn't reverted
+
+Two paths considered when the deploy failed: (A) rollback to v0.4.0 + delete v2.0.0 tag, (B) fix forward to v2.0.1. Chose B because v2.0.0 had already shipped 16 commits' worth of Phase 1C/1D/1E + POPIA + FHIR work; rolling back would have re-opened a multi-week deploy backlog. Cost of B: ~90 min of fixture-repair scripting, all of which is now codified above.
+
+---
+
 ## 2026-05-09 — v2.1.0: Signup admin overrides (Force Provision + Mark Paid)
 
 Closes the gap where a Practice Registration Request that pays out-of-band (or whose Yoco webhook was lost) had no admin path to completion. Two new System Manager-only whitelisted methods on `medic_plus.api.yoco`, surfaced as buttons on the PRR form:
@@ -1435,3 +1516,23 @@ Renamed the three classes in `medic_plus/medic_plus/doctype/{ai_inference_log,fh
 - [ ] Medical aid integration (Pro plan feature)
 - [ ] Advanced reports (Pro plan feature)
 - [ ] Phase 6 — Doctor self-registration approval flow
+
+## 2026-05-18 — Patient Portal (v2.4.0)
+
+**Summary:** Practice-scoped patient portal at `/portal/<slug>` — Babel-in-browser React SPA reusing the Meridian design system from `/daystar-health`. Email-OTP passwordless auth (10-min TTL, 5 sends/10min, 5 verify attempts). Seven screens: Home, Appointments, Book, Records, Documents, Billing, Profile.
+
+**Module:** `medic_plus.api.patient_portal` (13 endpoints: `request_portal_otp`, `verify_portal_otp`, `get_me`, `update_me`, `list_my_appointments`, `cancel_my_appointment`, `book_for_authed_patient`, `resolve_my_practices`, `get_boot`, `list_my_records`, `get_my_record_detail`, `list_my_documents`, `download_my_document`, `list_my_invoices`, `download_my_invoice`).
+
+**Route hook:** `website_route_rules` entry maps `/portal/<slug>` → `/portal` with slug in `form_dict`. `medic_plus/www/portal/index.py` is the boot resolver; `index.html` is the Jinja shell that injects `window.__DAYSTAR_PORTAL__` and loads the SPA assets.
+
+**PQCs added:** `Medication Request`. **PQCs extended:** `Patient Encounter`, `Patient Problem List`, `Sales Invoice` (Patient role branches in `api/permissions.py`); helper `_get_customer_for_user` added.
+
+**Refactor:** `medic_plus.api.booking._book_slot` shared helper extracted from `verify_and_book`; both guest booking and authed portal booking now share it.
+
+**Frontend bundle:** `medic_plus/public/portal/` (13 files: portal-app.jsx, portal-layout.jsx, portal-login.jsx, portal-practice-picker.jsx, portal-home.jsx, portal-appointments.jsx, portal-book.jsx, portal-profile.jsx, portal-records.jsx, portal-documents.jsx, portal-billing.jsx, portal-api.js, portal-styles.css). Loads parent-icons.jsx + meridian-icons.jsx and bridges `window.Icons` into `window.MIcons` so MSelect/MDatePicker have Chevron/Calendar.
+
+**Tests:** 18 Python (in `medic_plus/api/test_patient_portal.py`) + 5 Playwright (in `medic_plus/tests/ui/test_patient_portal.py`, including cross-tenant isolation + 375 px mobile no-horizontal-scroll).
+
+**Spec:** `docs/superpowers/specs/2026-05-18-patient-portal-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-18-patient-portal.md`
+**Release notes:** `docs/releases/v2.4.0.md`

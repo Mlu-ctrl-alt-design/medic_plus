@@ -1,159 +1,61 @@
-{% extends "templates/web.html" %}
-{% block title %}My Health Portal — Medic Plus{% endblock %}
-{% block page_content %}
-<style>
-.mp-portal { max-width: 800px; margin: 48px auto; padding: 0 16px; }
-.mp-portal-header { margin-bottom: 32px; }
-.mp-portal-header h1 { font-size: 1.8rem; margin-bottom: 4px; }
-.mp-portal-header .sub { color: #6b7280; font-size: .95rem; }
-.mp-portal-header .book-btn {
-  display: inline-block; margin-top: 12px; padding: 8px 18px;
-  background: var(--primary, #2563eb); color: #fff; border-radius: 8px;
-  text-decoration: none; font-size: .9rem; font-weight: 500;
-}
-.mp-portal-header .book-btn:hover { opacity: .9; }
-.mp-section { margin-bottom: 40px; }
-.mp-section h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
-.mp-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
-.mp-table th { text-align: left; padding: 8px 10px; background: #f9fafb; color: #374151; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
-.mp-table td { padding: 9px 10px; border-bottom: 1px solid #f3f4f6; color: #374151; }
-.mp-table tr:last-child td { border-bottom: none; }
-.mp-empty { color: #9ca3af; font-size: .875rem; padding: 16px 0; }
-.mp-status { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: .75rem; font-weight: 500; }
-.mp-status.open { background: #dbeafe; color: #1e40af; }
-.mp-status.completed { background: #d1fae5; color: #065f46; }
-.mp-status.cancelled { background: #fee2e2; color: #991b1b; }
-.mp-status.no-show { background: #fef3c7; color: #92400e; }
-.mp-pdf-link { color: var(--primary, #2563eb); text-decoration: none; font-weight: 500; }
-.mp-pdf-link:hover { text-decoration: underline; }
-@media(max-width: 600px) {
-  .mp-table th, .mp-table td { padding: 7px 6px; font-size: .8rem; }
-  .mp-portal { margin-top: 24px; }
-}
-</style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Patient Portal{% if practice %} — {{ practice.practice_name }}{% endif %}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/png" href="/assets/medic_plus/daystar-health/daystar-medical-icon.png" />
+<link rel="apple-touch-icon" href="/assets/medic_plus/daystar-health/daystar-medical-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/medic_plus/daystar-health/styles.css" />
+<link rel="stylesheet" href="/assets/medic_plus/daystar-health/meridian.css" />
+<link rel="stylesheet" href="/assets/medic_plus/portal/portal-styles.css" />
+</head>
+<body data-theme="light" data-density="comfortable">
+<div id="root"></div>
 
-<div class="mp-portal">
+<script>
+window.__DAYSTAR_PORTAL__ = {
+  csrfToken: {{ csrf_token | tojson }},
+  sessionUser: {{ session_user | tojson }},
+  slug: {{ slug | tojson }},
+  practice: {{ practice | tojson }},
+  isAuthed: {{ is_authed | tojson }},
+  hasPatient: {{ has_patient | tojson }}
+};
+</script>
+<script src="/assets/medic_plus/portal/portal-api.js"></script>
 
-  {%- if patient %}
-  <div class="mp-portal-header">
-    <h1>Hello, {{ patient.patient_name }}</h1>
-    <p class="sub">
-      {%- if practice_name %}Your practice: <strong>{{ practice_name }}</strong>{% endif %}
-    </p>
-    {%- if patient.custom_practice %}
-    <a class="book-btn" href="/book?practice={{ patient.custom_practice }}">Book an appointment</a>
-    {%- endif %}
-  </div>
+{% raw %}
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
-  <!-- Upcoming Appointments -->
-  <div class="mp-section">
-    <h2>Upcoming Appointments</h2>
-    {%- if upcoming %}
-    <table class="mp-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          <th>Doctor</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {%- for appt in upcoming %}
-        <tr>
-          <td>{{ frappe.format(appt.appointment_date, {"fieldtype": "Date"}) }}</td>
-          <td>{{ appt.appointment_time or "—" }}</td>
-          <td>{{ appt.practitioner_name or "—" }}</td>
-          <td>
-            <span class="mp-status {{ appt.status | lower | replace(' ', '-') }}">
-              {{ appt.status }}
-            </span>
-          </td>
-        </tr>
-        {%- endfor %}
-      </tbody>
-    </table>
-    {%- else %}
-    <p class="mp-empty">No upcoming appointments.</p>
-    {%- endif %}
-  </div>
+<!-- Reuse Meridian pickers + icons from /daystar-health. parent-icons supplies
+     Chevron*/Calendar that meridian-*.jsx reference as window.MIcons; we
+     bridge after both load so MIcons inherits all of Icons. -->
+<script type="text/babel" src="/assets/medic_plus/daystar-health/parent-icons.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-icons.jsx"></script>
+<script type="text/babel">window.MIcons = Object.assign({}, window.Icons || {}, window.MIcons || {});</script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-date-picker.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-time-picker.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-select.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/daystar-health/meridian-textarea.jsx"></script>
 
-  <!-- Past Appointments -->
-  <div class="mp-section">
-    <h2>Past Appointments</h2>
-    {%- if past %}
-    <table class="mp-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          <th>Doctor</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {%- for appt in past %}
-        <tr>
-          <td>{{ frappe.format(appt.appointment_date, {"fieldtype": "Date"}) }}</td>
-          <td>{{ appt.appointment_time or "—" }}</td>
-          <td>{{ appt.practitioner_name or "—" }}</td>
-          <td>
-            <span class="mp-status {{ appt.status | lower | replace(' ', '-') }}">
-              {{ appt.status }}
-            </span>
-          </td>
-        </tr>
-        {%- endfor %}
-      </tbody>
-    </table>
-    {%- else %}
-    <p class="mp-empty">No past appointments on record.</p>
-    {%- endif %}
-  </div>
-
-  <!-- Sick Notes -->
-  <div class="mp-section">
-    <h2>Sick Notes</h2>
-    {%- if sick_notes %}
-    <table class="mp-table">
-      <thead>
-        <tr>
-          <th>Date Issued</th>
-          <th>Diagnosis</th>
-          <th>Days Off</th>
-          <th>Fit for Work</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {%- for sn in sick_notes %}
-        <tr>
-          <td>{{ frappe.format(sn.date_issued, {"fieldtype": "Date"}) }}</td>
-          <td>{{ sn.diagnosis or "—" }}</td>
-          <td>{{ sn.days_off or "—" }}</td>
-          <td>{{ frappe.format(sn.fit_for_work_date, {"fieldtype": "Date"}) if sn.fit_for_work_date else "—" }}</td>
-          <td>
-            <a class="mp-pdf-link"
-               href="/api/method/frappe.utils.print_format.download_pdf?doctype=Sick+Note&name={{ sn.name }}&format=Sick+Note+SA"
-               target="_blank">
-              Download PDF
-            </a>
-          </td>
-        </tr>
-        {%- endfor %}
-      </tbody>
-    </table>
-    {%- else %}
-    <p class="mp-empty">No sick notes on record.</p>
-    {%- endif %}
-  </div>
-
-  {%- else %}
-  <div class="mp-portal-header">
-    <h1>Patient Portal</h1>
-    <p class="sub">No patient record found for your account. Please contact your practice.</p>
-  </div>
-  {%- endif %}
-
-</div>
-{% endblock %}
+<!-- Portal-specific -->
+<script type="text/babel" src="/assets/medic_plus/portal/portal-layout.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-login.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-practice-picker.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-home.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-appointments.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-book.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-profile.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-records.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-documents.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-billing.jsx"></script>
+<script type="text/babel" src="/assets/medic_plus/portal/portal-app.jsx"></script>
+{% endraw %}
+</body>
+</html>

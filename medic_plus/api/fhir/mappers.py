@@ -17,7 +17,8 @@ _CS_LOINC = "http://loinc.org"
 _CS_SNOMED = "http://snomed.info/sct"
 _CS_TARIFF = "https://www.bhf.co.za/sama-tariff"
 
-_FHIR_BASE_URL = "https://medic-demo-staging.thedaystar.co.za/api/fhir/R4"
+def _fhir_base_url() -> str:
+	return f"{frappe.utils.get_url()}/api/fhir/R4"
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +34,7 @@ def patient_to_fhir(patient_name: str) -> dict:
 		"identifier": [
 			{
 				"use": "official",
-				"system": f"{_FHIR_BASE_URL}/naming-system/medic-plus-patient",
+				"system": f"{_fhir_base_url()}/naming-system/medic-plus-patient",
 				"value": p.name,
 			}
 		],

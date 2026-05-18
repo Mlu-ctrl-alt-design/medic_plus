@@ -52,27 +52,42 @@
   "price_list": null
  },
  {
-  "doctype": "Appointment Type",
-  "appointment_type": "Antenatal",
-  "name": "Antenatal",
-  "color": "#6c757d",
-  "default_duration": 30,
-  "allow_booking_for": "Practitioner"
- },
- {
-  "doctype": "Appointment Type",
+  "allow_booking_for": "Practitioner",
   "appointment_type": "Chronic Disease Follow-up",
-  "name": "Chronic Disease Follow-up",
+  "codification_table": [],
   "color": "#6c757d",
   "default_duration": 20,
-  "allow_booking_for": "Practitioner"
+  "docstatus": 0,
+  "doctype": "Appointment Type",
+  "items": [],
+  "modified": "2026-05-14 23:05:59.680385",
+  "name": "Chronic Disease Follow-up",
+  "price_list": null
  },
  {
-  "doctype": "Appointment Type",
+  "allow_booking_for": "Practitioner",
   "appointment_type": "Well-Child Visit",
-  "name": "Well-Child Visit",
+  "codification_table": [],
   "color": "#6c757d",
   "default_duration": 30,
-  "allow_booking_for": "Practitioner"
+  "docstatus": 0,
+  "doctype": "Appointment Type",
+  "items": [],
+  "modified": "2026-05-14 23:05:59.721125",
+  "name": "Well-Child Visit",
+  "price_list": null
+ },
+ {
+  "allow_booking_for": "Practitioner",
+  "appointment_type": "Antenatal",
+  "codification_table": [],
+  "color": "#6c757d",
+  "default_duration": 30,
+  "docstatus": 0,
+  "doctype": "Appointment Type",
+  "items": [],
+  "modified": "2026-05-14 23:05:59.613844",
+  "name": "Antenatal",
+  "price_list": null
  }
 ]

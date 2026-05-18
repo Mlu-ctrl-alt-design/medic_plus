@@ -21,7 +21,9 @@
 // stacking context and could paint behind sibling cards (see register-patient
 // drawer fix). Portalling avoids that class of bug entirely.
 
-const { useState: dpUseState, useEffect: dpUseEffect, useRef: dpUseRef, useMemo: dpUseMemo } = React;
+const { useState: dpUseState, useEffect: dpUseEffect, useRef: dpUseRef, useMemo: dpUseMemo, useCallback: dpUseCallback } = React;
+
+const DP_MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 const DP_WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];  // ISO week (Mon-first)
 const DP_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -70,6 +72,9 @@ function MDatePicker(props) {
 
   const [text, setText] = dpUseState(value || "");
   const [open, setOpen] = dpUseState(false);
+  const [pickerMode, setPickerMode] = dpUseState("day");  // "day" | "ym"
+  const [ymTempYear, setYmTempYear] = dpUseState(null);   // year highlighted in ym panel
+  const [ymDecadeStart, setYmDecadeStart] = dpUseState(null); // first year of the 12-year grid
   const [popoverRect, setPopoverRect] = dpUseState({ top: 0, left: 0, width: 280 });
 
   // viewMonth is the calendar's cursor — what month grid we render.
@@ -148,7 +153,23 @@ function MDatePicker(props) {
     if (disabled) return;
     const parts = dpParse(text || value);
     if (parts) setView({ y: parts.y, m: parts.m });
+    setPickerMode("day");
+    setYmTempYear(null);
+    setYmDecadeStart(null);
     setOpen(true);
+  };
+
+  const openYmPanel = () => {
+    const decStart = view.y - (view.y % 12);
+    setYmDecadeStart(decStart);
+    setYmTempYear(view.y);
+    setPickerMode("ym");
+  };
+
+  const pickYearMonth = (month) => {
+    const yr = ymTempYear || view.y;
+    setView({ y: yr, m: month });
+    setPickerMode("day");
   };
 
   const commit = (iso) => {
@@ -218,6 +239,9 @@ function MDatePicker(props) {
     }
   }, [view.y, view.m]);
 
+  const ymDecStart = ymDecadeStart !== null ? ymDecadeStart : view.y - (view.y % 12);
+  const ymYears = Array.from({ length: 12 }, (_, i) => ymDecStart + i);
+
   const popover = open ? ReactDOM.createPortal(
     <div
       ref={popoverRef}
@@ -226,78 +250,156 @@ function MDatePicker(props) {
       aria-label="Choose date"
       style={{ top: popoverRect.top, left: popoverRect.left, width: popoverRect.width }}
     >
+      {/* ── Header: month-nav in day mode, decade-nav in ym mode ── */}
       <div className="mdp-header">
-        <button type="button" className="mdp-nav" aria-label="Previous month" onClick={() => stepMonth(-1)}>
+        <button
+          type="button"
+          className="mdp-nav"
+          aria-label={pickerMode === "day" ? "Previous month" : "Previous decade"}
+          onClick={() => pickerMode === "day" ? stepMonth(-1) : setYmDecadeStart(ymDecStart - 12)}
+        >
           <window.MIcons.ChevronLeft size={14} />
         </button>
-        <div className="mdp-month-label" data-testid="mdp-month-label">{monthLabel}</div>
-        <button type="button" className="mdp-nav" aria-label="Next month" onClick={() => stepMonth(1)}>
+        <button
+          type="button"
+          className="mdp-month-label"
+          data-testid="mdp-month-label"
+          style={{ background: "none", border: "none", cursor: "pointer", font: "inherit", fontWeight: 500, fontSize: 13, padding: "2px 6px", borderRadius: 4 }}
+          title={pickerMode === "day" ? "Click to pick year & month" : "Back to calendar"}
+          onClick={() => pickerMode === "day" ? openYmPanel() : setPickerMode("day")}
+        >
+          {pickerMode === "day"
+            ? monthLabel
+            : `${ymDecStart} – ${ymDecStart + 11}`}
+        </button>
+        <button
+          type="button"
+          className="mdp-nav"
+          aria-label={pickerMode === "day" ? "Next month" : "Next decade"}
+          onClick={() => pickerMode === "day" ? stepMonth(1) : setYmDecadeStart(ymDecStart + 12)}
+        >
           <window.MIcons.ChevronRight size={14} />
         </button>
       </div>
 
-      <div className="mdp-weekdays">
-        {DP_WEEKDAYS.map((w) => <div key={w}>{w}</div>)}
-      </div>
+      {/* ── Year-Month picker panel ── */}
+      {pickerMode === "ym" && (
+        <div style={{ padding: "6px 8px 2px" }}>
+          {/* Year grid: 4 columns × 3 rows */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, marginBottom: 8 }}>
+            {ymYears.map((yr) => {
+              const isActive = yr === (ymTempYear || view.y);
+              return (
+                <button
+                  key={yr}
+                  type="button"
+                  onClick={() => setYmTempYear(yr)}
+                  style={{
+                    padding: "5px 2px", fontSize: 12, border: "1px solid",
+                    borderColor: isActive ? "var(--accent, #2563eb)" : "var(--border, #e5e7eb)",
+                    borderRadius: 6, cursor: "pointer", fontWeight: isActive ? 600 : 400,
+                    background: isActive ? "var(--accent, #2563eb)" : "transparent",
+                    color: isActive ? "#fff" : "var(--text, inherit)",
+                  }}
+                >
+                  {yr}
+                </button>
+              );
+            })}
+          </div>
+          {/* Month row */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, paddingBottom: 8 }}>
+            {DP_MONTHS_SHORT.map((mo, idx) => {
+              const mNum = idx + 1;
+              const isCurrentMo = mNum === view.m && (ymTempYear || view.y) === view.y;
+              return (
+                <button
+                  key={mo}
+                  type="button"
+                  onClick={() => pickYearMonth(mNum)}
+                  style={{
+                    padding: "5px 2px", fontSize: 12, border: "1px solid",
+                    borderColor: isCurrentMo ? "var(--accent, #2563eb)" : "var(--border, #e5e7eb)",
+                    borderRadius: 6, cursor: "pointer", fontWeight: isCurrentMo ? 600 : 400,
+                    background: isCurrentMo ? "var(--accent-soft, #eff6ff)" : "transparent",
+                    color: isCurrentMo ? "var(--accent, #2563eb)" : "var(--text, inherit)",
+                  }}
+                >
+                  {mo}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      <div className="mdp-grid" role="grid">
-        {grid.map((d, i) => {
-          if (d == null) return <div key={i} className="mdp-cell mdp-cell-empty" />;
-          const iso = dpToISO(view.y, view.m, d);
-          const isSelected = selected && selected.y === view.y && selected.m === view.m && selected.d === d;
-          const isToday = iso === todayISO;
-          const outOfRange = (min && iso < min) || (max && iso > max);
-          let cls = "mdp-cell";
-          if (isSelected) cls += " mdp-cell-selected";
-          if (isToday && !isSelected) cls += " mdp-cell-today";
-          if (outOfRange) cls += " mdp-cell-disabled";
-          return (
+      {/* ── Day grid (normal calendar) ── */}
+      {pickerMode === "day" && (
+        <>
+          <div className="mdp-weekdays">
+            {DP_WEEKDAYS.map((w) => <div key={w}>{w}</div>)}
+          </div>
+
+          <div className="mdp-grid" role="grid">
+            {grid.map((d, i) => {
+              if (d == null) return <div key={i} className="mdp-cell mdp-cell-empty" />;
+              const iso = dpToISO(view.y, view.m, d);
+              const isSelected = selected && selected.y === view.y && selected.m === view.m && selected.d === d;
+              const isToday = iso === todayISO;
+              const outOfRange = (min && iso < min) || (max && iso > max);
+              let cls = "mdp-cell";
+              if (isSelected) cls += " mdp-cell-selected";
+              if (isToday && !isSelected) cls += " mdp-cell-today";
+              if (outOfRange) cls += " mdp-cell-disabled";
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  role="gridcell"
+                  aria-selected={isSelected || undefined}
+                  aria-disabled={outOfRange || undefined}
+                  className={cls}
+                  disabled={outOfRange}
+                  onClick={() => pickDay(view.y, view.m, d)}
+                  data-testid={isSelected ? "mdp-day-selected" : undefined}
+                  data-iso={iso}
+                >
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mdp-footer">
             <button
-              key={i}
               type="button"
-              role="gridcell"
-              aria-selected={isSelected || undefined}
-              aria-disabled={outOfRange || undefined}
-              className={cls}
-              disabled={outOfRange}
-              onClick={() => pickDay(view.y, view.m, d)}
-              data-testid={isSelected ? "mdp-day-selected" : undefined}
-              data-iso={iso}
+              className="mdp-foot-btn"
+              onClick={() => {
+                const t = dpClampToBounds(dpParse(todayISO), min, max);
+                if (!t) return;
+                const iso = dpToISO(t.y, t.m, t.d);
+                setView({ y: t.y, m: t.m });
+                commit(iso);
+                setOpen(false);
+                inputRef.current?.focus();
+              }}
             >
-              {d}
+              Today
             </button>
-          );
-        })}
-      </div>
-
-      <div className="mdp-footer">
-        <button
-          type="button"
-          className="mdp-foot-btn"
-          onClick={() => {
-            const t = dpClampToBounds(dpParse(todayISO), min, max);
-            if (!t) return;
-            const iso = dpToISO(t.y, t.m, t.d);
-            setView({ y: t.y, m: t.m });
-            commit(iso);
-            setOpen(false);
-            inputRef.current?.focus();
-          }}
-        >
-          Today
-        </button>
-        <button
-          type="button"
-          className="mdp-foot-btn"
-          onClick={() => {
-            commit("");
-            setOpen(false);
-            inputRef.current?.focus();
-          }}
-        >
-          Clear
-        </button>
-      </div>
+            <button
+              type="button"
+              className="mdp-foot-btn"
+              onClick={() => {
+                commit("");
+                setOpen(false);
+                inputRef.current?.focus();
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </>
+      )}
     </div>,
     document.body
   ) : null;

@@ -86,7 +86,7 @@
   "margin_left": 0.0,
   "margin_right": 0.0,
   "margin_top": 0.0,
-  "modified": "2026-05-02 00:00:00.000000",
+  "modified": "2026-05-02 00:00:00",
   "module": "Medic Plus",
   "name": "Drug Prescription Booklet 8",
   "page_number": null,
@@ -98,7 +98,7 @@
   "raw_commands": null,
   "raw_printing": 0,
   "report": null,
-  "show_barcode_field": 0,
+  "show_section_headings": 0,
   "standard": "No"
  }
 ]

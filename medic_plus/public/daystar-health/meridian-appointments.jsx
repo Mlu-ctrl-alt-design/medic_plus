@@ -3,7 +3,7 @@
 // Clicking a row navigates to the patient detail screen.
 
 const APPT_STORAGE_KEY = "daystar.appointments.filters";
-const STATUS_OPTIONS = ["Scheduled", "Open", "Closed", "Cancelled"];
+const STATUS_OPTIONS = ["Scheduled", "Open", "Checked In", "Closed", "Cancelled"];
 
 function _todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -23,7 +23,7 @@ function _loadInitialFilters() {
       return {
         dateFrom: p.dateFrom || _todayStr(),
         dateTo: p.dateTo || _plusDaysStr(7),
-        status: Array.isArray(p.status) && p.status.length ? p.status : ["Scheduled", "Open"],
+        status: Array.isArray(p.status) && p.status.length ? p.status : ["Scheduled", "Open", "Checked In"],
         practitioner: p.practitioner || "",
       };
     }
@@ -31,7 +31,7 @@ function _loadInitialFilters() {
   return {
     dateFrom: _todayStr(),
     dateTo: _plusDaysStr(7),
-    status: ["Scheduled", "Open"],
+    status: ["Scheduled", "Open", "Checked In"],
     practitioner: "",
   };
 }
@@ -45,6 +45,7 @@ function _saveFilters(f) {
 function _apptBadgeClass(status) {
   if (status === "Scheduled") return "badge-info";
   if (status === "Open") return "badge-success";
+  if (status === "Checked In") return "badge-success";
   if (status === "Cancelled") return "badge-danger";
   return "badge-neutral"; // Closed and anything else
 }
@@ -59,6 +60,8 @@ function _formatTime(t) {
   const h12 = h % 12 || 12;
   return `${h12}:${m} ${ampm}`;
 }
+
+const _ACTIVE_STATUSES = new Set(["Scheduled", "Open", "Confirmed"]);
 
 function MAppointmentsScreen({ go }) {
   const init = _loadInitialFilters();
@@ -77,6 +80,10 @@ function MAppointmentsScreen({ go }) {
 
   const [state, setState] = mUseState({ status: "loading", rows: [], error: null });
   const [practitioners, setPractitioners] = mUseState([]);
+  // localRefreshKey bumps after a consultation is started so the list re-fetches.
+  const [localRefreshKey, setLocalRefreshKey] = mUseState(0);
+  // Tracks which appointment is currently being started (shows spinner on that row).
+  const [startingAppt, setStartingAppt] = mUseState(null);
 
   // 300 ms debounce — mirror the patients-list search pattern.
   mUseEffect(() => {
@@ -102,6 +109,31 @@ function MAppointmentsScreen({ go }) {
       setPractitioners(rows);
     }).catch(() => {});
   }, []);
+
+  const handleRowClick = (a) => {
+    if (a.encounter) {
+      go("encounter", a.encounter);
+    } else {
+      go("patient", a.patient);
+    }
+  };
+
+  const handleStart = async (e, apptName) => {
+    e.stopPropagation();
+    setStartingAppt(apptName);
+    try {
+      const result = await window.meridianApi.call(
+        "medic_plus.api.daystar_health.start_consultation_from_appointment",
+        { appointment: apptName }
+      );
+      setLocalRefreshKey(k => k + 1);
+      go("encounter", result.encounter);
+    } catch (err) {
+      window.meridianApi.showError(err.message || "Could not start consultation.");
+    } finally {
+      setStartingAppt(null);
+    }
+  };
 
   // Fetch appointments whenever debounced filters change.
   mUseEffect(() => {
@@ -129,7 +161,7 @@ function MAppointmentsScreen({ go }) {
       });
 
     return () => { cancelled = true; };
-  }, [debDateFrom, debDateTo, debStatusList.join(","), debPractitioner]);
+  }, [debDateFrom, debDateTo, debStatusList.join(","), debPractitioner, localRefreshKey]);
 
   const toggleStatus = (s) => {
     setStatusList(prev => {
@@ -232,6 +264,7 @@ function MAppointmentsScreen({ go }) {
                   <th>Practitioner</th>
                   <th>Type</th>
                   <th>Status</th>
+                  <th>Consultation</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,7 +272,7 @@ function MAppointmentsScreen({ go }) {
                   <tr
                     key={a.name}
                     data-testid="appointments-row"
-                    onClick={() => go("patient", a.patient)}
+                    onClick={() => handleRowClick(a)}
                     style={{ cursor: "pointer" }}
                   >
                     <td className="mono">{a.appointment_date || "—"}</td>
@@ -249,6 +282,26 @@ function MAppointmentsScreen({ go }) {
                     <td style={{ color: "var(--text-muted)", fontSize: 13 }}>{a.appointment_type || "—"}</td>
                     <td>
                       <span className={`badge ${_apptBadgeClass(a.status)}`}>{a.status || "—"}</span>
+                    </td>
+                    <td onClick={e => e.stopPropagation()}>
+                      {a.encounter ? (
+                        <button
+                          className="btn btn-ghost btn-xs"
+                          data-testid={`open-encounter-${a.name}`}
+                          onClick={() => go("encounter", a.encounter)}
+                        >
+                          Open ↗
+                        </button>
+                      ) : _ACTIVE_STATUSES.has(a.status) ? (
+                        <button
+                          className="btn btn-primary btn-xs"
+                          data-testid={`start-consultation-${a.name}`}
+                          disabled={startingAppt === a.name}
+                          onClick={e => handleStart(e, a.name)}
+                        >
+                          {startingAppt === a.name ? "Starting…" : "Start"}
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

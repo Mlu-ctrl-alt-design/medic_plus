@@ -19,7 +19,7 @@ def _get_practice_or_throw(practice_slug: str) -> dict:
 	practice = frappe.db.get_value(
 		"Practice",
 		{"slug": practice_slug, "is_active": 1},
-		["name", "practice_name", "logo", "color", "email"],
+		["name", "practice_name", "logo", "color", "email", "slug"],
 		as_dict=True,
 	)
 	if not practice:
@@ -146,28 +146,14 @@ def verify_and_book(
 		if not existing_practice:
 			frappe.db.set_value("Patient", patient_name, "custom_practice", practice.name)
 
-	# Resolve appointment type — fall back to "Consultation" if none passed
-	resolved_type = appointment_type or frappe.db.get_value(
-		"Appointment Type", {"name": "Consultation"}, "name"
-	) or frappe.db.get_value("Appointment Type", {}, "name")
-
-	# Create appointment — duration must be > 0, appointment_for and
-	# appointment_type are mandatory in Healthcare.
-	appointment = frappe.get_doc(
-		{
-			"doctype": "Patient Appointment",
-			"patient": patient_name,
-			"practitioner": practitioner,
-			"appointment_for": "Practitioner",
-			"appointment_date": appointment_date,
-			"appointment_time": appointment_time,
-			"duration": 30,
-			"appointment_type": resolved_type,
-			"custom_practice": practice.name,
-			"status": "Open",
-		}
+	appointment = _book_slot(
+		patient_name=patient_name,
+		practice=practice,
+		practitioner=practitioner,
+		appointment_date=appointment_date,
+		appointment_time=appointment_time,
+		appointment_type=appointment_type,
 	)
-	appointment.insert(ignore_permissions=True)
 
 	# Send confirmation email
 	_send_confirmation_email(
@@ -186,6 +172,71 @@ def verify_and_book(
 			appointment.name, email
 		),
 	}
+
+
+def _fmt_time(t) -> str:
+	"""Normalise a time value (str | datetime.time | datetime.timedelta) to "HH:MM:SS"."""
+	from datetime import timedelta
+	if isinstance(t, timedelta):
+		total = int(t.total_seconds())
+		return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
+	s = str(t)
+	if len(s) == 5:
+		s += ":00"
+	return s[:8]
+
+
+def _book_slot(
+	*,
+	patient_name: str,
+	practice: dict,
+	practitioner: str,
+	appointment_date: str,
+	appointment_time: str,
+	reason: str | None = None,
+	appointment_type: str | None = None,
+) -> "frappe.model.document.Document":
+	"""Single source of truth for booking-rule enforcement.
+
+	Validates that the requested slot is in `get_availability` (no double-book,
+	practitioner belongs to the practice) and creates the Patient Appointment.
+	Caller is responsible for Patient resolution + commit.
+
+	Parameters:
+	    reason: optional free-text reason from the patient. Written to the
+	        Patient Appointment ``notes`` field. Currently unused by the guest
+	        booking flow (`verify_and_book`); wired up by the authed portal
+	        booking flow in `medic_plus.api.patient_portal.book_for_authed_patient`.
+
+	Returns the inserted Patient Appointment doc.
+	"""
+	available = get_availability(practice["slug"], practitioner, appointment_date)
+	requested = _fmt_time(appointment_time)
+	if requested not in available:
+		frappe.throw(
+			frappe._("That time slot is no longer available. Please pick another."),
+			title=frappe._("Slot Unavailable"),
+		)
+
+	resolved_type = appointment_type or frappe.db.get_value(
+		"Appointment Type", {"name": "Consultation"}, "name"
+	) or frappe.db.get_value("Appointment Type", {}, "name")
+
+	appointment = frappe.get_doc({
+		"doctype": "Patient Appointment",
+		"patient": patient_name,
+		"practitioner": practitioner,
+		"appointment_for": "Practitioner",
+		"appointment_date": appointment_date,
+		"appointment_time": appointment_time,
+		"duration": 30,
+		"appointment_type": resolved_type,
+		"custom_practice": practice["name"],
+		"status": "Open",
+		"notes": reason or None,
+	})
+	appointment.insert(ignore_permissions=True)
+	return appointment
 
 
 def _send_confirmation_email(email: str, patient_name: str, appointment, practice: dict):
@@ -270,12 +321,6 @@ def get_availability(practice_slug: str, practitioner: str, date: str) -> list:
 	# appointment_time as datetime.timedelta, whose str() drops the leading
 	# zero on hours < 10 ("8:00:00" not "08:00:00"), so naive comparison
 	# against slot strings like "08:00:00" never matches.
-	def _fmt_time(t):
-		if isinstance(t, timedelta):
-			total = int(t.total_seconds())
-			return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
-		return str(t)[:8]
-
 	booked_set = {_fmt_time(t) for t in booked_times}
 
 	available = []

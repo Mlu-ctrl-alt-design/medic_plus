@@ -111,6 +111,8 @@ fixtures = [
 			"Patient Encounter-custom_claim_diagnosis_code",
 			"Patient Encounter-custom_claim_tariff_code",
 			"Patient Encounter-custom_claim_nappi_code",
+			# Help & Support — practice scoping on ERPNext Issue
+			"Issue-custom_practice",
 		]]],
 	},
 	{"dt": "Print Format",    "filters": [["module", "=", "Medic Plus"]]},
@@ -118,6 +120,7 @@ fixtures = [
 	{"dt": "Dashboard Chart", "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Workspace",       "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Page",            "filters": [["module", "=", "Medic Plus"]]},
+	{"dt": "Page",            "filters": [["name", "=", "patient_history"]]},
 	{"dt": "Client Script",   "filters": [["module", "=", "Medic Plus"]]},
 	{"dt": "Appointment Type", "filters": [["name", "in", ["Consultation", "Follow-up", "Procedure", "Emergency", "Antenatal", "Chronic Disease Follow-up", "Well-Child Visit"]]]},
 	# Phase 5.7 — Encounter Templates (platform-level templates)
@@ -145,6 +148,8 @@ fixtures = [
 # ---------------------------------------------------------------------------
 website_route_rules = [
 	{"from_route": "/api/fhir/R4/<path:path>", "to_route": "api/fhir/R4"},
+	# Patient Portal: /portal/<slug> → /portal with slug in form_dict
+	{"from_route": "/portal/<slug>", "to_route": "portal"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
@@ -166,6 +171,8 @@ permission_query_conditions = {
 	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
 	# Phase 1C — Structured SOAP encounter + Problem List
 	"Patient Problem List": "medic_plus.api.permissions.get_patient_problem_list_permission_query",
+	# Patient Portal — patient self-service medication list
+	"Medication Request": "medic_plus.api.permissions.get_medication_request_permission_query",
 	# Phase 1D — Drug safety doctypes
 	"Prescription Override Reason": "medic_plus.api.permissions.get_prescription_override_reason_permission_query",
 	# Phase 5.7 — Encounter Templates
@@ -195,6 +202,10 @@ permission_query_conditions = {
 	"Payment Entry": "medic_plus.api.permissions.get_payment_entry_permission_query",
 	"Purchase Invoice": "medic_plus.api.permissions.get_purchase_invoice_permission_query",
 	"Journal Entry": "medic_plus.api.permissions.get_journal_entry_permission_query",
+	# Help & Support — practice members raise platform support issues
+	"Issue": "medic_plus.api.permissions.get_issue_permission_query",
+	# Calendar — practitioner self-managed time blocks
+	"Practice Time Block": "medic_plus.api.permissions.get_practice_time_block_permission_query",
 }
 
 # Document event hooks
