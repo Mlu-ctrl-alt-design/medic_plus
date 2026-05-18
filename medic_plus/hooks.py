@@ -148,6 +148,8 @@ fixtures = [
 # ---------------------------------------------------------------------------
 website_route_rules = [
 	{"from_route": "/api/fhir/R4/<path:path>", "to_route": "api/fhir/R4"},
+	# Patient Portal: /portal/<slug> → /portal with slug in form_dict
+	{"from_route": "/portal/<slug>", "to_route": "portal"},
 ]
 
 # Permission Query Conditions (data isolation per practice)
