@@ -133,14 +133,14 @@ MIT
 
 ## Changelog
 
-### 2026-05-18 — v2.3.0: Patient Portal
+### 2026-05-18 — v2.4.0: Patient Portal
 - New self-service portal at `/portal/<slug>` — practice-scoped Babel-in-browser React SPA reusing the Meridian design system from `/daystar-health`.
 - Email-OTP passwordless auth (10-min TTL, 5 sends/10min, 5 verify attempts); auto-provisions a Frappe User with the `Patient` role on first sign-in.
 - Seven screens: Home, Appointments, Book (drawer), Records, Documents, Billing, Profile.
 - New module: `medic_plus.api.patient_portal` (13 endpoints). Shared `_book_slot` helper in `medic_plus.api.booking` now serves both guest and authed flows.
 - PQCs added/extended for the Patient role: `Patient Encounter`, `Patient Problem List`, `Medication Request`, `Sales Invoice`.
 - Read-only records exposure; PDF downloads (sick notes, prescriptions, invoices) with server-side ownership validation.
-- 18 Python tests + 5 Playwright tests (including cross-tenant isolation + 375px mobile no-horizontal-scroll). See `docs/releases/v2.3.0.md`.
+- 18 Python tests + 5 Playwright tests (including cross-tenant isolation + 375px mobile no-horizontal-scroll). See `docs/releases/v2.4.0.md`.
 
 ### 2026-05-08 — v2.0.0: SA EMR Phase 1 close + Phase 4 + POPIA + FHIR R4
 - First major version. Rolls up Phase 1C (SOAP encounter), Phase 1D (drug safety), Phase 1E (insurance claims + POPIA + FHIR), and Phase 4 (telemedicine + AI augmentation). 16 commits, 15 new doctypes, ~11k lines added. Full release notes in `docs/releases/v2.0.0.md`.

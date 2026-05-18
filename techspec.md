@@ -1517,7 +1517,7 @@ Renamed the three classes in `medic_plus/medic_plus/doctype/{ai_inference_log,fh
 - [ ] Advanced reports (Pro plan feature)
 - [ ] Phase 6 — Doctor self-registration approval flow
 
-## 2026-05-18 — Patient Portal (v2.3.0)
+## 2026-05-18 — Patient Portal (v2.4.0)
 
 **Summary:** Practice-scoped patient portal at `/portal/<slug>` — Babel-in-browser React SPA reusing the Meridian design system from `/daystar-health`. Email-OTP passwordless auth (10-min TTL, 5 sends/10min, 5 verify attempts). Seven screens: Home, Appointments, Book, Records, Documents, Billing, Profile.
 
@@ -1535,4 +1535,4 @@ Renamed the three classes in `medic_plus/medic_plus/doctype/{ai_inference_log,fh
 
 **Spec:** `docs/superpowers/specs/2026-05-18-patient-portal-design.md`
 **Plan:** `docs/superpowers/plans/2026-05-18-patient-portal.md`
-**Release notes:** `docs/releases/v2.3.0.md`
+**Release notes:** `docs/releases/v2.4.0.md`
