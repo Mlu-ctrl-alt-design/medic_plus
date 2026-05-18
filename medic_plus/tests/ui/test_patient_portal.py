@@ -105,9 +105,12 @@ def test_portal_tabs_navigate(signed_in_page: Page):
 
 
 def test_portal_profile_save(signed_in_page: Page):
+	import time
 	signed_in_page.goto(f"{BASE_URL}/portal/{SLUG}?screen=profile", wait_until="networkidle")
 	signed_in_page.wait_for_selector("h1:has-text('My profile')", timeout=15000)
-	new_phone = "+27" + str(int(os.getenv("RUN_TAG", "0")) % 100000000).zfill(9)
+	# Unique per-run value — save() exits silently when payload is empty (no diff vs
+	# current me), which would let a stale fixed value silently pass on a re-run.
+	new_phone = "+27" + str(int(time.time()) % 1000000000).zfill(9)
 	signed_in_page.locator("input[type='tel']").first.fill(new_phone)
 	signed_in_page.click("button:has-text('Save changes')")
 	signed_in_page.wait_for_selector("text=Saved", timeout=10000)
