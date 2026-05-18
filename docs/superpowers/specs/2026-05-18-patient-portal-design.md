@@ -39,7 +39,7 @@ A patient-facing React SPA mounted at `/portal/<slug>` that reuses the Meridian 
 | Cancellation policy | Cancel allowed iff `appointment_date + appointment_time − now() ≥ 24h` | Confirmed by user |
 | Frontend stack | Babel-in-browser React, same pattern as `/daystar-health` | Consistency with existing SPA; no new build pipeline |
 | Asset bundle | Separate `medic_plus/public/portal/` directory | Doctor SPA bundle is untouched; shared CSS reused |
-| New role | `Patient Portal User`, distinct from `Patient` | Lets PQCs distinguish portal sessions from staff-created Patient docs |
+| Role | Reuse the existing `Patient` role | `api/permissions.py` already implements `Patient`-role PQC branches via `_get_patient_name_for_user` (lines 49–115). A new role would duplicate this. |
 
 ## URL & routing
 
@@ -94,7 +94,7 @@ Auxiliary screens (live inside the SPA shell, not separate routes):
   - Validates code against cache, single-use (deletes on success).
   - On success:
     - If no Frappe User exists with `email`, auto-provision: `enabled=1`, `send_welcome_email=0`, `user_type=Website User`, no password.
-    - Add role `Patient Portal User` if not present.
+    - Add role `Patient` if not present.
     - Call `frappe.local.login_manager.login_as(email)` to mint session.
   - Returns `{ok: true, csrf_token, slug}`. Frontend stores csrf in `window.portalApi`.
 - **OTP constants** (mirror `api/booking.py`):
@@ -144,27 +144,35 @@ def _book_slot(*, patient_doc, practice, practitioner, appointment_date, appoint
 
 ## Permissions & isolation
 
-### New role
+### Role
 
-`Patient Portal User` — auto-assigned on first OTP verify. Patients can also have other roles (a doctor who is also a patient), but the PQC only fires when this role is present and `Healthcare Administrator` is not.
+Reuse existing `Patient` role. Auto-assigned on first OTP verify together with `Website User` type. `api/permissions.py` already implements `Patient`-role PQC branches via `_get_patient_name_for_user` for Patient, Patient Appointment, Sick Note, Patient Allergy, Patient Chronic Condition, Patient Medical Record, Patient Insurance Policy, Patient Insurance Coverage. No new role required.
 
-### PQCs extended in `api/permissions.py` + `hooks.py`
+### PQCs to extend in `api/permissions.py` + `hooks.py`
 
-For each of: Patient, Patient Appointment, Patient Encounter, Sick Note, Patient Problem List, Patient Allergy, Patient Chronic Condition, Sales Invoice, Medication Request — add a portal-user branch:
+Add a `Patient`-role branch to PQCs that don't yet have one but are needed for the portal:
+
+- `get_patient_encounter_permission_query` — currently practice-only; add patient branch.
+- `get_patient_problem_list_permission_query` — new PQC (if not already registered).
+- `get_medication_request_permission_query` — new PQC.
+- `get_sales_invoice_permission_query` — new PQC (scope by `Patient.customer == Sales Invoice.customer` for the session user).
+
+Branch shape (same as existing patterns):
 
 ```python
-def get_X_permission_query(user):
-    user = user or frappe.session.user
-    roles = frappe.get_roles(user)
-    if "Healthcare Administrator" in roles:
+def get_X_permission_query(user=None):
+    if _is_platform_admin(user):
         return ""
-    if "Patient Portal User" in roles and "Doctor" not in roles and "Receptionist" not in roles:
-        # Scope to the session user's Patient record(s) only
-        return f"`tab{Doctype}`.patient in (select name from `tabPatient` where email = {frappe.db.escape(user)})"
-    # ... existing practice-scoped logic ...
+    if "Patient" in frappe.get_roles(user or frappe.session.user):
+        patient = _get_patient_name_for_user(user)
+        return f"`tabX`.`patient` = {frappe.db.escape(patient)}" if patient else "1=0"
+    practice = _get_user_practice(user)
+    if not practice:
+        return "1=0"
+    return f"`tabX`.`custom_practice` = {frappe.db.escape(practice)}"
 ```
 
-For Sales Invoice the scope is: `customer in (select customer from tabPatient where email = <user>)`.
+For Sales Invoice the scope is `customer = <Patient.customer for the session user>` (the existing `_get_patient_name_for_user` helper needs a sibling `_get_customer_for_user` that joins Patient → customer).
 
 ### Defense-in-depth
 
