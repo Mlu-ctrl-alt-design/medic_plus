@@ -169,6 +169,8 @@ permission_query_conditions = {
 	"Patient Identifier": "medic_plus.api.permissions.get_patient_identifier_permission_query",
 	# Phase 1C — Structured SOAP encounter + Problem List
 	"Patient Problem List": "medic_plus.api.permissions.get_patient_problem_list_permission_query",
+	# Patient Portal — patient self-service medication list
+	"Medication Request": "medic_plus.api.permissions.get_medication_request_permission_query",
 	# Phase 1D — Drug safety doctypes
 	"Prescription Override Reason": "medic_plus.api.permissions.get_prescription_override_reason_permission_query",
 	# Phase 5.7 — Encounter Templates
