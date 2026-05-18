@@ -116,11 +116,14 @@ def _book_slot(
 
     Returns the inserted Patient Appointment doc.
     """
-    available = [
-        slot["time"] for slot in get_availability(practice["name"] if False else practice.get("slug") or practice["name"], practitioner, appointment_date)
-    ]
-    # Normalise the requested time to HH:MM for comparison.
-    requested = str(appointment_time)[:5]
+    available = get_availability(practice["slug"], practitioner, appointment_date)
+    # Normalise the requested time to HH:MM:SS for comparison.
+    # get_availability returns flat list of "HH:MM:SS" strings; callers may pass
+    # "HH:MM" (from <input type="time">) or "HH:MM:SS".
+    requested = str(appointment_time)
+    if len(requested) == 5:
+        requested = requested + ":00"
+    requested = requested[:8]
     if requested not in available:
         frappe.throw(
             frappe._("That time slot is no longer available. Please pick another."),
@@ -176,7 +179,7 @@ practice = frappe.db.get_value(
 
 Simplify the `_book_slot` availability call to:
 ```python
-available = [slot["time"] for slot in get_availability(practice["slug"], practitioner, appointment_date)]
+available = get_availability(practice["slug"], practitioner, appointment_date)  # flat list of "HH:MM:SS"
 ```
 
 - [ ] **Step 4: Rewrite `verify_and_book` to call `_book_slot`**
@@ -2491,12 +2494,12 @@ Create `medic_plus/public/portal/portal-book.jsx`:
           <div style={{fontSize: 12, color: "var(--text-muted)", marginBottom: 16}}>No slots on this date.</div>
         )}
         <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 8, marginBottom: 16}}>
-          {slots.map((s) => (
-            <button key={s.time} type="button"
-              onClick={() => setSlot(s.time)}
-              className={`portal-cta ${slot === s.time ? "" : "secondary"}`}
+          {slots.map((t) => (
+            <button key={t} type="button"
+              onClick={() => setSlot(t)}
+              className={`portal-cta ${slot === t ? "" : "secondary"}`}
               style={{padding: "0 8px", minHeight: 40, fontSize: 13}}>
-              {s.time}
+              {t.slice(0,5)}
             </button>
           ))}
         </div>
