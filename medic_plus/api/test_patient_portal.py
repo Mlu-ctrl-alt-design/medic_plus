@@ -173,3 +173,115 @@ class TestPortalProfile(unittest.TestCase):
 		frappe.set_user("Guest")
 		with self.assertRaises(frappe.PermissionError):
 			patient_portal._resolve_my_patient(self.slug)
+
+
+from frappe.utils import add_days, add_to_date, now_datetime as _ndt, today as fr_today
+
+
+class TestPortalAppointments(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		cls.slug = "ttp-appt"
+		cls.email = "ttp-appt-patient@example.com"
+		_purge_test_practice(cls.slug, cls.email)
+		frappe.db.delete("Patient Appointment", {"appointment_date": [">=", "1900-01-01"], "patient": ""})
+		cls.practice = frappe.get_doc({
+			"doctype": "Practice", "practice_name": "TTP Appt", "slug": cls.slug,
+			"is_active": 1, "email": "ttp-appt@example.com",
+		}).insert(ignore_permissions=True)
+		cls.patient = frappe.get_doc({
+			"doctype": "Patient", "first_name": "Appt", "last_name": "User",
+			"sex": "Male", "email": cls.email, "custom_practice": cls.practice.name,
+			"status": "Active", "invite_user": 0,
+		}).insert(ignore_permissions=True)
+		cls.user = frappe.get_doc({
+			"doctype": "User", "email": cls.email, "first_name": "Appt",
+			"enabled": 1, "user_type": "Website User", "send_welcome_email": 0,
+			"roles": [{"role": "Patient"}],
+		}).insert(ignore_permissions=True)
+
+		# Patient Appointment requires a practitioner — reuse any existing one
+		# on this site rather than fabricating one (Practitioner creation pulls
+		# in Company/Employee/Schedule deps that crash the bench test runner).
+		practitioner = frappe.db.get_value("Healthcare Practitioner", {}, "name")
+		appt_type = frappe.db.get_value("Appointment Type", {}, "name")
+		if not practitioner or not appt_type:
+			raise unittest.SkipTest("No Healthcare Practitioner or Appointment Type exists on this site")
+
+		# Build an appointment 5 days out (cancellable) and one 2 hours out (not cancellable)
+		cls.far_appt = frappe.get_doc({
+			"doctype": "Patient Appointment",
+			"patient": cls.patient.name,
+			"practitioner": practitioner,
+			"appointment_type": appt_type,
+			"appointment_for": "Practitioner",
+			"appointment_date": add_days(fr_today(), 5),
+			"appointment_time": "10:00:00",
+			"duration": 30,
+			"custom_practice": cls.practice.name,
+			"status": "Open",
+		}).insert(ignore_permissions=True)
+		soon = add_to_date(_ndt(), hours=2)
+		cls.soon_appt = frappe.get_doc({
+			"doctype": "Patient Appointment",
+			"patient": cls.patient.name,
+			"practitioner": practitioner,
+			"appointment_type": appt_type,
+			"appointment_for": "Practitioner",
+			"appointment_date": str(soon.date()),
+			"appointment_time": soon.time().strftime("%H:%M:%S"),
+			"duration": 30,
+			"custom_practice": cls.practice.name,
+			"status": "Open",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	@classmethod
+	def tearDownClass(cls):
+		frappe.set_user("Administrator")
+		frappe.db.delete("Patient Appointment", {"patient": cls.patient.name})
+		frappe.db.delete("Patient", {"name": cls.patient.name})
+		frappe.db.delete("Practice", {"name": cls.practice.name})
+		frappe.db.delete("Notification Settings", {"user": cls.email})
+		frappe.db.delete("User", {"email": cls.email})
+		frappe.db.commit()
+
+	def setUp(self):
+		# Reset appointment statuses — alphabetical test ordering means cancel
+		# tests run before list tests and would otherwise leave far_appt Cancelled.
+		frappe.set_user("Administrator")
+		frappe.db.set_value("Patient Appointment", self.far_appt.name, "status", "Scheduled")
+		frappe.db.set_value("Patient Appointment", self.soon_appt.name, "status", "Scheduled")
+		frappe.db.commit()
+		frappe.set_user(self.email)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def test_list_my_appointments_returns_upcoming(self):
+		result = patient_portal.list_my_appointments(self.slug)
+		names = [a["name"] for a in result["upcoming"]]
+		self.assertIn(self.far_appt.name, names)
+
+	def test_cancel_appointment_24h_out_succeeds(self):
+		result = patient_portal.cancel_my_appointment(self.slug, self.far_appt.name)
+		self.assertTrue(result["ok"])
+		self.assertEqual(
+			frappe.db.get_value("Patient Appointment", self.far_appt.name, "status"),
+			"Cancelled",
+		)
+
+	def test_cancel_appointment_within_24h_rejected(self):
+		with self.assertRaises(frappe.ValidationError):
+			patient_portal.cancel_my_appointment(self.slug, self.soon_appt.name)
+
+	def test_resolve_my_practices_lists_active(self):
+		result = patient_portal.resolve_my_practices()
+		slugs = [p["slug"] for p in result]
+		self.assertIn(self.slug, slugs)
+
+	def test_get_boot_returns_practice_and_has_patient(self):
+		result = patient_portal.get_boot(self.slug)
+		self.assertEqual(result["practice"]["slug"], self.slug)
+		self.assertTrue(result["is_authed"])
+		self.assertTrue(result["has_patient"])

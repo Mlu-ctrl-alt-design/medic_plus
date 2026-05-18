@@ -254,3 +254,122 @@ def update_me(slug: str, payload: dict) -> dict:
 	frappe.db.commit()
 
 	return get_me(slug)
+
+
+# ---------------------------------------------------------------------------
+# Appointments
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist(methods=["GET", "POST"])
+def list_my_appointments(slug: str) -> dict:
+	patient = _resolve_my_patient(slug)
+	upcoming = frappe.get_all(
+		"Patient Appointment",
+		filters={"patient": patient["name"], "appointment_date": [">=", frappe.utils.today()],
+				 "status": ["not in", ["Cancelled"]]},
+		fields=["name", "practitioner", "practitioner_name", "appointment_date",
+				"appointment_time", "duration", "status", "notes"],
+		order_by="appointment_date asc, appointment_time asc",
+		limit=50,
+	)
+	past = frappe.get_all(
+		"Patient Appointment",
+		filters={"patient": patient["name"], "appointment_date": ["<", frappe.utils.today()]},
+		fields=["name", "practitioner", "practitioner_name", "appointment_date",
+				"appointment_time", "duration", "status"],
+		order_by="appointment_date desc, appointment_time desc",
+		limit=20,
+	)
+	return {"upcoming": upcoming, "past": past}
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_my_appointment(slug: str, name: str) -> dict:
+	patient = _resolve_my_patient(slug)
+	appt = frappe.db.get_value(
+		"Patient Appointment",
+		{"name": name, "patient": patient["name"]},
+		["appointment_date", "appointment_time", "status"],
+		as_dict=True,
+	)
+	if not appt:
+		frappe.throw(frappe._("Appointment not found."), frappe.DoesNotExistError)
+	if appt["status"] == "Cancelled":
+		frappe.throw(frappe._("Already cancelled."))
+
+	# Combine date + time into datetime; status is 24h before that.
+	appt_dt = get_datetime(f"{appt['appointment_date']} {appt['appointment_time']}")
+	if appt_dt - now_datetime() < timedelta(hours=24):
+		frappe.throw(
+			frappe._("Cancellations must be at least 24 hours before the appointment. Please call the practice."),
+			title=frappe._("Too Late to Cancel"),
+		)
+
+	frappe.db.set_value("Patient Appointment", name, "status", "Cancelled")
+	frappe.db.commit()
+	return {"ok": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def book_for_authed_patient(slug: str, practitioner: str, appointment_date: str,
+							  appointment_time: str, reason: str = "") -> dict:
+	"""Authed booking — calls shared _book_slot helper from medic_plus.api.booking."""
+	from medic_plus.api import booking as booking_mod
+
+	patient = _resolve_my_patient(slug)
+	practice = _resolve_practice(slug)
+
+	# Validate practitioner is a member of the practice
+	if not frappe.db.exists(
+		"Practice Member",
+		{"practice": practice["name"], "practitioner": practitioner, "role": "Doctor"},
+	):
+		frappe.throw(frappe._("Practitioner not found at this practice."), frappe.DoesNotExistError)
+
+	appointment = booking_mod._book_slot(
+		patient_name=patient["name"],
+		practice=practice,
+		practitioner=practitioner,
+		appointment_date=appointment_date,
+		appointment_time=appointment_time,
+		reason=reason,
+	)
+	frappe.db.commit()
+	return {"ok": True, "appointment_name": appointment.name}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def resolve_my_practices() -> list:
+	"""Return practices where session user has a Patient record. For /portal resolver."""
+	_require_authed()
+	rows = frappe.db.sql("""
+		SELECT pr.slug, pr.practice_name, pr.logo, pr.color
+		FROM `tabPatient` p
+		JOIN `tabPractice` pr ON pr.name = p.custom_practice
+		WHERE p.email = %(email)s AND pr.is_active = 1
+		ORDER BY pr.practice_name ASC
+	""", {"email": frappe.session.user}, as_dict=True)
+	return rows or []
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_boot(slug: str) -> dict:
+	"""Boot context for the SPA: practice info + auth state."""
+	practice = _resolve_practice(slug)
+	if not practice:
+		frappe.throw(frappe._("Practice not found."), frappe.DoesNotExistError)
+	is_authed = frappe.session.user != "Guest"
+	has_patient = False
+	patient_name = None
+	if is_authed:
+		patient_name = frappe.db.get_value(
+			"Patient", {"email": frappe.session.user, "custom_practice": practice["name"]}, "name"
+		)
+		has_patient = bool(patient_name)
+	return {
+		"practice": practice,
+		"is_authed": is_authed,
+		"has_patient": has_patient,
+		"patient_name": patient_name,
+		"session_user": frappe.session.user if is_authed else None,
+	}
