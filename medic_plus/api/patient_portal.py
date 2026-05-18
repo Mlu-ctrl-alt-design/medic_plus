@@ -373,3 +373,154 @@ def get_boot(slug: str) -> dict:
 		"patient_name": patient_name,
 		"session_user": frappe.session.user if is_authed else None,
 	}
+
+
+# ---------------------------------------------------------------------------
+# Records (read-only)
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist(methods=["GET", "POST"])
+def list_my_records(slug: str) -> dict:
+	patient = _resolve_my_patient(slug)
+	encounters = frappe.get_all(
+		"Patient Encounter",
+		filters={"patient": patient["name"], "docstatus": ["!=", 2]},
+		fields=["name", "encounter_date", "practitioner_name", "encounter_time"],
+		order_by="encounter_date desc",
+		limit=50,
+	)
+	problems = (
+		frappe.get_all(
+			"Patient Problem List",
+			filters={"patient": patient["name"]},
+			fields=["name", "problem", "status", "onset_date"],
+			order_by="onset_date desc",
+			limit=50,
+		) if frappe.db.exists("DocType", "Patient Problem List") else []
+	)
+	allergies = (
+		frappe.get_all(
+			"Patient Allergy",
+			filters={"patient": patient["name"]},
+			fields=["name", "allergen", "severity", "reaction", "onset_date"],
+			order_by="onset_date desc",
+			limit=50,
+		) if frappe.db.exists("DocType", "Patient Allergy") else []
+	)
+	chronic = (
+		frappe.get_all(
+			"Patient Chronic Condition",
+			filters={"patient": patient["name"]},
+			fields=["name", "condition", "status", "onset_date"],
+			order_by="onset_date desc",
+			limit=50,
+		) if frappe.db.exists("DocType", "Patient Chronic Condition") else []
+	)
+	return {
+		"encounters": encounters,
+		"problems": problems,
+		"allergies": allergies,
+		"chronic_conditions": chronic,
+	}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_my_record_detail(slug: str, doctype: str, name: str) -> dict:
+	"""Read-only detail for a single record. Validates ownership server-side."""
+	patient = _resolve_my_patient(slug)
+	allowed = {"Patient Encounter", "Patient Problem List", "Patient Allergy", "Patient Chronic Condition"}
+	if doctype not in allowed:
+		frappe.throw(frappe._("Doctype not viewable."), frappe.PermissionError)
+	owner = frappe.db.get_value(doctype, name, "patient")
+	if owner != patient["name"]:
+		frappe.throw(frappe._("Not your record."), frappe.PermissionError)
+	return frappe.get_doc(doctype, name).as_dict()
+
+
+# ---------------------------------------------------------------------------
+# Documents (sick notes + prescriptions, downloadable PDFs)
+# ---------------------------------------------------------------------------
+
+DOCUMENTS_PRINT_FORMATS = {
+	"Sick Note": "Sick Note",
+	"Medication Request": "Prescription",  # falls back to Standard if absent
+}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def list_my_documents(slug: str) -> dict:
+	patient = _resolve_my_patient(slug)
+	sick_notes = frappe.get_all(
+		"Sick Note",
+		filters={"patient": patient["name"], "docstatus": 1},
+		fields=["name", "date_issued", "practitioner", "diagnosis", "days_off", "fit_for_work_date"],
+		order_by="date_issued desc",
+		limit=100,
+	)
+	prescriptions = (
+		frappe.get_all(
+			"Medication Request",
+			filters={"patient": patient["name"], "docstatus": 1},
+			fields=["name", "medication_request_date", "practitioner", "status"],
+			order_by="medication_request_date desc",
+			limit=100,
+		) if frappe.db.exists("DocType", "Medication Request") else []
+	)
+	return {"sick_notes": sick_notes, "prescriptions": prescriptions}
+
+
+@frappe.whitelist(methods=["GET"])
+def download_my_document(slug: str, doctype: str, name: str):
+	"""Return a PDF binary for a document the session user owns."""
+	patient = _resolve_my_patient(slug)
+	if doctype not in DOCUMENTS_PRINT_FORMATS:
+		frappe.throw(frappe._("Doctype not downloadable."), frappe.PermissionError)
+	owner = frappe.db.get_value(doctype, name, "patient")
+	if owner != patient["name"]:
+		frappe.throw(frappe._("Not your document."), frappe.PermissionError)
+
+	print_format = DOCUMENTS_PRINT_FORMATS[doctype]
+	if not frappe.db.exists("Print Format", print_format):
+		print_format = "Standard"
+
+	pdf_bytes = frappe.get_print(
+		doctype=doctype, name=name, print_format=print_format, as_pdf=True
+	)
+	frappe.local.response.filename = f"{name}.pdf"
+	frappe.local.response.filecontent = pdf_bytes
+	frappe.local.response.type = "pdf"
+
+
+# ---------------------------------------------------------------------------
+# Billing
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist(methods=["GET", "POST"])
+def list_my_invoices(slug: str) -> list:
+	patient = _resolve_my_patient(slug)
+	customer = patient.get("customer")
+	if not customer:
+		return []
+	return frappe.get_all(
+		"Sales Invoice",
+		filters={"customer": customer, "docstatus": ["!=", 2]},
+		fields=["name", "posting_date", "due_date", "grand_total",
+				"outstanding_amount", "status", "currency"],
+		order_by="posting_date desc",
+		limit=100,
+	)
+
+
+@frappe.whitelist(methods=["GET"])
+def download_my_invoice(slug: str, name: str):
+	patient = _resolve_my_patient(slug)
+	customer = patient.get("customer")
+	if not customer:
+		frappe.throw(frappe._("No invoices."), frappe.DoesNotExistError)
+	owner = frappe.db.get_value("Sales Invoice", name, "customer")
+	if owner != customer:
+		frappe.throw(frappe._("Not your invoice."), frappe.PermissionError)
+	pdf_bytes = frappe.get_print(doctype="Sales Invoice", name=name, as_pdf=True)
+	frappe.local.response.filename = f"{name}.pdf"
+	frappe.local.response.filecontent = pdf_bytes
+	frappe.local.response.type = "pdf"

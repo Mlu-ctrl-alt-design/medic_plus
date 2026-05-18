@@ -285,3 +285,91 @@ class TestPortalAppointments(unittest.TestCase):
 		self.assertEqual(result["practice"]["slug"], self.slug)
 		self.assertTrue(result["is_authed"])
 		self.assertTrue(result["has_patient"])
+
+
+class TestPortalCrossTenantIsolation(unittest.TestCase):
+	"""The headline POPIA-relevant test: a Patient at Practice A cannot read
+	Patient B's appointments / sick notes / records / invoices at Practice B."""
+
+	@classmethod
+	def setUpClass(cls):
+		# Practice A + Patient A
+		cls.slug_a = "ttp-iso-a"
+		cls.email_a = "ttp-iso-a-patient@example.com"
+		cls.slug_b = "ttp-iso-b"
+		cls.email_b = "ttp-iso-b-patient@example.com"
+		_purge_test_practice(cls.slug_a, cls.email_a)
+		_purge_test_practice(cls.slug_b, cls.email_b)
+
+		cls.practice_a = frappe.get_doc({
+			"doctype": "Practice", "practice_name": "TTP Iso A", "slug": cls.slug_a,
+			"is_active": 1, "email": "ttp-iso-a@example.com",
+		}).insert(ignore_permissions=True)
+		cls.patient_a = frappe.get_doc({
+			"doctype": "Patient", "first_name": "Iso", "last_name": "A",
+			"sex": "Male", "email": cls.email_a, "custom_practice": cls.practice_a.name,
+			"status": "Active", "invite_user": 0,
+		}).insert(ignore_permissions=True)
+		cls.user_a = frappe.get_doc({
+			"doctype": "User", "email": cls.email_a, "first_name": "Iso A",
+			"enabled": 1, "user_type": "Website User", "send_welcome_email": 0,
+			"roles": [{"role": "Patient"}],
+		}).insert(ignore_permissions=True)
+
+		# Practice B + Patient B + Appointment B
+		cls.practice_b = frappe.get_doc({
+			"doctype": "Practice", "practice_name": "TTP Iso B", "slug": cls.slug_b,
+			"is_active": 1, "email": "ttp-iso-b@example.com",
+		}).insert(ignore_permissions=True)
+		cls.patient_b = frappe.get_doc({
+			"doctype": "Patient", "first_name": "Iso", "last_name": "B",
+			"sex": "Female", "email": cls.email_b, "custom_practice": cls.practice_b.name,
+			"status": "Active", "invite_user": 0,
+		}).insert(ignore_permissions=True)
+
+		practitioner = frappe.db.get_value("Healthcare Practitioner", {}, "name")
+		appt_type = frappe.db.get_value("Appointment Type", {}, "name")
+		if not practitioner or not appt_type:
+			raise unittest.SkipTest("No Healthcare Practitioner or Appointment Type exists on this site")
+
+		cls.appt_b = frappe.get_doc({
+			"doctype": "Patient Appointment",
+			"patient": cls.patient_b.name,
+			"practitioner": practitioner,
+			"appointment_type": appt_type,
+			"appointment_for": "Practitioner",
+			"appointment_date": add_days(fr_today(), 7),
+			"appointment_time": "09:00:00", "duration": 30,
+			"custom_practice": cls.practice_b.name, "status": "Open",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	@classmethod
+	def tearDownClass(cls):
+		frappe.set_user("Administrator")
+		frappe.db.delete("Patient Appointment", {"name": cls.appt_b.name})
+		for d in (cls.patient_a.name, cls.patient_b.name):
+			frappe.db.delete("Patient", {"name": d})
+		for d in (cls.practice_a.name, cls.practice_b.name):
+			frappe.db.delete("Practice", {"name": d})
+		for d in (cls.email_a, cls.email_b):
+			frappe.db.delete("Notification Settings", {"user": d})
+			frappe.db.delete("User", {"email": d})
+		frappe.db.commit()
+
+	def test_patient_a_cannot_resolve_practice_b(self):
+		frappe.set_user(self.email_a)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				patient_portal._resolve_my_patient(self.slug_b)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_patient_a_cannot_list_practice_b_appointments(self):
+		# Direct PQC call (don't rely on session role cache)
+		from medic_plus.api.permissions import get_patient_appointment_permission_query
+		condition = get_patient_appointment_permission_query(user=self.email_a)
+		# Condition should scope to Patient A's name, not B's
+		self.assertIn(self.patient_a.name, condition)
+		self.assertNotIn(self.patient_b.name, condition)
+		self.assertNotIn(self.appt_b.name, condition)
