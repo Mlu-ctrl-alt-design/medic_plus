@@ -228,7 +228,8 @@ def send_owner_welcome_email(request_name: str) -> None:
 		"import_patients_url": f"{base}/app/data-import/new?reference_doctype=Patient",
 		"schedule_url": f"{base}/app/practitioner-schedule",
 	}
-	body = frappe.render_template(
+	# Literal in-repo template path, not user input.
+	body = frappe.render_template(  # nosemgrep: frappe-ssti
 		"medic_plus/templates/emails/practice_welcome.html", context
 	)
 	frappe.sendmail(
@@ -294,7 +295,8 @@ def notify_admins_of_provisioned_practice(request_name: str) -> None:
 		"reference": prr.name,
 		"practice_url": practice_url,
 	}
-	body = frappe.render_template(
+	# Literal in-repo template path, not user input.
+	body = frappe.render_template(  # nosemgrep: frappe-ssti
 		"medic_plus/templates/emails/admin_provisioned.html", context
 	)
 	frappe.sendmail(
